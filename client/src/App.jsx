@@ -1,26 +1,28 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { ThemeProvider } from "./context/ThemeContext";
+import { AuthProvider } from "./context/AuthContext"; // ✅ ADD THIS
 
 // Pages
 import Landing from "./pages/public/Landing/Landing";
+import Login from "./pages/public/Login/Login";
 
 function NotFound() {
   return <h1>404 - Page Not Found</h1>;
 }
 
-import { ThemeProvider } from "./context/ThemeContext";
-
 function App() {
   return (
-    <ThemeProvider>
-      <Router>
-        <Routes>
-          <Route path="/" element={<Landing />} />
-
-          {/* Fallback 404 */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </Router>
-    </ThemeProvider>
+    <AuthProvider> {/* ✅ FIX */}
+      <ThemeProvider>
+        <Router>
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Router>
+      </ThemeProvider>
+    </AuthProvider>
   );
 }
 
