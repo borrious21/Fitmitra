@@ -71,10 +71,10 @@ const NotFound = () => {
         </div>
 
         <p className={styles.help}>
-          Think this is a mistake?{" "}
-          <a href="mailto:support@fitmitra.com" className={styles.helpLink}>
+            Think this is a mistake?{" "}
+            <Link to="/contact-support" className={styles.helpLink}>
             Contact support
-          </a>
+            </Link>
         </p>
       </div>
     </div>

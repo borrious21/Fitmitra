@@ -270,11 +270,9 @@ const Support = () => {
           </div>
         </section>
 
-        {/* ── CONTACT FORM ────────────────────────────────────── */}
         <section className={styles.contactSection} id="contact">
           <div className={styles.contactLayout}>
 
-            {/* left info */}
             <div className={styles.contactInfo}>
               <span className={styles.tag}>Still need help?</span>
               <h2 className={styles.sectionTitle}>Send us a message</h2>
@@ -288,7 +286,7 @@ const Support = () => {
                   <div className={styles.contactCardIcon}><IcoMail /></div>
                   <div>
                     <div className={styles.contactCardTitle}>Email Support</div>
-                    <div className={styles.contactCardVal}>support@fitmitra.com</div>
+                    <div className={styles.contactCardVal}>fitmitra.ai.co@gmail.com</div>
                   </div>
                 </div>
                 <div className={styles.contactCard}>
@@ -308,7 +306,6 @@ const Support = () => {
               </div>
             </div>
 
-            {/* right form */}
             <div className={styles.formCard}>
               <div className={styles.formCardGlow} />
 
@@ -388,7 +385,6 @@ const Support = () => {
                       {formErrors.issueType && <p className={styles.fieldError}>{formErrors.issueType}</p>}
                     </div>
 
-                    {/* message */}
                     <div className={styles.formGroup}>
                       <label className={styles.label}>Message</label>
                       <textarea
@@ -419,7 +415,6 @@ const Support = () => {
 
       </div>
 
-      {/* ── FOOTER ──────────────────────────────────────────────── */}
       <footer className={styles.footer}>
         <div className={styles.footerInner}>
           <Link to="/" className={styles.brand}>
