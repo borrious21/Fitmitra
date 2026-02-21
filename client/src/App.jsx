@@ -9,10 +9,7 @@ import VerifyEmail from "./pages/public/VerifyEmail/VerifyEmail";
 import VerifyEmailPending from "./pages/public/VerifyPendingEmail/VerifyPendingEmail"; 
 import ResetPassword from "./pages/public/ResetPassword/ResetPassword";
 import ForgotPassword from "./pages/public/ForgotPassword/ForgotPassword";
-
-function NotFound() {
-  return <h1>404 - Page Not Found</h1>;
-}
+import NotFound from "./pages/public/Notfound/NotFound";
 
 function App() {
   return (
@@ -26,7 +23,7 @@ function App() {
             <Route path="/verify-pending-email" element={<VerifyEmailPending />} /> 
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
-            
+            <Route path="/404" element={<NotFound />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Router>
