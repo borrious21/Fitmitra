@@ -7,6 +7,7 @@ import {
   verifyEmailService,
 } from "../../../services/authService";
 import { Eye, EyeOff, Loader2, AlertCircle, Activity, Heart, Mail } from "lucide-react";
+import OtpInput from "../../../components/Otp/OtpInput";
 import ThemeToggle from "../../../components/ThemeToggle/ThemeToggle";
 import styles from "./Login.module.css";
 
@@ -22,7 +23,6 @@ const Login = () => {
   const [isLoading, setIsLoading]       = useState(false);
   const [localError, setLocalError]     = useState(null);
 
-  // Unverified email flow
   const [showUnverifiedPrompt, setShowUnverifiedPrompt] = useState(false);
   const [resendLoading, setResendLoading]   = useState(false);
   const [resendSuccess, setResendSuccess]   = useState(false);
@@ -146,18 +146,15 @@ const Login = () => {
   return (
     <div className={styles.container}>
 
-      {/* ── LEFT PANEL ──────────────────────────────────────── */}
       <div className={styles.leftPanel}>
         <div className={styles.imageOverlay} />
         <div className={styles.leftContent}>
 
-          {/* Brand */}
           <div className={styles.brandLogo}>
             <Activity className={styles.brandIcon} />
             <span className={styles.brandName}>FitMitra</span>
           </div>
 
-          {/* Hero copy */}
           <h2 className={styles.leftTitle}>
             Welcome<br />
             <span className={styles.leftTitleAccent}>Back.</span>
@@ -166,7 +163,6 @@ const Login = () => {
             Your fitness journey continues. Pick up right where you left off — your AI coach has been waiting.
           </p>
 
-          {/* Feature list */}
           <div className={styles.features}>
             {["Track your progress", "Access your plans", "Stay motivated daily"].map((f, i) => (
               <div className={styles.feature} key={i}>
@@ -176,7 +172,6 @@ const Login = () => {
             ))}
           </div>
 
-          {/* Stats */}
           <div className={styles.leftStats}>
             <div className={styles.leftStat}>
               <span className={styles.leftStatNum}>12K+</span>
@@ -194,10 +189,8 @@ const Login = () => {
         </div>
       </div>
 
-      {/* ── RIGHT PANEL ─────────────────────────────────────── */}
       <div className={styles.rightPanel}>
 
-        {/* Theme toggle — top-right corner */}
         <div className={styles.themeToggleWrap}>
           <ThemeToggle />
         </div>
@@ -205,7 +198,6 @@ const Login = () => {
         <div className={styles.wrapper}>
           <div className={styles.card}>
 
-            {/* Header */}
             <div className={styles.header}>
               <div className={styles.logoWrapper}>
                 <Activity className={styles.logoIcon} />
@@ -215,7 +207,6 @@ const Login = () => {
               <p className={styles.subtitle}>Welcome back to FitMitra</p>
             </div>
 
-            {/* Post-verify success message */}
             {postVerifyMessage && (
               <div className={styles.successAlert}>
                 <Mail className={styles.successIcon} />
@@ -223,7 +214,6 @@ const Login = () => {
               </div>
             )}
 
-            {/* Generic error */}
             {displayErrorMsg && !showUnverifiedPrompt && !postVerifyMessage && (
               <div className={styles.errorAlert}>
                 <AlertCircle className={styles.errorIcon} />
@@ -231,7 +221,6 @@ const Login = () => {
               </div>
             )}
 
-            {/* Unverified email prompt */}
             {showUnverifiedPrompt && (
               <div className={styles.warningAlert}>
                 <AlertCircle className={styles.warningIcon} />
@@ -258,7 +247,6 @@ const Login = () => {
               </div>
             )}
 
-            {/* OTP entry after resend */}
             {resendSuccess && (
               <div className={styles.successAlert}>
                 <div style={{ width: "100%" }}>
@@ -306,7 +294,6 @@ const Login = () => {
               </div>
             )}
 
-            {/* Sign-in form */}
             <form onSubmit={handleSubmit} className={styles.form}>
               <div className={styles.formGroup}>
                 <label htmlFor="email" className={styles.label}>Email Address</label>
