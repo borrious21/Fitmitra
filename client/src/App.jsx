@@ -5,6 +5,7 @@ import { AuthProvider } from "./context/AuthContext"; // ✅ ADD THIS
 // Pages
 import Landing from "./pages/public/Landing/Landing";
 import Login from "./pages/public/Login/Login";
+import VerifyEmail from "./pages/public/VerifyEmail/VerifyEmail"; // ✅ ADD THIS
 
 function NotFound() {
   return <h1>404 - Page Not Found</h1>;
@@ -18,6 +19,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/verify-email" element={<VerifyEmail />} /> 
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Router>
