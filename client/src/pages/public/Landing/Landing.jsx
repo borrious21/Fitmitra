@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import styles from "./Landing.module.css";
 import ThemeToggle from "../../../components/ThemeToggle/ThemeToggle";
 
-// ── Icons ─────────────────────────────────────────────────────────────────────
 const IcoBolt = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
@@ -60,7 +59,6 @@ const IcoGift = () => (
   </svg>
 );
 
-// ── Hooks ─────────────────────────────────────────────────────────────────────
 function useCounter(target, duration = 2000, start = false) {
   const [count, setCount] = useState(0);
   useEffect(() => {
@@ -102,7 +100,6 @@ function StatCounter({ value, suffix, label, inView }) {
   );
 }
 
-// ── Main ─────────────────────────────────────────────────────────────────────
 export default function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);

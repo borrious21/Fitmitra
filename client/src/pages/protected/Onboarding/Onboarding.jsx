@@ -4,6 +4,7 @@ import { AuthContext } from '../../../context/AuthContext';
 import { createProfile, checkProfile } from '../../../services/profileService';
 import { Activity, Heart, ChevronRight, ChevronLeft, Check } from 'lucide-react';
 import styles from './Onboarding.module.css';
+import ThemeToggle from '../../../components/ThemeToggle/ThemeToggle';
 
 const normalizeUser = (rawUser) => {
   if (!rawUser) return rawUser;
@@ -38,9 +39,6 @@ const Onboarding = () => {
 
   const totalParts = 3;
 
-  // Run ONCE on mount only — deps intentionally empty to prevent re-check loop.
-  // We capture token/user via closure from the initial render; if they're missing
-  // the user simply isn't logged in yet and we redirect to login.
   useEffect(() => {
     if (!token || !user) {
       navigate('/login', { replace: true });
@@ -54,7 +52,6 @@ const Onboarding = () => {
       return;
     }
 
-    // Verify against DB once — handles stale JWTs
     let cancelled = false;
     (async () => {
       try {
@@ -211,9 +208,7 @@ const Onboarding = () => {
         return;
       }
 
-      // createProfile() uses apiClient — no token arg needed
       await createProfile(convertToProfileFormat());
-
       syncUserAsOnboarded();
       navigate('/dashboard', { replace: true });
 
@@ -221,7 +216,6 @@ const Onboarding = () => {
       const status = error?.status ?? error?.response?.status;
 
       if (status === 409) {
-        // Profile already exists — treat as success
         syncUserAsOnboarded();
         navigate('/dashboard', { replace: true });
         return;
@@ -252,6 +246,7 @@ const Onboarding = () => {
 
   return (
     <div className={styles.container}>
+
       {/* Left Panel */}
       <div className={styles.leftPanel}>
         <div className={styles.imageOverlay}></div>
@@ -294,6 +289,12 @@ const Onboarding = () => {
 
       {/* Right Panel */}
       <div className={styles.rightPanel}>
+
+        {/* ✅ ThemeToggle in the correct place */}
+        <div className={styles.themeToggleWrap}>
+          <ThemeToggle />
+        </div>
+
         <div className={styles.wrapper}>
           <div className={styles.card}>
 

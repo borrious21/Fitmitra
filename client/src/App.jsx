@@ -1,7 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "./context/ThemeContext";
 import { AuthProvider } from "./context/AuthContext"; 
-
+import ProtectedRoute from "./routes/ProtectedRoute";
 // Pages
 import Landing from "./pages/public/Landing/Landing";
 import Signup from "./pages/public/Signup/Signup";
@@ -34,10 +34,10 @@ function App() {
 
             {/* Protected routes */}
             <Route path="/onboarding" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowOnboarding={true}>  {/* ← add this */}
               <Onboarding />
               </ProtectedRoute>
-              } />
+            } />
 
             <Route path="*" element={<NotFound />} />
           </Routes>
