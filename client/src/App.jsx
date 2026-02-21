@@ -10,6 +10,7 @@ import VerifyEmailPending from "./pages/public/VerifyPendingEmail/VerifyPendingE
 import ResetPassword from "./pages/public/ResetPassword/ResetPassword";
 import ForgotPassword from "./pages/public/ForgotPassword/ForgotPassword";
 import NotFound from "./pages/public/Notfound/NotFound";
+import CheckEmail from "./pages/public/CheckEmail/CheckEmail";
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/404" element={<NotFound />} />
+            <Route path="/check-email" element={<CheckEmail />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Router>
