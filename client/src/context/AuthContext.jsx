@@ -1,6 +1,6 @@
 // src/context/AuthContext.jsx
 import { createContext, useState, useEffect, useCallback } from 'react';
-import { getMeService, logoutService } from '../services/authService';
+import { getMeService, logoutService, signupService } from '../services/authService';
 import { tokenStore } from '../services/apiClient';
 
 export const AuthContext = createContext(null);
@@ -41,6 +41,7 @@ export const AuthProvider = ({ children }) => {
   const [isInitializing, setIsInitializing] = useState(
     () => !!tokenStore.getToken()
   );
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError]     = useState(null);
 
   const isAuthenticated = !!token && !!user;
@@ -60,6 +61,20 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const clearError = useCallback(() => setError(null), []);
+
+  const signup = useCallback(async (name, email, password) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const result = await signupService(name, email, password);
+      return result;
+    } catch (err) {
+      setError(err?.response?.data?.message || err?.message || 'Signup failed');
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   const login = useCallback((tokenOrData, rawUser) => {
     console.log('AuthContext: login called with', { tokenOrData, rawUser });
@@ -128,12 +143,11 @@ export const AuthProvider = ({ children }) => {
           setUserRaw(null);
           persistUser(null);
         }
-        
       } finally {
         setIsInitializing(false);
       }
     })();
-  }, []); 
+  }, []);
 
   return (
     <AuthContext.Provider
@@ -142,8 +156,10 @@ export const AuthProvider = ({ children }) => {
         token,
         isAuthenticated,
         isInitializing,
+        isLoading,
         error,
         clearError,
+        signup,
         login,
         logout,
         setUser,

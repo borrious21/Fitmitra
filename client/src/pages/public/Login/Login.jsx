@@ -14,7 +14,7 @@ import styles from "./Login.module.css";
 const Login = () => {
   const navigate  = useNavigate();
   const location  = useLocation();
-  const { login, error, clearError, user, isAuthenticated, isInitializing } =
+  const { login, logout, error, clearError, user, isAuthenticated, isInitializing } =
     useContext(AuthContext);
 
   const [formData, setFormData]         = useState({ email: "", password: "" });
@@ -37,6 +37,7 @@ const Login = () => {
 
   useEffect(() => {
     if (isAuthenticated && user && !isInitializing) {
+      if (!user.isVerified) return; // don't redirect unverified users
       const destination = user.hasCompletedOnboarding ? from : "/onboarding";
       navigate(destination, { replace: true });
     }
@@ -86,6 +87,7 @@ const Login = () => {
       const { token, user: rawUser } = await loginService(formData.email, formData.password);
       login(token, rawUser);
     } catch (err) {
+      if (err?.status === 403) logout(); // clear stale token so redirect guard doesn't fire
       setLocalError(err);
     } finally {
       setIsLoading(false);

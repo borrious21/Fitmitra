@@ -4,6 +4,7 @@ import { AuthProvider } from "./context/AuthContext";
 
 // Pages
 import Landing from "./pages/public/Landing/Landing";
+import Signup from "./pages/public/Signup/Signup";
 import Login from "./pages/public/Login/Login";
 import VerifyEmail from "./pages/public/VerifyEmail/VerifyEmail"; 
 import VerifyEmailPending from "./pages/public/VerifyPendingEmail/VerifyPendingEmail"; 
@@ -20,6 +21,7 @@ function App() {
         <Router>
           <Routes>
             <Route path="/" element={<Landing />} />
+            <Route path="/signup" element={<Signup />} />
             <Route path="/login" element={<Login />} />
             <Route path="/verify-email" element={<VerifyEmail />} /> 
             <Route path="/verify-pending-email" element={<VerifyEmailPending />} /> 
