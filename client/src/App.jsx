@@ -13,6 +13,7 @@ import ForgotPassword from "./pages/public/ForgotPassword/ForgotPassword";
 import NotFound from "./pages/public/Notfound/NotFound";
 import CheckEmail from "./pages/public/CheckEmail/CheckEmail";
 import ContactSupport from "./pages/public/Support/Support";
+import Onboarding from "./pages/protected/Onboarding/Onboarding";
 
 function App() {
   return (
@@ -30,6 +31,14 @@ function App() {
             <Route path="/404" element={<NotFound />} />
             <Route path="/check-email" element={<CheckEmail />} />
             <Route path="/contact-support" element={<ContactSupport />} />
+
+            {/* Protected routes */}
+            <Route path="/onboarding" element={
+              <ProtectedRoute>
+              <Onboarding />
+              </ProtectedRoute>
+              } />
+
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Router>
