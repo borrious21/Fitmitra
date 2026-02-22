@@ -1,6 +1,5 @@
 import pool from "../config/db.config.js";
-import { validateProfile } from "../validators/profile.validator.js";
-import { withMetrics } from "./profile.metrics.js";
+
 
 class ProfileModel {
   static async findByUserId(userId) {

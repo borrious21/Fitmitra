@@ -1,15 +1,6 @@
 import ProfileModel from "../models/profile.model.js";
-import WorkoutModel from "../models/workout.model.js";
-import ProgressModel from "../models/progress.model.js";
 import pool from "../db/pool.js";
 
-import {
-  calculateRecommendedCalories,
-  calculateMacroSplit,
-  calculateMealWiseMacros,
-} from "../domain/nutrition.rules.js";
-import { generateMealSuggestions } from "../domain/meal.generator.js";
-import { generateWorkoutPlan } from "../domain/workout.generator.js";
 
 class ProfileController {
   static async getMyProfile(req, res, next) {

@@ -10,6 +10,7 @@ import errorMiddleware from "./middlewares/error.middleware.js";
 
 // Routes
 import authRoutes from "./routes/auth.routes.js";
+import profileRoutes from "./routes/profile.route.js";
 
 const app = express();
 
@@ -25,6 +26,9 @@ app.use(express.urlencoded({ extended: true }));
 
 // Only auth routes
 app.use("/api/auth", authRoutes);
+
+// Protected profile routes
+app.use("/api/profile", profileRoutes);
 
 // 404 for any other route
 app.use((req, res, next) => {
