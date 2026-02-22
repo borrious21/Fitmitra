@@ -1,5 +1,5 @@
 import pool from "../config/db.config.js";
-import { validateProfile } from "../validators/profile.validator.js";
+import { validateProfile } from "../validator/profile.validator.js";
 import { withMetrics } from "../metrics/profile.metrics.js";
 
 

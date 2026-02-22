@@ -1,4 +1,4 @@
-import { ACTIVITY_MULTIPLIERS } from "../domain/profile.enums.js";
+import { ACTIVITY_MULTIPLIERS } from "../domain/profile.enum.js";
 
 export function withMetrics(profile) {
   if (!profile.height_cm || !profile.weight_kg || !profile.age) {
