@@ -14,6 +14,7 @@ import NotFound from "./pages/public/Notfound/NotFound";
 import CheckEmail from "./pages/public/CheckEmail/CheckEmail";
 import ContactSupport from "./pages/public/Support/Support";
 import Onboarding from "./pages/protected/Onboarding/Onboarding";
+import Dashboard from "./pages/protected/Dashboard/Dashboard";
 
 function App() {
   return (
@@ -36,6 +37,11 @@ function App() {
             <Route path="/onboarding" element={
               <ProtectedRoute allowOnboarding={true}>  {/* ← add this */}
               <Onboarding />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <Dashboard />
               </ProtectedRoute>
             } />
 
