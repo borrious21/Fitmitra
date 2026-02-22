@@ -38,7 +38,12 @@ const Login = () => {
   useEffect(() => {
     if (isAuthenticated && user && !isInitializing) {
       if (!user.isVerified) return; // don't redirect unverified users
-      const destination = user.hasCompletedOnboarding ? from : "/onboarding";
+
+      // Normalize both camelCase and snake_case variants from the backend
+      const hasOnboarded =
+        user.hasCompletedOnboarding ?? user.has_completed_onboarding ?? false;
+
+      const destination = hasOnboarded ? from : "/onboarding";
       navigate(destination, { replace: true });
     }
   }, [isAuthenticated, user, isInitializing, navigate, from]);
