@@ -1,13 +1,11 @@
 @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Outfit:wght@400;500;600;700&display=swap');
 
-/* ─── Reset & Base ─────────────────────────────────────────── */
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
-/* ─── CSS Variables ────────────────────────────────────────── */
 .wrapper {
   --orange:        #FF5C1A;
   --orange-lt:     #FF8A3D;
@@ -57,7 +55,6 @@
   -webkit-font-smoothing: antialiased;
 }
 
-/* ─── Animations ───────────────────────────────────────────── */
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.2; }
@@ -83,7 +80,6 @@
   50%       { transform: translateY(-8px); }
 }
 
-/* ─── Layout ────────────────────────────────────────────────── */
 .main {
   max-width: 1160px;
   margin: 0 auto;
@@ -93,7 +89,6 @@
   gap: 1.5rem;
 }
 
-/* ─── NAV ───────────────────────────────────────────────────── */
 .nav {
   position: sticky;
   top: 0;
@@ -179,7 +174,6 @@
   flex-shrink: 0;
 }
 
-/* ─── Section Reveal ────────────────────────────────────────── */
 .section {
   opacity: 0;
   transform: translateY(20px);
@@ -190,7 +184,6 @@
   transform: translateY(0);
 }
 
-/* ─── Card ──────────────────────────────────────────────────── */
 .card {
   background: var(--card);
   border-radius: var(--r-xl);
@@ -209,7 +202,6 @@
   background: var(--grad-orange);
 }
 
-/* ─── WELCOME ───────────────────────────────────────────────── */
 .welcomeGrid {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -318,7 +310,6 @@
   display: block;
 }
 
-/* ─── TWO COL ───────────────────────────────────────────────── */
 .twoCol {
   display: grid;
   grid-template-columns: 1fr;
@@ -329,7 +320,6 @@
   .twoCol { grid-template-columns: 1fr 1fr; }
 }
 
-/* ─── WORKOUT CARD ──────────────────────────────────────────── */
 .workoutHeader {
   display: flex;
   justify-content: space-between;
@@ -514,7 +504,6 @@
   color: var(--orange);
 }
 
-/* ─── NUTRITION CARD ─────────────────────────────────────────── */
 .calRingWrap {
   display: flex;
   align-items: center;
@@ -674,7 +663,6 @@
 .waterDot.filled { background: var(--cyan); }
 .waterDot.empty  { background: rgba(255, 255, 255, 0.05); }
 
-/* ─── SECTION LABEL ─────────────────────────────────────────── */
 .secLabel {
   font-size: 0.55rem;
   font-weight: 700;
@@ -685,7 +673,6 @@
   display: block;
 }
 
-/* ─── MEALS GRID ─────────────────────────────────────────────── */
 .mealsGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -729,7 +716,6 @@
   color: rgba(255, 255, 255, 0.35);
 }
 
-/* ─── HEALTH SNAPSHOT ───────────────────────────────────────── */
 .healthGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));

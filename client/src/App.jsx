@@ -15,6 +15,7 @@ import CheckEmail from "./pages/public/CheckEmail/CheckEmail";
 import ContactSupport from "./pages/public/Support/Support";
 import Onboarding from "./pages/protected/Onboarding/Onboarding";
 import Dashboard from "./pages/protected/Dashboard/Dashboard";
+import Profile from "./pages/protected/profile/Profile";
 
 function App() {
   return (
@@ -42,6 +43,11 @@ function App() {
             <Route path="/dashboard" element={
               <ProtectedRoute>
                 <Dashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <Profile />
               </ProtectedRoute>
             } />
 
