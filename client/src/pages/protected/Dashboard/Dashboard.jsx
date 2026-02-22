@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import styles from "./Dashboard.module.css";
+import ThemeToggle from "../../../components/ThemeToggle/ThemeToggle";
 // import { AuthContext } from "../../../context/AuthContext";
 
 /* ─── Mock Data ─────────────────────────────────────────────── */
@@ -116,7 +117,7 @@ function MacroBar({ label, value, target, fillColor }) {
         <span>{label}</span>
         <span>
           {value}g{" "}
-          <span style={{ color: "rgba(255,255,255,0.25)" }}>/ {target}g</span>
+          <span className={styles.macroDenom}>/ {target}g</span>
         </span>
       </div>
       <div className={styles.macroTrack}>
@@ -173,7 +174,10 @@ export default function Dashboard() {
           ))}
         </div>
 
-        <div className={styles.navAvatar}>{user?.avatar ?? "U"}</div>
+        <div className={styles.navRight}>
+          <ThemeToggle />
+          <div className={styles.navAvatar}>{user?.avatar ?? "U"}</div>
+        </div>
       </nav>
 
       {/* ══ MAIN ═════════════════════════════════════════════════ */}
@@ -233,7 +237,7 @@ export default function Dashboard() {
 
                 <div className={styles.circleWrap}>
                   <svg viewBox="0 0 72 72">
-                    <circle cx="36" cy="36" r="30" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="6" />
+                    <circle cx="36" cy="36" r="30" fill="none" stroke="rgba(128,128,128,0.1)" strokeWidth="6" />
                     <circle
                       cx="36" cy="36" r="30" fill="none"
                       stroke="#FF5C1A" strokeWidth="6" strokeLinecap="round"
@@ -253,14 +257,14 @@ export default function Dashboard() {
                 {WORKOUT.exercises.map((ex, i) => (
                   <div
                     key={ex.name}
-                    className={`${styles.exerciseRow} ${ex.done ? styles.done : styles.pending}`}
+                    className={`${styles.exerciseRow} ${ex.done ? styles.exDone : styles.exPending}`}
                     onClick={() => setExpandedEx(expandedEx === i ? null : i)}
                   >
-                    <div className={`${styles.exerciseBullet} ${ex.done ? styles.done : styles.pending}`}>
+                    <div className={`${styles.exerciseBullet} ${ex.done ? styles.bulletDone : styles.bulletPending}`}>
                       {ex.done ? "✓" : i + 1}
                     </div>
                     <div style={{ flex: 1 }}>
-                      <div className={`${styles.exerciseName}${ex.done ? " " + styles.done : ""}`}>
+                      <div className={`${styles.exerciseName}${ex.done ? " " + styles.nameDone : ""}`}>
                         {ex.name}
                       </div>
                       <div className={styles.exerciseReps}>{ex.sets} sets × {ex.reps} reps</div>
@@ -288,7 +292,7 @@ export default function Dashboard() {
                         <stop offset="100%" stopColor="#FF8A3D" />
                       </linearGradient>
                     </defs>
-                    <circle cx="45" cy="45" r="38" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="8" />
+                    <circle cx="45" cy="45" r="38" fill="none" stroke="rgba(128,128,128,0.1)" strokeWidth="8" />
                     <circle
                       cx="45" cy="45" r="38" fill="none"
                       stroke="url(#calGrad)" strokeWidth="8" strokeLinecap="round"
@@ -328,7 +332,7 @@ export default function Dashboard() {
                 </div>
                 <div className={styles.waterDots}>
                   {Array.from({ length: 10 }).map((_, i) => (
-                    <div key={i} className={`${styles.waterDot} ${i < waterFilled ? styles.filled : styles.empty}`} />
+                    <div key={i} className={`${styles.waterDot} ${i < waterFilled ? styles.waterFilled : styles.waterEmpty}`} />
                   ))}
                 </div>
               </div>
@@ -444,7 +448,7 @@ export default function Dashboard() {
               <div className={styles.dayRow}>
                 {WEEKLY.days.map((d, i) => (
                   <div key={d} className={styles.dayCol}>
-                    <div className={`${styles.dayBox} ${WEEKLY.workouts[i] ? styles.done : styles.miss}`}>
+                    <div className={`${styles.dayBox} ${WEEKLY.workouts[i] ? styles.dayDone : styles.dayMiss}`}>
                       {WEEKLY.workouts[i] ? "✓" : ""}
                     </div>
                     <span className={styles.dayName}>{d}</span>
@@ -463,7 +467,7 @@ export default function Dashboard() {
                     <div key={i} className={styles.calBarCol}>
                       <div className={styles.calBarTrack}>
                         <div
-                          className={`${styles.calBarFillWk} ${!cal ? styles.empty : isToday ? styles.hot : styles.normal}`}
+                          className={`${styles.calBarFillWk} ${!cal ? styles.wkEmpty : isToday ? styles.wkHot : styles.wkNormal}`}
                           style={{ height: `${p}%` }}
                         />
                       </div>

@@ -6,13 +6,18 @@
   padding: 0;
 }
 
+/* ─────────────────────────────────────────────────────────────
+   .wrapper reads from global [data-theme] CSS variables set in
+   Landing.module.css (or your global stylesheet). Brand tokens
+   that never change are still defined locally here.
+───────────────────────────────────────────────────────────── */
 .wrapper {
+  /* ── Brand tokens (same in both themes) ── */
   --orange:        #FF5C1A;
   --orange-lt:     #FF8A3D;
   --orange-dk:     #D44814;
   --cyan:          #00C8E0;
   --lime:          #B8F000;
-  --white:         #FFFFFF;
 
   --grad-orange:   linear-gradient(135deg, #FF5C1A 0%, #FF8A3D 100%);
   --grad-lime:     linear-gradient(135deg, #B8F000 0%, #80D400 100%);
@@ -20,23 +25,6 @@
 
   --sh-orange:     0 6px 28px rgba(255, 92, 26, 0.32);
   --sh-orange-lg:  0 14px 52px rgba(255, 92, 26, 0.45);
-
-  --bg:            #0A0C0F;
-  --bg-2:          #0F1217;
-  --bg-3:          #141820;
-  --card:          #12151B;
-  --card-2:        #1A1E28;
-
-  --border:        rgba(255, 255, 255, 0.07);
-  --border-hi:     rgba(255, 255, 255, 0.13);
-
-  --t1:            #F0F2F5;
-  --t2:            #9AA3B4;
-  --t3:            rgba(255, 255, 255, 0.3);
-
-  --card-shadow:   0 12px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.04);
-  --glow-orange:   0 0 32px rgba(255, 92, 26, 0.35);
-  --glow-logo:     drop-shadow(0 0 8px rgba(255, 92, 26, 0.7));
 
   --font-display:  'Barlow Condensed', 'Arial Narrow', sans-serif;
   --font-body:     'Outfit', 'Helvetica Neue', sans-serif;
@@ -47,12 +35,34 @@
   --r-xl:   1.75rem;
   --r-full: 9999px;
 
+  /* ── Theme-aware tokens — inherited from global [data-theme] ──
+     Fallback values are the dark-mode defaults so the dashboard
+     works even if Landing.module.css isn't loaded.
+  ── */
+  --d-bg:           var(--bg,         #0A0C0F);
+  --d-bg-2:         var(--bg-2,       #0F1217);
+  --d-bg-3:         var(--bg-3,       #141820);
+  --d-card:         var(--bg-card,    #12151B);
+  --d-card-2:       var(--bg-card-2,  #1A1E28);
+  --d-nav:          var(--bg-nav,     rgba(10,12,15,0.92));
+
+  --d-border:       var(--border,     rgba(255,255,255,0.07));
+  --d-border-hi:    var(--border-hi,  rgba(255,255,255,0.13));
+
+  --d-t1:           var(--text-1,     #F0F2F5);
+  --d-t2:           var(--text-2,     #9AA3B4);
+  --d-t3:           var(--text-3,     #525D72);
+
+  --d-card-shadow:  var(--card-shadow, 0 12px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04));
+  --d-glow-logo:    var(--glow-logo,  drop-shadow(0 0 8px rgba(255,92,26,0.7)));
+
   font-family: var(--font-body);
-  color: var(--t1);
-  background: var(--bg);
+  color: var(--d-t1);
+  background: var(--d-bg);
   min-height: 100vh;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+  transition: background 0.35s ease, color 0.35s ease;
 }
 
 @keyframes blink {
@@ -70,38 +80,21 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes growBar {
-  from { transform: scaleY(0); }
-  to   { transform: scaleY(1); }
-}
-
-@keyframes bobY {
-  0%, 100% { transform: translateY(0); }
-  50%       { transform: translateY(-8px); }
-}
-
-.main {
-  max-width: 1160px;
-  margin: 0 auto;
-  padding: 2rem 1.5rem 6rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
+/* ─── NAV ────────────────────────────────────────────────────── */
 .nav {
   position: sticky;
   top: 0;
   z-index: 200;
-  background: rgba(10, 12, 15, 0.92);
+  background: var(--d-nav);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--d-border);
   padding: 0.875rem 1.5rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+  transition: background 0.35s ease, border-color 0.35s ease;
 }
 
 .navLogo {
@@ -115,8 +108,9 @@
   width: 1.625rem;
   height: 1.625rem;
   color: var(--orange);
-  filter: var(--glow-logo);
+  filter: var(--d-glow-logo);
   display: flex;
+  transition: filter 0.35s;
 }
 .navLogoIcon svg { width: 100%; height: 100%; }
 
@@ -126,14 +120,15 @@
   font-weight: 900;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--t1);
+  color: var(--d-t1);
+  transition: color 0.35s;
 }
 .navLogoWord span { color: var(--orange); }
 
 .navTabs {
   display: flex;
   gap: 0.375rem;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--d-border);
   border-radius: 0.625rem;
   padding: 0.25rem;
 }
@@ -144,7 +139,7 @@
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--d-t2);
   background: transparent;
   border: none;
   border-radius: 0.375rem;
@@ -157,6 +152,14 @@
   color: #fff;
   background: var(--grad-orange);
   box-shadow: 0 4px 14px rgba(255, 92, 26, 0.35);
+}
+
+/* Right side of nav: toggle + avatar */
+.navRight {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
 }
 
 .navAvatar {
@@ -174,6 +177,17 @@
   flex-shrink: 0;
 }
 
+/* ─── MAIN LAYOUT ────────────────────────────────────────────── */
+.main {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* ─── SECTION REVEAL ─────────────────────────────────────────── */
 .section {
   opacity: 0;
   transform: translateY(20px);
@@ -184,14 +198,16 @@
   transform: translateY(0);
 }
 
+/* ─── CARD ───────────────────────────────────────────────────── */
 .card {
-  background: var(--card);
+  background: var(--d-card);
   border-radius: var(--r-xl);
-  border: 1px solid var(--border);
+  border: 1px solid var(--d-border);
   position: relative;
   overflow: hidden;
-  box-shadow: var(--card-shadow);
+  box-shadow: var(--d-card-shadow);
   padding: 1.5rem;
+  transition: background 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
 }
 
 .card.accent::before {
@@ -202,6 +218,7 @@
   background: var(--grad-orange);
 }
 
+/* ─── WELCOME ────────────────────────────────────────────────── */
 .welcomeGrid {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -261,6 +278,8 @@
   letter-spacing: 0.02em;
   line-height: 0.95;
   margin-bottom: 0.5rem;
+  color: var(--d-t1);
+  transition: color 0.35s;
 }
 
 .welcomeAccent {
@@ -272,11 +291,13 @@
 }
 
 .welcomeDate {
-  color: rgba(240, 242, 245, 0.4);
+  color: var(--d-t2);
   font-size: 0.875rem;
   margin: 0;
+  transition: color 0.35s;
 }
 
+/* ─── WEIGHT CHIP ────────────────────────────────────────────── */
 .weightChip {
   padding: 1rem 1.25rem;
   min-width: 130px;
@@ -288,9 +309,10 @@
   font-weight: 700;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: var(--t3);
+  color: var(--d-t3);
   margin-bottom: 0.35rem;
   display: block;
+  transition: color 0.35s;
 }
 
 .weightVal {
@@ -310,6 +332,7 @@
   display: block;
 }
 
+/* ─── TWO COLUMN ─────────────────────────────────────────────── */
 .twoCol {
   display: grid;
   grid-template-columns: 1fr;
@@ -320,6 +343,7 @@
   .twoCol { grid-template-columns: 1fr 1fr; }
 }
 
+/* ─── WORKOUT ────────────────────────────────────────────────── */
 .workoutHeader {
   display: flex;
   justify-content: space-between;
@@ -336,6 +360,8 @@
   text-transform: uppercase;
   letter-spacing: 0.03em;
   margin-bottom: 0.4rem;
+  color: var(--d-t1);
+  transition: color 0.35s;
 }
 
 .workoutMeta {
@@ -347,10 +373,11 @@
 .metaPill {
   font-size: 0.65rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.45);
-  background: rgba(255, 255, 255, 0.05);
+  color: var(--d-t2);
+  background: var(--d-border);
   padding: 0.2rem 0.625rem;
   border-radius: var(--r-full);
+  transition: color 0.35s, background 0.35s;
 }
 
 .circleWrap {
@@ -388,8 +415,9 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--t3);
+  color: var(--d-t3);
   margin-top: 0.1rem;
+  transition: color 0.35s;
 }
 
 .exerciseList {
@@ -409,14 +437,14 @@
   transition: all 0.2s;
 }
 
-.exerciseRow.done {
+.exDone {
   background: rgba(184, 240, 0, 0.05);
   border: 1px solid rgba(184, 240, 0, 0.18);
 }
 
-.exerciseRow.pending {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+.exPending {
+  background: var(--d-border);
+  border: 1px solid var(--d-border);
 }
 
 .exerciseBullet {
@@ -430,37 +458,40 @@
   font-size: 0.6rem;
 }
 
-.exerciseBullet.done {
+.bulletDone {
   background: rgba(184, 240, 0, 0.12);
   border: 2px solid var(--lime);
   color: var(--lime);
 }
 
-.exerciseBullet.pending {
-  background: rgba(255, 255, 255, 0.05);
-  border: 2px solid rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.2);
+.bulletPending {
+  background: var(--d-border);
+  border: 2px solid var(--d-border-hi);
+  color: var(--d-t3);
 }
 
 .exerciseName {
   font-size: 0.8125rem;
   font-weight: 600;
-  flex: 1;
+  color: var(--d-t1);
+  transition: color 0.35s;
 }
-.exerciseName.done {
-  color: rgba(255, 255, 255, 0.45);
+.nameDone {
+  color: var(--d-t3) !important;
   text-decoration: line-through;
 }
 
 .exerciseReps {
   font-size: 0.625rem;
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--d-t3);
   margin-top: 0.1rem;
+  transition: color 0.35s;
 }
 
 .chevron {
   font-size: 0.55rem;
-  color: rgba(255, 255, 255, 0.25);
+  color: var(--d-t3);
+  transition: color 0.35s;
 }
 
 .primaryBtn {
@@ -488,15 +519,15 @@
   width: 100%;
   padding: 0.75rem;
   border-radius: 0.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--d-border-hi);
   cursor: pointer;
   font-family: var(--font-display);
   font-size: 0.9rem;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.55);
-  background: rgba(255, 255, 255, 0.04);
+  color: var(--d-t2);
+  background: var(--d-border);
   transition: all 0.2s;
 }
 .ghostBtn:hover {
@@ -504,6 +535,7 @@
   color: var(--orange);
 }
 
+/* ─── NUTRITION ──────────────────────────────────────────────── */
 .calRingWrap {
   display: flex;
   align-items: center;
@@ -546,7 +578,8 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--t3);
+  color: var(--d-t3);
+  transition: color 0.35s;
 }
 
 .calNum {
@@ -559,21 +592,24 @@
 
 .calDenom {
   font-size: 1rem;
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--d-t3);
+  transition: color 0.35s;
 }
 
 .calLabel {
   font-size: 0.7rem;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--d-t2);
   margin-top: 0.25rem;
+  transition: color 0.35s;
 }
 
 .calBar {
   margin-top: 0.625rem;
   height: 6px;
   border-radius: 3px;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--d-border);
   overflow: hidden;
+  transition: background 0.35s;
 }
 
 .calBarFill {
@@ -583,6 +619,7 @@
   transition: width 1.2s ease;
 }
 
+/* ─── MACROS ─────────────────────────────────────────────────── */
 .macros {
   display: flex;
   flex-direction: column;
@@ -603,16 +640,18 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--t3);
+  color: var(--d-t2);
+  transition: color 0.35s;
 }
 
-.macroHead span:last-child { color: var(--t2); }
+.macroDenom { color: var(--d-t3); transition: color 0.35s; }
 
 .macroTrack {
   height: 6px;
   border-radius: 3px;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--d-border);
   overflow: hidden;
+  transition: background 0.35s;
 }
 
 .macroFill {
@@ -621,11 +660,13 @@
   transition: width 1s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* ─── WATER ──────────────────────────────────────────────────── */
 .waterBox {
   padding: 0.875rem;
   border-radius: 0.75rem;
   background: rgba(0, 200, 224, 0.05);
   border: 1px solid rgba(0, 200, 224, 0.15);
+  transition: background 0.35s;
 }
 
 .waterHead {
@@ -639,7 +680,8 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--t3);
+  color: var(--d-t3);
+  transition: color 0.35s;
 }
 
 .waterVal {
@@ -660,45 +702,50 @@
   transition: background 0.3s;
 }
 
-.waterDot.filled { background: var(--cyan); }
-.waterDot.empty  { background: rgba(255, 255, 255, 0.05); }
+.waterFilled { background: var(--cyan); }
+.waterEmpty  { background: var(--d-border); }
 
+/* ─── SEC LABEL ──────────────────────────────────────────────── */
 .secLabel {
   font-size: 0.55rem;
   font-weight: 700;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: var(--t3);
+  color: var(--d-t3);
   margin-bottom: 0.875rem;
   display: block;
+  transition: color 0.35s;
 }
 
+/* ─── MEALS ──────────────────────────────────────────────────── */
 .mealsGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 1px;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--d-border);
   border-radius: var(--r-lg);
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--d-border);
+  transition: background 0.35s;
 }
 
 .mealCell {
-  background: var(--card);
+  background: var(--d-card);
   padding: 1.125rem;
   transition: background 0.2s;
   cursor: default;
 }
-.mealCell:hover { background: var(--card-2); }
+.mealCell:hover { background: var(--d-card-2); }
 
 .mealTime {
   font-size: 0.55rem;
   font-weight: 700;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: var(--t3);
+  color: var(--d-t3);
   margin-bottom: 0.5rem;
   display: block;
+  transition: color 0.35s;
 }
 
 .mealEmoji { font-size: 1.75rem; margin-bottom: 0.375rem; display: block; }
@@ -708,14 +755,17 @@
   font-weight: 600;
   margin-bottom: 0.35rem;
   line-height: 1.3;
-  color: var(--t1);
+  color: var(--d-t1);
+  transition: color 0.35s;
 }
 
 .mealMacro {
   font-size: 0.65rem;
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--d-t3);
+  transition: color 0.35s;
 }
 
+/* ─── HEALTH SNAPSHOT ────────────────────────────────────────── */
 .healthGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -723,22 +773,25 @@
 }
 
 .healthCard {
-  background: var(--card);
+  background: var(--d-card);
   border-radius: var(--r-lg);
-  border: 1px solid var(--border);
+  border: 1px solid var(--d-border);
   padding: 1.125rem;
-  box-shadow: var(--card-shadow);
+  box-shadow: var(--d-card-shadow);
+  transition: background 0.35s, border-color 0.35s;
 }
 
 .healthIcon  { font-size: 1.5rem; margin-bottom: 0.5rem; display: block; }
+
 .healthLabel {
   font-size: 0.55rem;
   font-weight: 700;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: var(--t3);
+  color: var(--d-t3);
   margin-bottom: 0.25rem;
   display: block;
+  transition: color 0.35s;
 }
 
 .healthVal {
@@ -766,14 +819,16 @@
   background: rgba(255, 77, 109, 0.08);
   border: 1px solid rgba(255, 77, 109, 0.2);
   font-size: 0.8125rem;
-  color: rgba(255, 255, 255, 0.65);
+  color: var(--d-t2);
   display: flex;
   align-items: center;
   gap: 0.625rem;
+  transition: color 0.35s;
 }
 
 .alertIcon { font-size: 1.125rem; flex-shrink: 0; }
 
+/* ─── AI COACH ───────────────────────────────────────────────── */
 .aiHeader {
   display: flex;
   align-items: center;
@@ -802,12 +857,15 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   display: block;
+  color: var(--d-t1);
+  transition: color 0.35s;
 }
 
 .aiSub {
   font-size: 0.65rem;
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--d-t3);
   display: block;
+  transition: color 0.35s;
 }
 
 .aiBadge {
@@ -847,9 +905,10 @@
 
 .insightText {
   font-size: 0.8125rem;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--d-t2);
   line-height: 1.6;
   flex: 1;
+  transition: color 0.35s;
 }
 
 .whyBtn {
@@ -863,7 +922,7 @@
   flex-shrink: 0;
 }
 
-/* ─── WEEKLY PROGRESS ───────────────────────────────────────── */
+/* ─── WEEKLY PROGRESS ────────────────────────────────────────── */
 .weekStats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -875,8 +934,9 @@
   text-align: center;
   padding: 1rem 0.5rem;
   border-radius: 0.875rem;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--d-border);
+  border: 1px solid var(--d-border);
+  transition: background 0.35s;
 }
 
 .weekStatVal {
@@ -892,16 +952,19 @@
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--t3);
+  color: var(--d-t3);
   margin-top: 0.35rem;
   display: block;
+  transition: color 0.35s;
 }
 
 .weekStatSub {
   font-size: 0.6rem;
-  color: rgba(255, 255, 255, 0.2);
+  color: var(--d-t3);
   margin-top: 0.2rem;
   display: block;
+  opacity: 0.6;
+  transition: color 0.35s;
 }
 
 .dayTracker { margin-bottom: 1.25rem; }
@@ -931,15 +994,15 @@
   transition: all 0.2s;
 }
 
-.dayBox.done {
+.dayDone {
   background: var(--grad-orange);
   border: 1px solid rgba(255, 92, 26, 0.4);
   box-shadow: 0 4px 14px rgba(255, 92, 26, 0.3);
 }
 
-.dayBox.miss {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+.dayMiss {
+  background: var(--d-border);
+  border: 1px solid var(--d-border);
   color: transparent;
 }
 
@@ -948,9 +1011,11 @@
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.25);
+  color: var(--d-t3);
+  transition: color 0.35s;
 }
 
+/* ─── WEEKLY CAL BARS ────────────────────────────────────────── */
 .calBars {
   display: flex;
   align-items: flex-end;
@@ -971,9 +1036,10 @@
   flex: 1;
   display: flex;
   align-items: flex-end;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--d-border);
   border-radius: 3px;
   overflow: hidden;
+  transition: background 0.35s;
 }
 
 .calBarFillWk {
@@ -983,19 +1049,21 @@
   transform-origin: bottom;
 }
 
-.calBarFillWk.hot { background: var(--grad-orange); }
-.calBarFillWk.normal { background: rgba(255, 92, 26, 0.3); }
-.calBarFillWk.empty { height: 0 !important; }
+.wkHot    { background: var(--grad-orange); }
+.wkNormal { background: rgba(255, 92, 26, 0.3); }
+.wkEmpty  { height: 0 !important; }
 
 .calBarDay {
   font-size: 0.5rem;
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.25);
+  color: var(--d-t3);
   text-align: center;
+  transition: color 0.35s;
 }
 
+/* ─── QUICK ACTIONS ──────────────────────────────────────────── */
 .actionsGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1009,8 +1077,8 @@
 .actionBtn {
   padding: 1rem 0.5rem;
   border-radius: 0.875rem;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: var(--d-border);
+  border: 1px solid var(--d-border);
   cursor: pointer;
   display: flex;
   flex-direction: column;
@@ -1031,9 +1099,11 @@
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--d-t2);
+  transition: color 0.35s;
 }
 
+/* ─── SCROLLBAR ──────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: #0A0C0F; }
+::-webkit-scrollbar-track { background: var(--d-bg); }
 ::-webkit-scrollbar-thumb { background: rgba(255, 92, 26, 0.3); border-radius: 2px; }
