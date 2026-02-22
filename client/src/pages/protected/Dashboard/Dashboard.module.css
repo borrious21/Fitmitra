@@ -162,6 +162,21 @@
   flex-shrink: 0;
 }
 
+/* Avatar link wrapper */
+.navAvatarLink {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  text-decoration: none;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.navAvatarLink:hover {
+  transform: scale(1.08);
+  box-shadow: 0 0 0 2px var(--orange);
+}
+
+/* Initials fallback */
 .navAvatar {
   width: 2.25rem;
   height: 2.25rem;
@@ -175,6 +190,17 @@
   font-weight: 800;
   box-shadow: 0 0 14px rgba(255, 92, 26, 0.4);
   flex-shrink: 0;
+}
+
+/* Real photo from profile */
+.navAvatarImg {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--orange);
+  box-shadow: 0 0 14px rgba(255, 92, 26, 0.4);
+  display: block;
 }
 
 /* ─── MAIN LAYOUT ────────────────────────────────────────────── */

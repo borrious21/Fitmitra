@@ -1,11 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useContext } from "react";
 import styles from "./Dashboard.module.css";
 import ThemeToggle from "../../../components/ThemeToggle/ThemeToggle";
-// import { AuthContext } from "../../../context/AuthContext";
+import { AuthContext } from "../../../context/AuthContext";
+import { getMyProfile } from "../../../services/profileService";
 
-/* ─── Mock Data ─────────────────────────────────────────────── */
-const USER = { name: "Parikshit", goal: "Fat Loss", avatar: "PK" };
-
+/* ─── Mock data (replace with real API calls as you build out) ─ */
 const TODAY = {
   calories: { consumed: 1640, target: 2100 },
   protein:  { consumed: 98,   target: 140 },
@@ -65,10 +64,17 @@ const QUICK_ACTIONS = [
   { icon: "🤖", label: "AI Coach"    },
 ];
 
-/* ─── Utils ─────────────────────────────────────────────────── */
+const GOAL_LABELS = {
+  weight_loss:      "Weight Loss",
+  maintain_fitness: "Maintain Fitness",
+  muscle_gain:      "Muscle Gain",
+  endurance:        "Endurance",
+  wellness:         "Wellness",
+};
+
+/* ─── Utils ──────────────────────────────────────────────────── */
 function pct(v, t) { return Math.min(100, Math.round((v / t) * 100)); }
 
-/* ─── useCountUp ─────────────────────────────────────────────── */
 function useCountUp(target, duration = 1200) {
   const [val, setVal] = useState(0);
   useEffect(() => {
@@ -89,7 +95,6 @@ function AnimNum({ value }) {
   return <span>{typeof value === "number" ? n : value}</span>;
 }
 
-/* ─── Section reveal on scroll ──────────────────────────────── */
 function Section({ children }) {
   const ref = useRef();
   const [vis, setVis] = useState(false);
@@ -108,17 +113,13 @@ function Section({ children }) {
   );
 }
 
-/* ─── MacroBar ───────────────────────────────────────────────── */
 function MacroBar({ label, value, target, fillColor }) {
   const p = pct(value, target);
   return (
     <div className={styles.macroRow}>
       <div className={styles.macroHead}>
         <span>{label}</span>
-        <span>
-          {value}g{" "}
-          <span className={styles.macroDenom}>/ {target}g</span>
-        </span>
+        <span>{value}g <span className={styles.macroDenom}>/ {target}g</span></span>
       </div>
       <div className={styles.macroTrack}>
         <div className={styles.macroFill} style={{ width: `${p}%`, background: fillColor }} />
@@ -127,19 +128,53 @@ function MacroBar({ label, value, target, fillColor }) {
   );
 }
 
+/* ─── NavAvatar — shows real photo or initials ───────────────── */
+function NavAvatar({ avatarUrl, initials }) {
+  if (avatarUrl) {
+    return <img src={avatarUrl} alt="avatar" className={styles.navAvatarImg} />;
+  }
+  return <div className={styles.navAvatar}>{initials}</div>;
+}
+
 /* ═══════════════════════════════════════════════════════════════
    Dashboard
 ═══════════════════════════════════════════════════════════════ */
 export default function Dashboard() {
-  // const { user } = useContext(AuthContext);
-  const user = USER;
+  const { user } = useContext(AuthContext);
 
-  const [activeTab, setActiveTab]   = useState("today");
+  const [activeTab,  setActiveTab]  = useState("today");
   const [expandedEx, setExpandedEx] = useState(null);
 
-  const donePct    = pct(WORKOUT.exercises.filter(e => e.done).length, WORKOUT.exercises.length);
-  const calPct     = pct(TODAY.calories.consumed, TODAY.calories.target);
-  const waterPct   = pct(TODAY.water.consumed, TODAY.water.target);
+  /* ── Profile data fetched from backend ────────────────────── */
+  const [avatarUrl, setAvatarUrl] = useState(null);
+  const [goalLabel, setGoalLabel] = useState("Fat Loss");
+
+  useEffect(() => {
+    getMyProfile()
+      .then((res) => {
+        const data = res?.data ?? res;
+        // Avatar: set from backend profile
+        if (data?.avatar_url) setAvatarUrl(data.avatar_url);
+        // Goal label
+        if (data?.goal) setGoalLabel(GOAL_LABELS[data.goal] ?? data.goal);
+      })
+      .catch(() => {
+        // API not ready yet — silently fall back to defaults
+      });
+  }, []);
+
+  // Display name: from AuthContext (set at login), fallback gracefully
+  const displayName = user?.name ?? "User";
+  const initials = displayName
+    .split(" ")
+    .map((n) => n[0] ?? "")
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
+  const donePct     = pct(WORKOUT.exercises.filter(e => e.done).length, WORKOUT.exercises.length);
+  const calPct      = pct(TODAY.calories.consumed, TODAY.calories.target);
+  const waterPct    = pct(TODAY.water.consumed, TODAY.water.target);
   const waterFilled = Math.round(waterPct / 10);
 
   return (
@@ -157,9 +192,7 @@ export default function Dashboard() {
               <line x1="14" y1="1" x2="14" y2="4"/>
             </svg>
           </span>
-          <span className={styles.navLogoWord}>
-            FIT<span>MITRA</span>
-          </span>
+          <span className={styles.navLogoWord}>FIT<span>MITRA</span></span>
         </a>
 
         <div className={styles.navTabs}>
@@ -176,7 +209,10 @@ export default function Dashboard() {
 
         <div className={styles.navRight}>
           <ThemeToggle />
-          <div className={styles.navAvatar}>{user?.avatar ?? "U"}</div>
+          {/* Clicking the avatar goes to the Profile page to update it */}
+          <a href="/profile" className={styles.navAvatarLink} title="Edit profile">
+            <NavAvatar avatarUrl={avatarUrl} initials={initials} />
+          </a>
         </div>
       </nav>
 
@@ -190,7 +226,7 @@ export default function Dashboard() {
               <div className={styles.welcomeBadges}>
                 <span className={`${styles.badge} ${styles.badgeLime}`}>
                   <span className={styles.badgeDot} />
-                  {user?.goal}
+                  {goalLabel}
                 </span>
                 <span className={`${styles.badge} ${styles.badgeOrange}`}>
                   🔥 {TODAY.streak} Day Streak
@@ -198,7 +234,7 @@ export default function Dashboard() {
               </div>
               <h1 className={styles.welcomeH}>
                 Welcome Back,<br />
-                <span className={styles.welcomeAccent}>{user?.name}</span>
+                <span className={styles.welcomeAccent}>{displayName}</span>
               </h1>
               <p className={styles.welcomeDate}>
                 {new Date().toLocaleDateString("en-IN", {
@@ -264,9 +300,7 @@ export default function Dashboard() {
                       {ex.done ? "✓" : i + 1}
                     </div>
                     <div style={{ flex: 1 }}>
-                      <div className={`${styles.exerciseName}${ex.done ? " " + styles.nameDone : ""}`}>
-                        {ex.name}
-                      </div>
+                      <div className={`${styles.exerciseName}${ex.done ? " " + styles.nameDone : ""}`}>{ex.name}</div>
                       <div className={styles.exerciseReps}>{ex.sets} sets × {ex.reps} reps</div>
                     </div>
                     <span className={styles.chevron}>{expandedEx === i ? "▲" : "▼"}</span>
@@ -306,7 +340,6 @@ export default function Dashboard() {
                     <span className={styles.ringKey}>of goal</span>
                   </div>
                 </div>
-
                 <div style={{ flex: 1 }}>
                   <div className={styles.calNum}>
                     <AnimNum value={TODAY.calories.consumed} />
@@ -373,13 +406,10 @@ export default function Dashboard() {
                 <span className={styles.healthIcon}>{h.icon}</span>
                 <span className={styles.healthLabel}>{h.label}</span>
                 <span className={styles.healthVal} style={{ color: h.color }}>{h.value}</span>
-                <span className={styles.healthStatus} style={{ color: h.color, background: `${h.color}18` }}>
-                  {h.status}
-                </span>
+                <span className={styles.healthStatus} style={{ color: h.color, background: `${h.color}18` }}>{h.status}</span>
               </div>
             ))}
           </div>
-
           {HEALTH.sleep < 7 && (
             <div className={styles.alertBanner}>
               <span className={styles.alertIcon}>⚠️</span>
@@ -399,7 +429,6 @@ export default function Dashboard() {
               </div>
               <span className={styles.aiBadge}>AI Powered</span>
             </div>
-
             <div className={styles.insightList}>
               {AI_INSIGHTS.map((ins, i) => (
                 <div
@@ -412,9 +441,7 @@ export default function Dashboard() {
                   <div className={styles.insightInner}>
                     <span className={styles.insightIcon}>{ins.icon}</span>
                     <span className={styles.insightText}>{ins.text}</span>
-                    <button className={styles.whyBtn} style={{ color: ins.color, background: `${ins.color}20` }}>
-                      Why? →
-                    </button>
+                    <button className={styles.whyBtn} style={{ color: ins.color, background: `${ins.color}20` }}>Why? →</button>
                   </div>
                 </div>
               ))}
@@ -426,7 +453,6 @@ export default function Dashboard() {
         <Section>
           <div className={`${styles.card} ${styles.accent}`}>
             <span className={styles.secLabel}>📈 Weekly Progress</span>
-
             <div className={styles.weekStats}>
               {[
                 { label: "Consistency",       value: "80%",   sub: "4/5 workouts",  color: "#FF5C1A" },
@@ -434,9 +460,7 @@ export default function Dashboard() {
                 { label: "Weight Lost",       value: "0.8kg", sub: "this week",     color: "#00C8E0" },
               ].map(s => (
                 <div key={s.label} className={styles.weekStat}>
-                  <span className={styles.weekStatVal} style={{ color: s.color, filter: `drop-shadow(0 0 10px ${s.color}66)` }}>
-                    {s.value}
-                  </span>
+                  <span className={styles.weekStatVal} style={{ color: s.color, filter: `drop-shadow(0 0 10px ${s.color}66)` }}>{s.value}</span>
                   <span className={styles.weekStatLabel}>{s.label}</span>
                   <span className={styles.weekStatSub}>{s.sub}</span>
                 </div>
