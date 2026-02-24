@@ -1,6 +1,8 @@
 // src/services/workout.service.js
 import pool from "../config/db.config.js";
 import { getTodayKey } from "../utils/day.utils.js";
+import { generateWorkoutPlan } from "../domain/workout.generator.js";
+import ProfileModel from "../models/profile.model.js";
 
 class WorkoutService {
 
@@ -8,25 +10,51 @@ class WorkoutService {
     return this.getWorkoutForDate(userId, new Date());
   }
 
+  // ── Auto-generate a plan if none exists, then return today's workout ──
+  static async generateTodayWorkout(userId) {
+    try {
+      const numericUserId = Number(userId);
+
+      // 1. Load profile
+      const profile = await ProfileModel.findByUserId(numericUserId);
+      if (!profile) return null;
+
+      // 2. Generate plan
+      const workoutPlan = generateWorkoutPlan(profile);
+      const mealPlan = { diet_type: profile.diet_type, goal: profile.goal };
+
+      // 3. Deactivate old plans
+      await pool.query(
+        `UPDATE plans SET is_active = false WHERE user_id = $1 AND is_active = true`,
+        [numericUserId]
+      );
+
+      // 4. Save new plan
+      await pool.query(
+        `INSERT INTO plans (user_id, workout_plan, meal_plan, is_active, duration_weeks, goals)
+         VALUES ($1, $2, $3, true, 4, $4)`,
+        [numericUserId, JSON.stringify(workoutPlan), JSON.stringify(mealPlan), profile.goal]
+      );
+
+      // 5. Now fetch today's workout from the freshly created plan
+      return this.getWorkoutForDate(numericUserId, new Date());
+    } catch (err) {
+      console.error("WorkoutService:generateTodayWorkout", err);
+      return null;
+    }
+  }
+
   static async getWorkoutForDate(userId, date = new Date()) {
     try {
       const numericUserId = Number(userId);
-      if (!numericUserId || isNaN(numericUserId)) {
-        throw new Error("Invalid userId");
-      }
+      if (!numericUserId || isNaN(numericUserId)) throw new Error("Invalid userId");
 
       const dayKey = getTodayKey(new Date(date));
-      const dateStr =
-        date instanceof Date ? date.toISOString().split("T")[0] : date;
+      const dateStr = date instanceof Date ? date.toISOString().split("T")[0] : date;
 
       // Get the workout plan
       const { rows: planRows } = await pool.query(
-        `
-        SELECT workout_plan
-        FROM plans
-        WHERE user_id = $1 AND is_active = true
-        LIMIT 1
-        `,
+        `SELECT workout_plan FROM plans WHERE user_id = $1 AND is_active = true LIMIT 1`,
         [numericUserId]
       );
 
@@ -35,96 +63,136 @@ class WorkoutService {
       const plan = planRows[0].workout_plan;
 
       let weeklyPlan = plan.weekly_plan;
-
       if (typeof weeklyPlan === "string") {
-        try {
-          weeklyPlan = JSON.parse(weeklyPlan);
-        } catch {
-          weeklyPlan = {};
-        }
+        try { weeklyPlan = JSON.parse(weeklyPlan); } catch { weeklyPlan = {}; }
       }
-
-      if (!weeklyPlan || typeof weeklyPlan !== "object") {
-        weeklyPlan = {};
-      }
+      if (!weeklyPlan || typeof weeklyPlan !== "object") weeklyPlan = {};
 
       // Get exercise logs for this date
       const { rows: logRows } = await pool.query(
-        `
-        SELECT 
-          exercise_name,
-          sets_completed,
-          reps_completed,
-          weight_used,
-          duration_minutes,
-          perceived_exertion,
-          fatigue_level,
-          notes,
-          created_at
-        FROM workout_logs
-        WHERE user_id = $1 AND workout_date = $2::date
-        ORDER BY created_at
-        `,
+        `SELECT exercise_name, sets_completed, reps_completed, weight_used,
+                duration_minutes, perceived_exertion, fatigue_level, notes, created_at
+         FROM workout_logs
+         WHERE user_id = $1 AND workout_date = $2::date
+         ORDER BY created_at`,
         [numericUserId, dateStr]
       );
 
       const exerciseLogs = logRows.map(row => ({
-        exercise_name: row.exercise_name,
-        sets_completed: row.sets_completed,
-        reps_completed: row.reps_completed,
-        weight_used: row.weight_used,
+        exercise_name:    row.exercise_name,
+        sets_completed:   row.sets_completed,
+        reps_completed:   row.reps_completed,
+        weight_used:      row.weight_used,
         duration_minutes: row.duration_minutes,
         perceived_exertion: row.perceived_exertion,
-        fatigue_level: row.fatigue_level,
-        notes: row.notes,
-        logged_at: row.created_at,
+        fatigue_level:    row.fatigue_level,
+        notes:            row.notes,
+        logged_at:        row.created_at,
       }));
 
-      const completed = exerciseLogs.length > 0;
+      // Format exercises for the dashboard UI
+      const todayMuscleGroups = weeklyPlan[dayKey] || [];
+      const exercises = this._buildExerciseList(todayMuscleGroups, plan.workout_details, exerciseLogs);
 
       return {
-        day: dayKey,
-        date: dateStr,
-        workout: weeklyPlan[dayKey] || [],
-        completed: completed,
+        name:          this._buildWorkoutName(todayMuscleGroups),
+        day:           dayKey,
+        date:          dateStr,
+        duration:      plan.workout_details?.cardio_guidance?.duration ?? "45–60 min",
+        difficulty:    this._mapIntensityLabel(plan.meta?.intensity),
+        muscle_groups: todayMuscleGroups,
+        exercises,
+        completed:     exerciseLogs.length > 0,
         exercise_logs: exerciseLogs,
-        meta: plan.meta || {},
-        guidelines: plan.guidelines || {},
-        safety_notes: plan.safety_notes || [],
+        meta:          plan.meta || {},
+        guidelines:    plan.guidelines || {},
+        safety_notes:  plan.safety_notes || [],
       };
-
     } catch (err) {
       console.error("WorkoutService:getWorkoutForDate", err);
       throw err;
     }
   }
 
+  // Build a displayable exercise list from muscle groups + logged exercises
+  static _buildExerciseList(muscleGroups, workoutDetails, logs) {
+    const isRest = muscleGroups.some(g => /rest/i.test(g));
+    if (isRest) return [];
+
+    // Use logged exercises if they exist, otherwise show planned placeholders
+    if (logs.length > 0) {
+      return logs.map(log => ({
+        name: log.exercise_name,
+        sets: log.sets_completed ?? "—",
+        reps: log.reps_completed ?? "—",
+        done: true,
+      }));
+    }
+
+    // Build placeholder exercises from muscle group names
+    const exerciseMap = {
+      "Chest":               [{ name: "Bench Press", sets: 3, reps: 10 }, { name: "Push-Ups", sets: 3, reps: 15 }, { name: "Incline Dumbbell Press", sets: 3, reps: 12 }],
+      "Back":                [{ name: "Pull-Ups", sets: 3, reps: 8 }, { name: "Bent Over Row", sets: 3, reps: 10 }, { name: "Lat Pulldown", sets: 3, reps: 12 }],
+      "Biceps":              [{ name: "Barbell Curl", sets: 3, reps: 12 }, { name: "Hammer Curl", sets: 3, reps: 12 }],
+      "Triceps":             [{ name: "Tricep Dips", sets: 3, reps: 12 }, { name: "Skull Crushers", sets: 3, reps: 10 }],
+      "Shoulders":           [{ name: "Overhead Press", sets: 3, reps: 10 }, { name: "Lateral Raises", sets: 3, reps: 15 }],
+      "Legs":                [{ name: "Squats", sets: 3, reps: 12 }, { name: "Lunges", sets: 3, reps: 10 }, { name: "Leg Press", sets: 3, reps: 12 }],
+      "Lower Body":          [{ name: "Squats", sets: 3, reps: 12 }, { name: "Romanian Deadlift", sets: 3, reps: 10 }],
+      "Upper Body":          [{ name: "Push-Ups", sets: 3, reps: 15 }, { name: "Dumbbell Row", sets: 3, reps: 12 }, { name: "Shoulder Press", sets: 3, reps: 10 }],
+      "Core":                [{ name: "Plank", sets: 3, reps: "60s" }, { name: "Crunches", sets: 3, reps: 20 }, { name: "Russian Twists", sets: 3, reps: 16 }],
+      "Full Body":           [{ name: "Deadlift", sets: 3, reps: 8 }, { name: "Goblet Squat", sets: 3, reps: 12 }, { name: "Push-Ups", sets: 3, reps: 15 }],
+      "Full Body (Light)":   [{ name: "Bodyweight Squat", sets: 2, reps: 15 }, { name: "Wall Push-Ups", sets: 2, reps: 15 }],
+      "Cardio (Moderate)":   [{ name: "Brisk Walk / Jog", sets: 1, reps: "30 min" }],
+      "Cardio (30 min)":     [{ name: "Cardio of Choice", sets: 1, reps: "30 min" }],
+      "Moderate Cardio":     [{ name: "Moderate Cardio", sets: 1, reps: "30–40 min" }],
+      "Low-Intensity Cardio (30 min)": [{ name: "Walking", sets: 1, reps: "30 min" }],
+    };
+
+    const exercises = [];
+    for (const group of muscleGroups) {
+      const key = Object.keys(exerciseMap).find(k => group.includes(k)) ?? group;
+      const list = exerciseMap[key] ?? [{ name: group, sets: 3, reps: 10 }];
+      exercises.push(...list.map(e => ({ ...e, done: false })));
+    }
+    return exercises;
+  }
+
+  static _buildWorkoutName(muscleGroups) {
+    if (!muscleGroups?.length) return "Rest Day";
+    const isRest = muscleGroups.some(g => /rest/i.test(g));
+    if (isRest) return "Rest & Recovery";
+    return muscleGroups.join(" + ");
+  }
+
+  static _mapIntensityLabel(intensity) {
+    const map = {
+      "low":              "Beginner",
+      "low-to-moderate":  "Easy",
+      "moderate":         "Intermediate",
+      "moderate-to-high": "Advanced",
+      "high":             "Elite",
+    };
+    return map[intensity] ?? "Intermediate";
+  }
+
   static async getWeeklyPlan(userId) {
     try {
       const numericUserId = Number(userId);
-      if (!numericUserId || isNaN(numericUserId)) {
-        throw new Error("Invalid userId");
-      }
+      if (!numericUserId || isNaN(numericUserId)) throw new Error("Invalid userId");
 
       const { rows } = await pool.query(
-        `
-        SELECT workout_plan
-        FROM plans
-        WHERE user_id = $1 AND is_active = true
-        LIMIT 1
-        `,
+        `SELECT workout_plan FROM plans WHERE user_id = $1 AND is_active = true LIMIT 1`,
         [numericUserId]
       );
 
       if (!rows.length) return null;
 
       const plan = rows[0].workout_plan;
-
       return {
-        weekly_plan: plan.weekly_plan || {},
-        meta: plan.meta || {},
-        guidelines: plan.guidelines || {},
-        safety_notes: plan.safety_notes || [],
+        weekly_plan:     plan.weekly_plan || {},
+        meta:            plan.meta || {},
+        guidelines:      plan.guidelines || {},
+        safety_notes:    plan.safety_notes || [],
         workout_details: plan.workout_details || {},
       };
     } catch (err) {
@@ -135,12 +203,9 @@ class WorkoutService {
 
   static async logWorkout(userId, logData) {
     const client = await pool.connect();
-
     try {
       const numericUserId = Number(userId);
-      if (!numericUserId || isNaN(numericUserId)) {
-        throw new Error("Invalid userId");
-      }
+      if (!numericUserId || isNaN(numericUserId)) throw new Error("Invalid userId");
 
       const {
         date = new Date(),
@@ -154,51 +219,22 @@ class WorkoutService {
         notes = null,
       } = logData;
 
-      if (!exercise_name) {
-        throw new Error("exercise_name is required");
-      }
+      if (!exercise_name) throw new Error("exercise_name is required");
 
-      const dateStr =
-        date instanceof Date ? date.toISOString().split("T")[0] : date;
+      const dateStr = date instanceof Date ? date.toISOString().split("T")[0] : date;
 
       await client.query("BEGIN");
-
       const { rows } = await client.query(
-        `
-        INSERT INTO workout_logs (
-          user_id,
-          workout_date,
-          exercise_name,
-          sets_completed,
-          reps_completed,
-          weight_used,
-          duration_minutes,
-          perceived_exertion,
-          fatigue_level,
-          notes
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-        RETURNING *
-        `,
-        [
-          numericUserId,
-          dateStr,
-          exercise_name,
-          sets_completed,
-          reps_completed,
-          weight_used,
-          duration_minutes,
-          perceived_exertion,
-          fatigue_level,
-          notes,
-        ]
+        `INSERT INTO workout_logs (user_id, workout_date, exercise_name, sets_completed,
+          reps_completed, weight_used, duration_minutes, perceived_exertion, fatigue_level, notes)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+        [numericUserId, dateStr, exercise_name, sets_completed, reps_completed,
+         weight_used, duration_minutes, perceived_exertion, fatigue_level, notes]
       );
-
       await client.query("COMMIT");
       return rows[0];
     } catch (err) {
       await client.query("ROLLBACK");
-      console.error("WorkoutService:logWorkout", err);
       throw err;
     } finally {
       client.release();
@@ -207,12 +243,9 @@ class WorkoutService {
 
   static async logMultipleExercises(userId, logData) {
     const client = await pool.connect();
-
     try {
       const numericUserId = Number(userId);
-      if (!numericUserId || isNaN(numericUserId)) {
-        throw new Error("Invalid userId");
-      }
+      if (!numericUserId || isNaN(numericUserId)) throw new Error("Invalid userId");
 
       const {
         date = new Date(),
@@ -223,60 +256,25 @@ class WorkoutService {
         notes = null,
       } = logData;
 
-      if (!Array.isArray(exercises) || exercises.length === 0) {
+      if (!Array.isArray(exercises) || exercises.length === 0)
         throw new Error("exercises array is required and must not be empty");
-      }
 
-      const dateStr =
-        date instanceof Date ? date.toISOString().split("T")[0] : date;
+      const dateStr = date instanceof Date ? date.toISOString().split("T")[0] : date;
 
       await client.query("BEGIN");
-
       const insertedLogs = [];
 
       for (const exercise of exercises) {
-        const {
-          name,
-          sets = null,
-          reps = null,
-          weight = null,
-        } = exercise;
-
-        if (!name) {
-          throw new Error("Each exercise must have a name");
-        }
+        const { name, sets = null, reps = null, weight = null } = exercise;
+        if (!name) throw new Error("Each exercise must have a name");
 
         const { rows } = await client.query(
-          `
-          INSERT INTO workout_logs (
-            user_id,
-            workout_date,
-            exercise_name,
-            sets_completed,
-            reps_completed,
-            weight_used,
-            duration_minutes,
-            perceived_exertion,
-            fatigue_level,
-            notes
-          )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-          RETURNING *
-          `,
-          [
-            numericUserId,
-            dateStr,
-            name,
-            sets,
-            reps,
-            weight,
-            duration_minutes,
-            perceived_exertion,
-            fatigue_level,
-            notes,
-          ]
+          `INSERT INTO workout_logs (user_id, workout_date, exercise_name, sets_completed,
+            reps_completed, weight_used, duration_minutes, perceived_exertion, fatigue_level, notes)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+          [numericUserId, dateStr, name, sets, reps, weight,
+           duration_minutes, perceived_exertion, fatigue_level, notes]
         );
-
         insertedLogs.push(rows[0]);
       }
 
@@ -284,7 +282,6 @@ class WorkoutService {
       return insertedLogs;
     } catch (err) {
       await client.query("ROLLBACK");
-      console.error("WorkoutService:logMultipleExercises", err);
       throw err;
     } finally {
       client.release();
@@ -294,45 +291,17 @@ class WorkoutService {
   static async getWorkoutHistory(userId, options = {}) {
     try {
       const numericUserId = Number(userId);
-      if (!numericUserId || isNaN(numericUserId)) {
-        throw new Error("Invalid userId");
-      }
+      const { limit = 30, offset = 0, startDate, endDate } = options;
 
-      const {
-        limit = 30,
-        offset = 0,
-        startDate,
-        endDate,
-      } = options;
-
-      let query = `
-        SELECT 
-          workout_date AS date,
-          exercise_name,
-          sets_completed,
-          reps_completed,
-          weight_used,
-          duration_minutes,
-          perceived_exertion,
-          fatigue_level,
-          notes,
-          created_at,
-          updated_at
-        FROM workout_logs
-        WHERE user_id = $1
-      `;
+      let query = `SELECT workout_date AS date, exercise_name, sets_completed, reps_completed,
+                          weight_used, duration_minutes, perceived_exertion, fatigue_level, notes,
+                          created_at, updated_at
+                   FROM workout_logs WHERE user_id = $1`;
       const params = [numericUserId];
       let idx = 2;
 
-      if (startDate) {
-        query += ` AND workout_date >= $${idx++}`;
-        params.push(startDate);
-      }
-
-      if (endDate) {
-        query += ` AND workout_date <= $${idx++}`;
-        params.push(endDate);
-      }
+      if (startDate) { query += ` AND workout_date >= $${idx++}`; params.push(startDate); }
+      if (endDate)   { query += ` AND workout_date <= $${idx++}`; params.push(endDate); }
 
       query += ` ORDER BY workout_date DESC, created_at DESC LIMIT $${idx++} OFFSET $${idx}`;
       params.push(limit, offset);
@@ -348,79 +317,35 @@ class WorkoutService {
   static async getWorkoutHistoryCount(userId, options = {}) {
     try {
       const numericUserId = Number(userId);
-      if (!numericUserId || isNaN(numericUserId)) {
-        throw new Error("Invalid userId");
-      }
-
       const { startDate = null, endDate = null } = options;
-
-      let query = `
-        SELECT COUNT(*)::int as total
-        FROM workout_logs
-        WHERE user_id = $1
-      `;
-
+      let query = `SELECT COUNT(*)::int as total FROM workout_logs WHERE user_id = $1`;
       const params = [numericUserId];
-      let paramIndex = 2;
-
-      if (startDate) {
-        query += ` AND workout_date >= $${paramIndex}`;
-        params.push(startDate);
-        paramIndex++;
-      }
-
-      if (endDate) {
-        query += ` AND workout_date <= $${paramIndex}`;
-        params.push(endDate);
-        paramIndex++;
-      }
-
+      let idx = 2;
+      if (startDate) { query += ` AND workout_date >= $${idx++}`; params.push(startDate); }
+      if (endDate)   { query += ` AND workout_date <= $${idx++}`; params.push(endDate); }
       const { rows } = await pool.query(query, params);
       return rows[0].total;
-    } catch (error) {
-      console.error("WorkoutService:getWorkoutHistoryCount", error);
-      return 0;
-    }
+    } catch { return 0; }
   }
 
   static async getWorkoutStats(userId, { days = 30 } = {}) {
     try {
       const numericUserId = Number(userId);
-      if (!numericUserId || isNaN(numericUserId)) {
-        throw new Error("Invalid userId");
-      }
-
-      // Get distinct workout dates (days with any exercise logged)
       const { rows: dateRows } = await pool.query(
-        `
-        SELECT DISTINCT workout_date
-        FROM workout_logs
-        WHERE user_id = $1
-          AND workout_date >= CURRENT_DATE - INTERVAL '1 day' * $2
-        ORDER BY workout_date
-        `,
+        `SELECT DISTINCT workout_date FROM workout_logs
+         WHERE user_id = $1 AND workout_date >= CURRENT_DATE - INTERVAL '1 day' * $2`,
         [numericUserId, days]
       );
-
-      const completedWorkouts = dateRows.length;
-
-      // Get total calories and minutes
       const { rows: statsRows } = await pool.query(
-        `
-        SELECT
-          COALESCE(SUM(duration_minutes), 0) AS total_minutes
-        FROM workout_logs
-        WHERE user_id = $1
-          AND workout_date >= CURRENT_DATE - INTERVAL '1 day' * $2
-        `,
+        `SELECT COALESCE(SUM(duration_minutes), 0) AS total_minutes FROM workout_logs
+         WHERE user_id = $1 AND workout_date >= CURRENT_DATE - INTERVAL '1 day' * $2`,
         [numericUserId, days]
       );
-
       return {
-        period_days: days,
-        workouts_completed: completedWorkouts,
-        total_minutes: Number(statsRows[0].total_minutes),
-        current_streak: await this._getCurrentStreak(numericUserId),
+        period_days:         days,
+        workouts_completed:  dateRows.length,
+        total_minutes:       Number(statsRows[0].total_minutes),
+        current_streak:      await this._getCurrentStreak(numericUserId),
       };
     } catch (err) {
       console.error("WorkoutService:getWorkoutStats", err);
@@ -431,214 +356,68 @@ class WorkoutService {
   static async _getCurrentStreak(userId) {
     try {
       const { rows } = await pool.query(
-        `
-        WITH RECURSIVE workout_dates AS (
-          SELECT DISTINCT workout_date
-          FROM workout_logs
-          WHERE user_id = $1
-        ),
-        streak AS (
-          SELECT workout_date 
-          FROM workout_dates
-          WHERE workout_date = CURRENT_DATE
-          UNION ALL
-          SELECT w.workout_date
-          FROM workout_dates w
-          JOIN streak s ON w.workout_date = s.workout_date - INTERVAL '1 day'
-        )
-        SELECT COUNT(*)::int AS streak FROM streak
-        `,
+        `WITH RECURSIVE workout_dates AS (
+           SELECT DISTINCT workout_date FROM workout_logs WHERE user_id = $1
+         ),
+         streak AS (
+           SELECT workout_date FROM workout_dates WHERE workout_date = CURRENT_DATE
+           UNION ALL
+           SELECT w.workout_date FROM workout_dates w
+           JOIN streak s ON w.workout_date = s.workout_date - INTERVAL '1 day'
+         )
+         SELECT COUNT(*)::int AS streak FROM streak`,
         [userId]
       );
-
       return rows[0].streak;
-    } catch (err) {
-      console.error("WorkoutService:_getCurrentStreak", err);
-      return 0;
-    }
+    } catch { return 0; }
   }
 
   static async deleteWorkoutLog(userId, logId) {
     try {
-      const numericUserId = Number(userId);
-      if (!numericUserId || isNaN(numericUserId)) {
-        throw new Error("Invalid userId");
-      }
-
       const { rowCount } = await pool.query(
-        `
-        DELETE FROM workout_logs
-        WHERE user_id = $1 AND id = $2
-        `,
-        [numericUserId, logId]
+        `DELETE FROM workout_logs WHERE user_id = $1 AND id = $2`,
+        [Number(userId), logId]
       );
-
       return rowCount > 0;
-    } catch (error) {
-      console.error("WorkoutService:deleteWorkoutLog", error);
-      throw error;
-    }
-  }
-
-  static async deleteWorkoutLogsByDate(userId, date) {
-    try {
-      const numericUserId = Number(userId);
-      if (!numericUserId || isNaN(numericUserId)) {
-        throw new Error("Invalid userId");
-      }
-
-      const dateStr = date instanceof Date ? date.toISOString().split("T")[0] : date;
-
-      const { rowCount } = await pool.query(
-        `
-        DELETE FROM workout_logs
-        WHERE user_id = $1 AND workout_date = $2
-        `,
-        [numericUserId, dateStr]
-      );
-
-      return rowCount > 0;
-    } catch (error) {
-      console.error("WorkoutService:deleteWorkoutLogsByDate", error);
-      throw error;
+    } catch (err) {
+      console.error("WorkoutService:deleteWorkoutLog", err);
+      throw err;
     }
   }
 
   static async hasActivePlan(userId) {
     try {
-      const numericUserId = Number(userId);
-      if (!numericUserId || isNaN(numericUserId)) {
-        throw new Error("Invalid userId");
-      }
-
       const { rows } = await pool.query(
-        `
-        SELECT EXISTS(
-          SELECT 1 
-          FROM plans 
-          WHERE user_id = $1 AND is_active = true
-        ) as has_plan
-        `,
-        [numericUserId]
+        `SELECT EXISTS(SELECT 1 FROM plans WHERE user_id = $1 AND is_active = true) as has_plan`,
+        [Number(userId)]
       );
-
       return rows[0].has_plan;
-    } catch (error) {
-      console.error("WorkoutService:hasActivePlan", error);
-      return false;
-    }
-  }
-
-  static async getWorkoutsForDates(userId, dates) {
-    try {
-      const numericUserId = Number(userId);
-      if (!numericUserId || isNaN(numericUserId)) {
-        throw new Error("Invalid userId");
-      }
-
-      if (!Array.isArray(dates) || dates.length === 0) {
-        return {};
-      }
-
-      const { rows } = await pool.query(
-        `
-        SELECT 
-          workout_date AS date,
-          exercise_name,
-          sets_completed,
-          reps_completed,
-          weight_used,
-          duration_minutes,
-          perceived_exertion,
-          fatigue_level,
-          notes
-        FROM workout_logs
-        WHERE user_id = $1
-          AND workout_date = ANY($2::date[])
-        ORDER BY workout_date DESC, created_at
-        `,
-        [numericUserId, dates]
-      );
-
-      const workoutMap = {};
-      rows.forEach((row) => {
-        const dateKey = row.date;
-        if (!workoutMap[dateKey]) {
-          workoutMap[dateKey] = [];
-        }
-        workoutMap[dateKey].push({
-          exercise_name: row.exercise_name,
-          sets_completed: row.sets_completed,
-          reps_completed: row.reps_completed,
-          weight_used: row.weight_used,
-          duration_minutes: row.duration_minutes,
-          perceived_exertion: row.perceived_exertion,
-          fatigue_level: row.fatigue_level,
-          notes: row.notes,
-        });
-      });
-
-      return workoutMap;
-    } catch (err) {
-      console.error("WorkoutService:getWorkoutsForDates", err);
-      throw err;
-    }
+    } catch { return false; }
   }
 
   static async getWeekSummary(userId) {
     try {
       const numericUserId = Number(userId);
-      if (!numericUserId || isNaN(numericUserId)) {
-        throw new Error("Invalid userId");
-      }
-
       const { rows } = await pool.query(
-        `
-        SELECT 
-          workout_date AS date,
-          COUNT(*) as exercises_logged,
-          SUM(duration_minutes) as total_duration
-        FROM workout_logs
-        WHERE user_id = $1
-          AND workout_date >= DATE_TRUNC('week', CURRENT_DATE)
-          AND workout_date < DATE_TRUNC('week', CURRENT_DATE) + INTERVAL '7 days'
-        GROUP BY workout_date
-        ORDER BY workout_date
-        `,
+        `SELECT workout_date AS date, COUNT(*) as exercises_logged, SUM(duration_minutes) as total_duration
+         FROM workout_logs
+         WHERE user_id = $1
+           AND workout_date >= DATE_TRUNC('week', CURRENT_DATE)
+           AND workout_date < DATE_TRUNC('week', CURRENT_DATE) + INTERVAL '7 days'
+         GROUP BY workout_date ORDER BY workout_date`,
         [numericUserId]
       );
 
-      const daysOfWeek = [
-        "monday",
-        "tuesday",
-        "wednesday",
-        "thursday",
-        "friday",
-        "saturday",
-        "sunday",
-      ];
+      const daysOfWeek = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
       const summary = {};
+      daysOfWeek.forEach(day => { summary[day] = { completed: false, exercises_logged: 0, duration: 0 }; });
 
-      daysOfWeek.forEach((day) => {
-        summary[day] = {
-          completed: false,
-          exercises_logged: 0,
-          duration: 0,
-        };
-      });
-
-      rows.forEach((row) => {
+      rows.forEach(row => {
         const date = new Date(row.date);
-        const dayIndex = (date.getDay() + 6) % 7; // Convert Sunday=0 to Monday=0
+        const dayIndex = (date.getDay() + 6) % 7;
         const dayKey = daysOfWeek[dayIndex];
-        
         if (summary[dayKey]) {
-          summary[dayKey] = {
-            completed: true,
-            exercises_logged: Number(row.exercises_logged),
-            duration: Number(row.total_duration) || 0,
-            date: row.date,
-          };
+          summary[dayKey] = { completed: true, exercises_logged: Number(row.exercises_logged), duration: Number(row.total_duration) || 0, date: row.date };
         }
       });
 
