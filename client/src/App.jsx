@@ -16,6 +16,10 @@ import ContactSupport from "./pages/public/Support/Support";
 import Onboarding from "./pages/protected/Onboarding/Onboarding";
 import Dashboard from "./pages/protected/Dashboard/Dashboard";
 import Profile from "./pages/protected/profile/Profile";
+import Plans from "./pages/protected/Dashboard/Plans/Plans";
+import LogMeal from "./pages/protected/Dashboard/Logmeal/Logmeal";
+import Workout from "./pages/protected/Dashboard/workout/workout";
+import Progress from "./pages/protected/Dashboard/Progress/Progress";
 
 function App() {
   return (
@@ -48,6 +52,26 @@ function App() {
             <Route path="/profile" element={
               <ProtectedRoute>
                 <Profile />
+              </ProtectedRoute>
+            } />
+            <Route path="/plans" element={
+              <ProtectedRoute>
+                <Plans />
+              </ProtectedRoute>
+            } />
+            <Route path="/log-meal" element={
+              <ProtectedRoute>
+                <LogMeal />
+              </ProtectedRoute>
+            } />
+            <Route path="/workout" element={
+              <ProtectedRoute>
+                <Workout />
+              </ProtectedRoute>
+            } />
+            <Route path="/progress" element={
+              <ProtectedRoute>
+                <Progress />
               </ProtectedRoute>
             } />
 

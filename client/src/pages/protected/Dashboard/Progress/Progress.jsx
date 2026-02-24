@@ -1,7 +1,7 @@
 // src/pages/Progress/Progress.jsx
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { apiFetch } from "../../../services/apiClient";
+import { apiFetch } from "../../../../services/apiClient";
 import styles from "./Progress.module.css";
 
 function Section({ children, delay = 0 }) {

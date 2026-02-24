@@ -1,7 +1,7 @@
 // src/pages/Workout/Workout.jsx
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { apiFetch } from "../../../services/apiClient";
+import { apiFetch } from "../../../../services/apiClient";
 import styles from "./Workout.module.css";
 
 const DAYS = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"];
