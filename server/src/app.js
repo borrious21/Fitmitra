@@ -11,6 +11,7 @@ import errorMiddleware from "./middlewares/error.middleware.js";
 // Routes
 import authRoutes from "./routes/auth.routes.js";
 import profileRoutes from "./routes/profile.route.js";
+import workoutRoutes from "./routes/workout.routes.js";
 
 const app = express();
 
@@ -30,6 +31,8 @@ app.use("/api/auth", authRoutes);
 // Protected profile routes
 app.use("/api/profile", profileRoutes);
 
+// Protected workout routes
+app.use("/api/workouts", workoutRoutes);
 // 404 for any other route
 app.use((req, res, next) => {
   const error = new Error(`Not Found - ${req.originalUrl}`);
