@@ -7,17 +7,31 @@ export const AuthContext = createContext(null);
 
 const normalizeUser = (rawUser) => {
   if (!rawUser) return null;
-  return {
+
+  const normalized = {
     ...rawUser,
     hasCompletedOnboarding:
       rawUser.hasCompletedOnboarding ??
       rawUser.has_completed_onboarding ??
+      rawUser.onboarding_complete ??
+      rawUser.isOnboarded ??
+      rawUser.is_onboarded ??
+      rawUser.profile_complete ??
+      rawUser.profileComplete ??
       false,
     isVerified:
       rawUser.isVerified ??
       rawUser.is_verified ??
+      rawUser.email_verified ??
+      rawUser.emailVerified ??
       false,
   };
+
+  // DEBUG: remove this once the issue is resolved
+  console.log('[normalizeUser] raw input:', rawUser);
+  console.log('[normalizeUser] hasCompletedOnboarding resolved to:', normalized.hasCompletedOnboarding);
+
+  return normalized;
 };
 
 const loadStoredUser = () => {
@@ -77,7 +91,6 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = useCallback((tokenOrData, rawUser) => {
-    console.log('AuthContext: login called with', { tokenOrData, rawUser });
     let newToken, newUser, newRefresh;
 
     if (typeof tokenOrData === 'string') {
@@ -96,11 +109,10 @@ export const AuthProvider = ({ children }) => {
     setIsInitializing(false);
     setToken(newToken);
     setUser(newUser);
-    console.log('AuthContext: Login succesful', newToken, 'user:', newUser);
   }, [setUser]);
 
   const logout = useCallback(async () => {
-    try { await logoutService(); } catch {  }
+    try { await logoutService(); } catch { /* ignore */ }
     tokenStore.clearAll();
     setToken(null);
     setUserRaw(null);
@@ -128,7 +140,11 @@ export const AuthProvider = ({ children }) => {
 
     (async () => {
       try {
-        const freshData  = await getMeService();
+        const freshData = await getMeService();
+
+        // DEBUG: remove once resolved
+        console.log('[AuthContext] /me raw response:', freshData);
+
         const normalized = normalizeUser(freshData);
         setUserRaw(normalized);
         persistUser(normalized);

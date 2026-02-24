@@ -47,7 +47,7 @@ function bmiLabel(bmi) {
   if (bmi < 30)   return { label: "Overweight",   color: "#FF5C1A" };
   return                  { label: "Obese",        color: "#FF4D6D" };
 }
-
+    
 const FMT_ACTIVITY = {
   sedentary:         "Sedentary",
   lightly_active:    "Lightly Active",

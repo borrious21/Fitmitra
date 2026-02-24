@@ -1,37 +1,42 @@
 import { useContext } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import { Loader2 } from "lucide-react";
 
 const ProtectedRoute = ({ children, allowOnboarding = false }) => {
   const { isAuthenticated, isInitializing, user } = useContext(AuthContext);
+  const location = useLocation();
 
-  // Loader while checking auth
   if (isInitializing) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-indigo-600 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600 font-medium">Loading...</p>
-        </div>
+      <div style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexDirection: "column",
+        gap: "1rem",
+      }}>
+        <Loader2 style={{ width: 48, height: 48, animation: "spin 1s linear infinite" }} />
+        <p style={{ color: "#6b7280", fontWeight: 500 }}>Loading...</p>
       </div>
     );
   }
 
-  // Redirect to login if not authenticated
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
 
-  // ✅ FIX: Normalize both camelCase and snake_case — JWT may use either
-  const hasCompletedOnboarding =
+  const hasOnboarded =
     user?.hasCompletedOnboarding ?? user?.has_completed_onboarding ?? false;
 
-  // Redirect to onboarding if user hasn't completed it
-  if (!hasCompletedOnboarding && !allowOnboarding) {
+  // Not onboarded → send to onboarding (unless already there)
+  if (!hasOnboarded && !allowOnboarding) {
     return <Navigate to="/onboarding" replace />;
   }
 
-  // If user has completed onboarding but tries to visit /onboarding, redirect to dashboard
-  if (hasCompletedOnboarding && allowOnboarding) {
+  // Already onboarded → don't let them back to /onboarding
+  if (hasOnboarded && allowOnboarding) {
     return <Navigate to="/dashboard" replace />;
   }
 
