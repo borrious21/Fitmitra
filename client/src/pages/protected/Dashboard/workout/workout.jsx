@@ -1,7 +1,9 @@
 // src/pages/Workout/Workout.jsx
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../../../../services/apiClient";
+import { AuthContext } from "../../../../context/AuthContext";
+import ActivityCalendar from "../../../../components/ActivityCalendar/ActivityCalendar";
 import styles from "./Workout.module.css";
 
 const DAYS = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"];
@@ -22,33 +24,40 @@ function Section({ children, delay = 0 }) {
 
 export default function Workout() {
   const navigate = useNavigate();
-  const [workout,   setWorkout]   = useState(null);
-  const [weekly,    setWeekly]    = useState(null);
-  const [loading,   setLoading]   = useState(true);
-  const [logging,   setLogging]   = useState(false);
-  const [alert,     setAlert]     = useState(null);
-  const [logForm,   setLogForm]   = useState(null); 
-  const [done,      setDone]      = useState({});   
+  const { user } = useContext(AuthContext);
+
+  const [workout,  setWorkout]  = useState(null);
+  const [weekly,   setWeekly]   = useState(null);
+  const [history,  setHistory]  = useState([]);
+  const [loading,  setLoading]  = useState(true);
+  const [logging,  setLogging]  = useState(false);
+  const [alert,    setAlert]    = useState(null);
+  const [logForm,  setLogForm]  = useState(null);
+  const [done,     setDone]     = useState({});
 
   useEffect(() => { fetchAll(); }, []);
 
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const [w, wk] = await Promise.allSettled([
+      const [w, wk, hist] = await Promise.allSettled([
         apiFetch("/dashboard/workout/today"),
         apiFetch("/workouts/weekly"),
+        apiFetch("/workouts/history?limit=200"),
       ]);
       if (w.status === "fulfilled") {
         const d = w.value?.data ?? w.value;
         setWorkout(d);
-        // pre-mark any already-logged exercises
         const doneMap = {};
         (d?.exercises ?? []).forEach(e => { if (e.done) doneMap[e.name] = true; });
         setDone(doneMap);
       }
-      if (wk.status === "fulfilled") setWeekly(wk.value?.data ?? wk.value);
-    } catch (e) {
+      if (wk.status === "fulfilled")   setWeekly(wk.value?.data ?? wk.value);
+      if (hist.status === "fulfilled") {
+        const d = hist.value?.data ?? hist.value;
+        setHistory(Array.isArray(d) ? d : []);
+      }
+    } catch {
       showAlert("error", "Failed to load workout.");
     } finally {
       setLoading(false);
@@ -91,7 +100,9 @@ export default function Workout() {
   const exercises = workout?.exercises ?? [];
   const doneCount = exercises.filter(e => done[e.name]).length;
   const pct       = exercises.length ? Math.round((doneCount / exercises.length) * 100) : 0;
-  const isRest    = !exercises.length || workout?.name?.toLowerCase().includes("rest");
+  const isRest    = workout?.isRestDay === true || (!workout?.isRestDay && exercises.length === 0);
+
+  const accountCreatedAt = user?.created_at ?? user?.createdAt ?? null;
 
   if (loading) return (
     <div className={styles.wrapper}>
@@ -101,7 +112,6 @@ export default function Workout() {
 
   return (
     <div className={styles.wrapper}>
-      {/* NAV */}
       <nav className={styles.nav}>
         <a className={styles.navLogo} href="/dashboard">
           <span className={styles.navLogoIcon}>
@@ -122,58 +132,66 @@ export default function Workout() {
           </div>
         )}
 
-        {/* HERO */}
         <Section delay={0}>
           <div className={styles.heroCard}>
             <div className={styles.heroBg}/>
             <div className={styles.heroContent}>
               <div className={styles.heroLeft}>
-                <span className={styles.dayLabel}>💪 {todayKey.charAt(0).toUpperCase() + todayKey.slice(1)}'s Workout</span>
+                <span className={styles.dayLabel}>
+                  {isRest ? "🛌" : "💪"} {todayKey.charAt(0).toUpperCase() + todayKey.slice(1)}'s Workout
+                </span>
                 <h1 className={styles.heroTitle}>{workout?.name ?? "Rest Day"}</h1>
-                <div className={styles.heroPills}>
-                  {workout?.duration   && <span className={styles.pill}>⏱ {workout.duration}</span>}
-                  {workout?.difficulty && <span className={styles.pill}>📊 {workout.difficulty}</span>}
-                  {workout?.muscle_groups?.map(g => <span key={g} className={`${styles.pill} ${styles.pillAccent}`}>{g}</span>)}
-                </div>
+                {!isRest && (
+                  <div className={styles.heroPills}>
+                    {workout?.duration   && <span className={styles.pill}>⏱ {workout.duration}</span>}
+                    {workout?.difficulty && <span className={styles.pill}>📊 {workout.difficulty}</span>}
+                    {workout?.muscle_groups?.filter(g => !/^rest/i.test(g)).map(g => (
+                      <span key={g} className={`${styles.pill} ${styles.pillAccent}`}>{g}</span>
+                    ))}
+                  </div>
+                )}
               </div>
-
-              {/* Progress ring */}
-              <div className={styles.ringWrap}>
-                <svg viewBox="0 0 100 100" className={styles.ring}>
-                  <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8"/>
-                  <circle cx="50" cy="50" r="42" fill="none" stroke="url(#wGrad)" strokeWidth="8"
-                    strokeLinecap="round"
-                    strokeDasharray={`${2 * Math.PI * 42}`}
-                    strokeDashoffset={`${2 * Math.PI * 42 * (1 - pct / 100)}`}
-                    style={{ transition: "stroke-dashoffset 1s ease", filter: "drop-shadow(0 0 8px rgba(255,92,26,0.6))" }}
-                  />
-                  <defs>
-                    <linearGradient id="wGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#FF5C1A"/><stop offset="100%" stopColor="#FF8A3D"/>
-                    </linearGradient>
-                  </defs>
-                </svg>
-                <div className={styles.ringInner}>
-                  <span className={styles.ringPct}>{pct}%</span>
-                  <span className={styles.ringLabel}>{doneCount}/{exercises.length}</span>
+              {!isRest && (
+                <div className={styles.ringWrap}>
+                  <svg viewBox="0 0 100 100" className={styles.ring}>
+                    <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8"/>
+                    <circle cx="50" cy="50" r="42" fill="none" stroke="url(#wGrad)" strokeWidth="8"
+                      strokeLinecap="round"
+                      strokeDasharray={`${2 * Math.PI * 42}`}
+                      strokeDashoffset={`${2 * Math.PI * 42 * (1 - pct / 100)}`}
+                      style={{ transition: "stroke-dashoffset 1s ease", filter: "drop-shadow(0 0 8px rgba(255,92,26,0.6))" }}
+                    />
+                    <defs>
+                      <linearGradient id="wGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#FF5C1A"/><stop offset="100%" stopColor="#FF8A3D"/>
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                  <div className={styles.ringInner}>
+                    <span className={styles.ringPct}>{pct}%</span>
+                    <span className={styles.ringLabel}>{doneCount}/{exercises.length}</span>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </Section>
 
-        {/* REST DAY */}
         {isRest ? (
           <Section delay={60}>
             <div className={styles.restCard}>
-              <span className={styles.restEmoji}>🛋️</span>
+              <span className={styles.restEmoji}>🛌</span>
               <h2>Rest & Recovery</h2>
               <p>Your muscles grow during rest. Take it easy today — stretch, hydrate, and sleep well.</p>
+              <div className={styles.restTips}>
+                {["💧 Drink at least 2L of water","🧘 10 min light stretching","😴 Aim for 8h sleep tonight","🚶 A light walk is fine"].map(t => (
+                  <div key={t} className={styles.restTip}>{t}</div>
+                ))}
+              </div>
             </div>
           </Section>
         ) : (
           <>
-            {/* EXERCISE LIST */}
             <Section delay={60}>
               <h2 className={styles.sectionTitle}>Today's Exercises</h2>
               <div className={styles.exerciseList}>
@@ -202,8 +220,7 @@ export default function Workout() {
               </div>
             </Section>
 
-            {/* GUIDELINES */}
-            {workout?.guidelines && (
+            {workout?.guidelines && Object.keys(workout.guidelines).length > 0 && (
               <Section delay={120}>
                 <h2 className={styles.sectionTitle}>📋 Guidelines</h2>
                 <div className={styles.guideGrid}>
@@ -217,15 +234,13 @@ export default function Workout() {
               </Section>
             )}
 
-            {/* SAFETY NOTES */}
             {workout?.safety_notes?.length > 0 && (
               <Section delay={160}>
                 <h2 className={styles.sectionTitle}>⚠️ Safety Notes</h2>
                 <div className={styles.safetyList}>
                   {workout.safety_notes.map((n, i) => (
                     <div key={i} className={styles.safetyNote}>
-                      <span className={styles.safetyDot}/>
-                      {n}
+                      <span className={styles.safetyDot}/>{n}
                     </div>
                   ))}
                 </div>
@@ -234,31 +249,15 @@ export default function Workout() {
           </>
         )}
 
-        {/* WEEKLY PLAN */}
-        {weekly?.weekly_plan && (
-          <Section delay={200}>
-            <h2 className={styles.sectionTitle}>📅 Weekly Split</h2>
-            <div className={styles.weekGrid}>
-              {DAYS.map(day => {
-                const groups = weekly.weekly_plan[day] ?? [];
-                const isToday = day === todayKey;
-                const isRestDay = groups.some(g => /rest/i.test(g));
-                return (
-                  <div key={day} className={`${styles.weekCard} ${isToday ? styles.weekCardToday : ""} ${isRestDay ? styles.weekCardRest : ""}`}>
-                    <span className={styles.weekDay}>{day.slice(0,3).toUpperCase()}</span>
-                    {groups.length
-                      ? groups.map(g => <span key={g} className={styles.weekGroup}>{g}</span>)
-                      : <span className={styles.weekGroup}>Rest</span>
-                    }
-                  </div>
-                );
-              })}
-            </div>
-          </Section>
-        )}
+        <Section delay={220}>
+          <ActivityCalendar
+            history={history}
+            weeklyPlan={weekly?.weekly_plan}
+            accountCreatedAt={accountCreatedAt}
+          />
+        </Section>
       </main>
 
-      {/* LOG MODAL */}
       {logForm && (
         <div className={styles.modalOverlay} onClick={() => setLogForm(null)}>
           <div className={styles.modal} onClick={e => e.stopPropagation()}>
