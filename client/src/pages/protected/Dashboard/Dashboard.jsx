@@ -1,8 +1,8 @@
 // src/pages/Dashboard/Dashboard.jsx
-// Key fixes:
-// 1. Health snapshot — guard all undefined values
-// 2. Quick Actions — navigate to real pages
-// 3. Streak — reads data.streak (not data.current_streak)
+// Fixes applied:
+// 1. Rest Day — no progress ring or "Continue Workout" button; shows a recovery card instead
+// 2. Empty states — nutrition, meals, health, weekly all show helpful prompts instead of dead zeros
+// 3. Layout declutter — sections with no data collapse gracefully; reduced visual noise
 
 import { useState, useEffect, useRef, useContext } from "react";
 import { useNavigate } from "react-router-dom";
@@ -51,7 +51,7 @@ function AnimNum({ value }) {
   return <span>{typeof value === "number" ? n : value}</span>;
 }
 
-function Section({ children }) {
+function Section({ children, hidden }) {
   const ref = useRef();
   const [vis, setVis] = useState(false);
   useEffect(() => {
@@ -62,6 +62,7 @@ function Section({ children }) {
     if (ref.current) obs.observe(ref.current);
     return () => obs.disconnect();
   }, []);
+  if (hidden) return null;
   return (
     <div ref={ref} className={`${styles.section}${vis ? " " + styles.visible : ""}`}>
       {children}
@@ -97,6 +98,52 @@ function LoadingCard() {
   );
 }
 
+/* ─── EmptyState ─────────────────────────────────────────────── */
+function EmptyState({ icon, message, actionLabel, onAction }) {
+  return (
+    <div className={styles.emptyState}>
+      <span className={styles.emptyIcon}>{icon}</span>
+      <p className={styles.emptyMsg}>{message}</p>
+      {actionLabel && (
+        <button className={styles.ghostBtn} onClick={onAction}>{actionLabel}</button>
+      )}
+    </div>
+  );
+}
+
+/* ─── RestDayCard ────────────────────────────────────────────── */
+// Shown instead of the workout card when workout.isRestDay is true
+// (or when workout.name is "Rest Day" — adjust to match your API shape)
+function RestDayCard() {
+  return (
+    <div className={`${styles.card} ${styles.accent}`}>
+      <span className={styles.secLabel}>💪 Today's Workout</span>
+      <div className={styles.restDayWrap}>
+        <span className={styles.restDayEmoji}>🛌</span>
+        <div className={styles.restDayText}>
+          <div className={styles.restDayTitle}>Rest Day</div>
+          <div className={styles.restDaySub}>
+            Recovery is where gains happen. Stay hydrated, stretch lightly, and let your body rebuild.
+          </div>
+        </div>
+      </div>
+      <div className={styles.restTips}>
+        {["💧 Drink at least 2L of water", "🧘 10 min light stretching", "😴 Aim for 8h sleep tonight"].map(tip => (
+          <div key={tip} className={styles.restTip}>{tip}</div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─── isRestDay helper ───────────────────────────────────────── */
+function checkRestDay(workout) {
+  if (!workout) return false;
+  if (workout.isRestDay === true) return true;
+  const name = (workout.name ?? "").toLowerCase();
+  return name === "rest day" || name === "rest" || name === "recovery day";
+}
+
 /* ═══════════════════════════════════════════════════════════════
    Dashboard
 ═══════════════════════════════════════════════════════════════ */
@@ -105,7 +152,6 @@ export default function Dashboard() {
   const navigate = useNavigate();
 
   const [activeTab,  setActiveTab]  = useState("today");
-  const [expandedEx, setExpandedEx] = useState(null);
 
   const [loading,    setLoading]    = useState(true);
   const [error,      setError]      = useState(null);
@@ -159,7 +205,6 @@ export default function Dashboard() {
         }
         if (results[7].status === "fulfilled") {
           const d = results[7].value?.data ?? results[7].value;
-          // handle both { streak: N } and { current_streak: N } and plain number
           setStreak(d?.streak ?? d?.current_streak ?? (typeof d === "number" ? d : 0));
         }
       } catch {
@@ -175,12 +220,25 @@ export default function Dashboard() {
   const displayName = user?.name ?? "User";
   const initials = displayName.split(" ").map(n => n[0] ?? "").join("").slice(0, 2).toUpperCase();
 
-  const donePct   = workout ? pct(workout.exercises?.filter(e => e.done).length ?? 0, workout.exercises?.length ?? 1) : 0;
-  const calPct    = nutrition ? pct(nutrition.calories?.consumed, nutrition.calories?.target) : 0;
-  const waterPct  = nutrition ? pct(nutrition.water?.consumed, nutrition.water?.target) : 0;
-  const waterFilled = Math.round(waterPct / 10);
+  const isRestDay  = checkRestDay(workout);
+  const hasWorkout = !!workout && !isRestDay;
 
-  // Quick actions nav map
+  const donePct   = hasWorkout ? pct(workout.exercises?.filter(e => e.done).length ?? 0, workout.exercises?.length ?? 1) : 0;
+
+  // Nutrition: only treat as "has data" if calories target exists and is > 0
+  const hasNutrition = !!nutrition && (nutrition.calories?.target ?? 0) > 0;
+  const calConsumed  = nutrition?.calories?.consumed ?? 0;
+  const calTarget    = nutrition?.calories?.target   ?? 0;
+  const calPct       = pct(calConsumed, calTarget);
+  const waterPct     = hasNutrition ? pct(nutrition.water?.consumed, nutrition.water?.target) : 0;
+  const waterFilled  = Math.round(waterPct / 10);
+
+  // Health: only show snapshot if at least one value is present
+  const hasAnyHealth = health && (health.bp || health.sleep || health.heartRate || health.recovery);
+
+  // Weekly: only show chart section if at least calories data exists
+  const hasWeeklyData = weekly && Array.isArray(weekly.calories) && weekly.calories.some(Boolean);
+
   const QUICK_ACTIONS = [
     { icon: "⚖️", label: "Log Weight",  action: () => navigate("/progress") },
     { icon: "🩺", label: "Log BP",      action: () => navigate("/progress") },
@@ -269,9 +327,13 @@ export default function Dashboard() {
 
         {/* ── Two-col: Workout + Nutrition ─────────────────────── */}
         <div className={styles.twoCol}>
-          {/* Workout */}
+
+          {/* ── Workout ── */}
           <Section>
-            {loading ? <LoadingCard /> : workout ? (
+            {loading ? <LoadingCard /> : isRestDay ? (
+              /* FIX 1: Rest Day gets its own card — no ring, no progress, no CTA button */
+              <RestDayCard />
+            ) : hasWorkout ? (
               <div className={`${styles.card} ${styles.accent}`}>
                 <div className={styles.workoutHeader}>
                   <div>
@@ -282,25 +344,27 @@ export default function Dashboard() {
                       <span className={styles.metaPill}>📊 {workout.difficulty}</span>
                     </div>
                   </div>
-                  <div className={styles.circleWrap}>
-                    <svg viewBox="0 0 72 72">
-                      <circle cx="36" cy="36" r="30" fill="none" stroke="rgba(128,128,128,0.1)" strokeWidth="6" />
-                      <circle cx="36" cy="36" r="30" fill="none" stroke="#FF5C1A" strokeWidth="6" strokeLinecap="round"
-                        strokeDasharray={`${2 * Math.PI * 30}`}
-                        strokeDashoffset={`${2 * Math.PI * 30 * (1 - donePct / 100)}`}
-                        style={{ transition: "stroke-dashoffset 1s ease", filter: "drop-shadow(0 0 8px rgba(255,92,26,0.5))" }}
-                      />
-                    </svg>
-                    <div className={styles.circleInner}>
-                      <span className={styles.circleVal}>{donePct}%</span>
-                      <span className={styles.circleKey}>done</span>
+                  {/* Ring only shown when there are exercises to track */}
+                  {(workout.exercises?.length ?? 0) > 0 && (
+                    <div className={styles.circleWrap}>
+                      <svg viewBox="0 0 72 72">
+                        <circle cx="36" cy="36" r="30" fill="none" stroke="rgba(128,128,128,0.1)" strokeWidth="6" />
+                        <circle cx="36" cy="36" r="30" fill="none" stroke="#FF5C1A" strokeWidth="6" strokeLinecap="round"
+                          strokeDasharray={`${2 * Math.PI * 30}`}
+                          strokeDashoffset={`${2 * Math.PI * 30 * (1 - donePct / 100)}`}
+                          style={{ transition: "stroke-dashoffset 1s ease", filter: "drop-shadow(0 0 8px rgba(255,92,26,0.5))" }}
+                        />
+                      </svg>
+                      <div className={styles.circleInner}>
+                        <span className={styles.circleVal}>{donePct}%</span>
+                        <span className={styles.circleKey}>done</span>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
                 <div className={styles.exerciseList}>
                   {workout.exercises?.slice(0, 5).map((ex, i) => (
-                    <div key={ex.name} className={`${styles.exerciseRow} ${ex.done ? styles.exDone : styles.exPending}`}
-                      onClick={() => setExpandedEx(expandedEx === i ? null : i)}>
+                    <div key={ex.name} className={`${styles.exerciseRow} ${ex.done ? styles.exDone : styles.exPending}`}>
                       <div className={`${styles.exerciseBullet} ${ex.done ? styles.bulletDone : styles.bulletPending}`}>
                         {ex.done ? "✓" : i + 1}
                       </div>
@@ -316,55 +380,73 @@ export default function Dashboard() {
                 </button>
               </div>
             ) : (
-              <div className={`${styles.card} ${styles.accent}`} style={{ textAlign: "center", padding: "2rem" }}>
+              /* FIX 2: No workout scheduled — clean empty state, no misleading ring */
+              <div className={`${styles.card} ${styles.accent}`}>
                 <span className={styles.secLabel}>💪 Today's Workout</span>
-                <p style={{ marginTop: "1rem", opacity: 0.5 }}>No workout scheduled yet.</p>
-                <button className={styles.primaryBtn} style={{ marginTop: "1rem" }} onClick={() => navigate("/plans")}>
-                  Generate Plan →
-                </button>
+                <EmptyState
+                  icon="📋"
+                  message="No workout scheduled for today. Generate a plan to get started."
+                  actionLabel="Generate Plan →"
+                  onAction={() => navigate("/plans")}
+                />
               </div>
             )}
           </Section>
 
-          {/* Nutrition */}
+          {/* ── Nutrition ── */}
           <Section>
-            {loading ? <LoadingCard /> : nutrition ? (
+            {loading ? <LoadingCard /> : hasNutrition ? (
               <div className={`${styles.card} ${styles.accent}`}>
                 <span className={styles.secLabel}>🍽️ Today's Nutrition</span>
-                <div className={styles.calRingWrap}>
-                  <div className={styles.ringOuter}>
-                    <svg viewBox="0 0 90 90">
-                      <defs>
-                        <linearGradient id="calGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#FF5C1A" /><stop offset="100%" stopColor="#FF8A3D" />
-                        </linearGradient>
-                      </defs>
-                      <circle cx="45" cy="45" r="38" fill="none" stroke="rgba(128,128,128,0.1)" strokeWidth="8" />
-                      <circle cx="45" cy="45" r="38" fill="none" stroke="url(#calGrad)" strokeWidth="8" strokeLinecap="round"
-                        strokeDasharray={`${2 * Math.PI * 38}`}
-                        strokeDashoffset={`${2 * Math.PI * 38 * (1 - calPct / 100)}`}
-                        style={{ transition: "stroke-dashoffset 1.2s ease", filter: "drop-shadow(0 0 10px rgba(255,92,26,0.5))" }}
-                      />
-                    </svg>
-                    <div className={styles.ringInner}>
-                      <span className={styles.ringPct}>{calPct}%</span>
-                      <span className={styles.ringKey}>of goal</span>
+
+                {/* FIX 2: Only show the ring + numbers when calories have actually been consumed */}
+                {calConsumed > 0 ? (
+                  <div className={styles.calRingWrap}>
+                    <div className={styles.ringOuter}>
+                      <svg viewBox="0 0 90 90">
+                        <defs>
+                          <linearGradient id="calGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#FF5C1A" /><stop offset="100%" stopColor="#FF8A3D" />
+                          </linearGradient>
+                        </defs>
+                        <circle cx="45" cy="45" r="38" fill="none" stroke="rgba(128,128,128,0.1)" strokeWidth="8" />
+                        <circle cx="45" cy="45" r="38" fill="none" stroke="url(#calGrad)" strokeWidth="8" strokeLinecap="round"
+                          strokeDasharray={`${2 * Math.PI * 38}`}
+                          strokeDashoffset={`${2 * Math.PI * 38 * (1 - calPct / 100)}`}
+                          style={{ transition: "stroke-dashoffset 1.2s ease", filter: "drop-shadow(0 0 10px rgba(255,92,26,0.5))" }}
+                        />
+                      </svg>
+                      <div className={styles.ringInner}>
+                        <span className={styles.ringPct}>{calPct}%</span>
+                        <span className={styles.ringKey}>of goal</span>
+                      </div>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div className={styles.calNum}>
+                        <AnimNum value={calConsumed} />
+                        <span className={styles.calDenom}> / {calTarget}</span>
+                      </div>
+                      <div className={styles.calLabel}>kcal consumed today</div>
+                      <div className={styles.calBar}><div className={styles.calBarFill} style={{ width: `${calPct}%` }} /></div>
                     </div>
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <div className={styles.calNum}>
-                      <AnimNum value={nutrition.calories?.consumed ?? 0} />
-                      <span className={styles.calDenom}> / {nutrition.calories?.target ?? 0}</span>
+                ) : (
+                  /* FIX 2: Nothing logged yet — show the target as context, with a prompt */
+                  <div className={styles.nutritionEmptyWrap}>
+                    <div className={styles.nutritionTarget}>
+                      <span className={styles.nutritionTargetVal}>{calTarget}</span>
+                      <span className={styles.nutritionTargetLabel}>kcal daily target</span>
                     </div>
-                    <div className={styles.calLabel}>kcal consumed today</div>
-                    <div className={styles.calBar}><div className={styles.calBarFill} style={{ width: `${calPct}%` }} /></div>
+                    <p className={styles.emptyMsg} style={{ marginTop: "0.5rem" }}>No meals logged yet today.</p>
                   </div>
-                </div>
+                )}
+
                 <div className={styles.macros}>
                   <MacroBar label="Protein" value={nutrition.protein?.consumed ?? 0} target={nutrition.protein?.target ?? 0} fillColor="linear-gradient(90deg,#FF5C1A,#FF8A3D)" />
                   <MacroBar label="Carbs"   value={nutrition.carbs?.consumed   ?? 0} target={nutrition.carbs?.target   ?? 0} fillColor="linear-gradient(90deg,#00C8E0,#0090FF)" />
                   <MacroBar label="Fats"    value={nutrition.fats?.consumed    ?? 0} target={nutrition.fats?.target    ?? 0} fillColor="linear-gradient(90deg,#B8F000,#80D400)" />
                 </div>
+
                 <div className={styles.waterBox}>
                   <div className={styles.waterHead}>
                     <span className={styles.waterLabel}>💧 Water Intake</span>
@@ -376,21 +458,29 @@ export default function Dashboard() {
                     ))}
                   </div>
                 </div>
+
                 <div style={{ marginTop: "1rem" }}>
                   <button className={styles.ghostBtn} onClick={() => navigate("/log-meal")}>+ Log Meal</button>
                 </div>
               </div>
             ) : (
-              <div className={`${styles.card} ${styles.accent}`} style={{ textAlign: "center", padding: "2rem", opacity: 0.6 }}>
+              /* FIX 2: No nutrition profile at all */
+              <div className={`${styles.card} ${styles.accent}`}>
                 <span className={styles.secLabel}>🍽️ Today's Nutrition</span>
-                <p style={{ marginTop: "1rem" }}>Complete your profile to see nutrition targets.</p>
+                <EmptyState
+                  icon="📊"
+                  message="Complete your profile to unlock personalised nutrition targets."
+                  actionLabel="Set Up Profile →"
+                  onAction={() => navigate("/profile")}
+                />
               </div>
             )}
           </Section>
         </div>
 
-        {/* ── Meals Today ──────────────────────────────────────── */}
-        <Section>
+        {/* ── Meals Today — only rendered when there are meals ─── */}
+        {/* FIX 3: Collapsed entirely when empty to reduce clutter; log prompt moved inline above */}
+        <Section hidden={!loading && meals.length === 0 && !hasNutrition}>
           <span className={styles.secLabel}>Meals Today</span>
           {loading ? <LoadingCard /> : meals.length > 0 ? (
             <div className={styles.mealsGrid}>
@@ -404,30 +494,32 @@ export default function Dashboard() {
               ))}
             </div>
           ) : (
-            <div style={{ opacity: 0.5, marginTop: "0.5rem", display: "flex", alignItems: "center", gap: "1rem" }}>
-              <span>No meals logged today.</span>
-              <button className={styles.ghostBtn} onClick={() => navigate("/log-meal")}>+ Log Meal</button>
-            </div>
+            <EmptyState
+              icon="🍽️"
+              message="No meals logged today."
+              actionLabel="+ Log your first meal"
+              onAction={() => navigate("/log-meal")}
+            />
           )}
         </Section>
 
-        {/* ── Health Snapshot ───────────────────────────────────── */}
+        {/* ── Health Snapshot — only when there's data or we're loading ── */}
         <Section>
           <span className={styles.secLabel}>🩺 Health Snapshot</span>
-          {loading ? <LoadingCard /> : health ? (
+          {loading ? <LoadingCard /> : hasAnyHealth ? (
             <>
               <div className={styles.healthGrid}>
                 {[
-                  { icon: "🫀", label: "Blood Pressure", value: health.bp    && health.bp    !== "—" ? health.bp    : "Not logged", status: health.bpStatus       && health.bpStatus       !== "—" ? health.bpStatus       : "—", color: "#FF5C1A" },
-                  { icon: "😴", label: "Sleep",           value: health.sleep                         ? `${health.sleep}h`          : "Not logged", status: health.sleepStatus                                                             ?? "—", color: "#00C8E0" },
-                  { icon: "💓", label: "Heart Rate",      value: health.heartRate                     ? `${health.heartRate} bpm`   : "Not logged", status: health.hrStatus                                                                ?? "—", color: "#FF4D6D" },
-                  { icon: "⚡", label: "Recovery",        value: health.recovery                      ? `${health.recovery}%`       : "Not logged", status: health.recoveryStatus                                                          ?? "—", color: "#B8F000" },
+                  { icon: "🫀", label: "Blood Pressure", value: health.bp       && health.bp       !== "—" ? health.bp                    : "Not logged", status: health.bpStatus       && health.bpStatus       !== "—" ? health.bpStatus       : null, color: "#FF5C1A" },
+                  { icon: "😴", label: "Sleep",           value: health.sleep                               ? `${health.sleep}h`           : "Not logged", status: health.sleepStatus    && health.sleepStatus    !== "—" ? health.sleepStatus    : null, color: "#00C8E0" },
+                  { icon: "💓", label: "Heart Rate",      value: health.heartRate                           ? `${health.heartRate} bpm`    : "Not logged", status: health.hrStatus       && health.hrStatus       !== "—" ? health.hrStatus       : null, color: "#FF4D6D" },
+                  { icon: "⚡", label: "Recovery",        value: health.recovery                            ? `${health.recovery}%`        : "Not logged", status: health.recoveryStatus && health.recoveryStatus !== "—" ? health.recoveryStatus : null, color: "#B8F000" },
                 ].map(h => (
                   <div key={h.label} className={styles.healthCard}>
                     <span className={styles.healthIcon}>{h.icon}</span>
                     <span className={styles.healthLabel}>{h.label}</span>
                     <span className={styles.healthVal} style={{ color: h.color }}>{h.value}</span>
-                    {h.status !== "—" && (
+                    {h.status && (
                       <span className={styles.healthStatus} style={{ color: h.color, background: `${h.color}18` }}>{h.status}</span>
                     )}
                   </div>
@@ -441,15 +533,19 @@ export default function Dashboard() {
               )}
             </>
           ) : (
-            <div style={{ opacity: 0.5, marginTop: "0.5rem", display: "flex", alignItems: "center", gap: "1rem" }}>
-              <span>No health data yet.</span>
-              <button className={styles.ghostBtn} onClick={() => navigate("/progress")}>Log Progress</button>
-            </div>
+            /* FIX 2: No health data — single clean prompt instead of 4 "Not logged" cards */
+            <EmptyState
+              icon="🩺"
+              message="Log your blood pressure, sleep, and heart rate to track your health."
+              actionLabel="Log Health Data →"
+              onAction={() => navigate("/progress")}
+            />
           )}
         </Section>
 
         {/* ── AI Insights ───────────────────────────────────────── */}
-        <Section>
+        {/* FIX 3: Hide entire section when loading is done and there are no insights */}
+        <Section hidden={!loading && insights.length === 0}>
           <div className={`${styles.card} ${styles.accent}`}>
             <div className={styles.aiHeader}>
               <div className={styles.aiIconWrap}>🧠</div>
@@ -461,7 +557,7 @@ export default function Dashboard() {
             </div>
             {loading ? (
               <p style={{ opacity: 0.4, marginTop: "1rem" }}>Loading insights...</p>
-            ) : insights.length > 0 ? (
+            ) : (
               <div className={styles.insightList}>
                 {insights.map((ins, i) => (
                   <div key={i} className={styles.insightRow}
@@ -475,8 +571,6 @@ export default function Dashboard() {
                   </div>
                 ))}
               </div>
-            ) : (
-              <p style={{ opacity: 0.5, marginTop: "1rem" }}>Log your activity to get personalized tips.</p>
             )}
           </div>
         </Section>
@@ -487,12 +581,13 @@ export default function Dashboard() {
             <span className={styles.secLabel}>📈 Weekly Progress</span>
             {loading ? <p style={{ opacity: 0.4, marginTop: "1rem" }}>Loading...</p> : weekly ? (
               <>
+                {/* FIX 2: Only show stats that have real values */}
                 <div className={styles.weekStats}>
                   {[
-                    { label: "Consistency",       value: weekly.consistency,      sub: weekly.consistencySub,  color: "#FF5C1A" },
-                    { label: "Calorie Adherence", value: weekly.calorieAdherence, sub: "avg this week",        color: "#B8F000" },
-                    { label: "Weight Lost",       value: weekly.weightLost,       sub: "this week",            color: "#00C8E0" },
-                  ].map(s => (
+                    { label: "Consistency",       value: weekly.consistency,      sub: weekly.consistencySub,  color: "#FF5C1A", valid: !!weekly.consistency },
+                    { label: "Calorie Adherence", value: weekly.calorieAdherence, sub: "avg this week",        color: "#B8F000", valid: !!weekly.calorieAdherence && weekly.calorieAdherence !== "—" },
+                    { label: "Weight Lost",       value: weekly.weightLost,       sub: "this week",            color: "#00C8E0", valid: !!weekly.weightLost       && weekly.weightLost       !== "—" },
+                  ].filter(s => s.valid).map(s => (
                     <div key={s.label} className={styles.weekStat}>
                       <span className={styles.weekStatVal} style={{ color: s.color, filter: `drop-shadow(0 0 10px ${s.color}66)` }}>{s.value}</span>
                       <span className={styles.weekStatLabel}>{s.label}</span>
@@ -500,6 +595,7 @@ export default function Dashboard() {
                     </div>
                   ))}
                 </div>
+
                 <div className={styles.dayTracker}>
                   <span className={styles.secLabel}>Workout Days</span>
                   <div className={styles.dayRow}>
@@ -513,27 +609,41 @@ export default function Dashboard() {
                     ))}
                   </div>
                 </div>
-                <div>
-                  <span className={styles.secLabel}>Calories vs Target</span>
-                  <div className={styles.calBars}>
-                    {weekly.calories?.map((cal, i) => {
-                      const p = cal ? pct(cal, weekly.target?.[i] ?? 2100) : 0;
-                      const isToday = i === new Date().getDay() - 1;
-                      return (
-                        <div key={i} className={styles.calBarCol}>
-                          <div className={styles.calBarTrack}>
-                            <div className={`${styles.calBarFillWk} ${!cal ? styles.wkEmpty : isToday ? styles.wkHot : styles.wkNormal}`}
-                              style={{ height: `${p}%` }} />
+
+                {/* FIX 2: Only render calorie chart when there's actual data */}
+                {hasWeeklyData && (
+                  <div>
+                    <span className={styles.secLabel}>Calories vs Target</span>
+                    <div className={styles.calBars}>
+                      {weekly.calories?.map((cal, i) => {
+                        const p = cal ? pct(cal, weekly.target?.[i] ?? 2100) : 0;
+                        const isToday = i === new Date().getDay() - 1;
+                        return (
+                          <div key={i} className={styles.calBarCol}>
+                            <div className={styles.calBarTrack}>
+                              <div className={`${styles.calBarFillWk} ${!cal ? styles.wkEmpty : isToday ? styles.wkHot : styles.wkNormal}`}
+                                style={{ height: `${p}%` }} />
+                            </div>
+                            <span className={styles.calBarDay}>{weekly.days?.[i]}</span>
                           </div>
-                          <span className={styles.calBarDay}>{weekly.days?.[i]}</span>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
+                )}
+
+                {/* FIX 2: If it's genuinely day 1, show an encouraging prompt instead of blank chart */}
+                {!hasWeeklyData && (
+                  <p style={{ opacity: 0.45, fontSize: "0.85rem", marginTop: "0.75rem" }}>
+                    Start logging to see your weekly calorie chart here.
+                  </p>
+                )}
               </>
             ) : (
-              <p style={{ opacity: 0.5, marginTop: "1rem" }}>No weekly data yet.</p>
+              <EmptyState
+                icon="📈"
+                message="No weekly data yet. Log workouts and meals to track your week."
+              />
             )}
           </div>
         </Section>

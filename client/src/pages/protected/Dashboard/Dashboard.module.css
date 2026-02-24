@@ -1133,3 +1133,99 @@
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: var(--d-bg); }
 ::-webkit-scrollbar-thumb { background: rgba(255, 92, 26, 0.3); border-radius: 2px; }
+
+/* ─────────────────────────────────────────────────────────────
+   ADD THESE RULES TO Dashboard.module.css
+   They support the new EmptyState, RestDayCard, and
+   nutritionEmptyWrap components added in the Dashboard fix.
+───────────────────────────────────────────────────────────── */
+
+/* ── EmptyState ─────────────────────────────────────────────── */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
+.emptyIcon {
+  font-size: 2rem;
+  opacity: 0.6;
+}
+
+.emptyMsg {
+  font-size: 0.875rem;
+  opacity: 0.55;
+  max-width: 280px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ── Rest Day Card ──────────────────────────────────────────── */
+.restDayWrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.restDayEmoji {
+  font-size: 2.5rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.restDayTitle {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 0.3rem;
+}
+
+.restDaySub {
+  font-size: 0.85rem;
+  opacity: 0.6;
+  line-height: 1.5;
+}
+
+.restTips {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
+
+.restTip {
+  font-size: 0.83rem;
+  opacity: 0.7;
+  padding: 0.45rem 0.75rem;
+  border-radius: 8px;
+  background: rgba(128, 128, 128, 0.07);
+  border: 1px solid rgba(128, 128, 128, 0.12);
+}
+
+/* ── Nutrition empty (target shown, no data yet) ─────────────── */
+.nutritionEmptyWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.25rem 0 0.5rem;
+  gap: 0.25rem;
+  text-align: center;
+}
+
+.nutritionTargetVal {
+  font-size: 2.25rem;
+  font-weight: 800;
+  letter-spacing: -1px;
+  color: var(--accent, #FF5C1A);
+}
+
+.nutritionTargetLabel {
+  font-size: 0.8rem;
+  opacity: 0.5;
+  display: block;
+  margin-top: 0.1rem;
+}
