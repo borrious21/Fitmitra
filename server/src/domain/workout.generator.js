@@ -1,10 +1,19 @@
 // src/domain/workout.generator.js
+// Fix: Saturday is explicitly enforced as Rest after split generation.
+//      The returned object now carries isRestDay: true on rest days so the
+//      frontend / service layer never has to guess from the name string.
 
 const VALID_GOALS = ['muscle_gain', 'weight_loss', 'endurance', 'maintain_fitness'];
 const VALID_ACTIVITY_LEVELS = ['sedentary', 'lightly_active', 'moderately_active', 'very_active', 'athlete'];
 
+// Days that are always forced to rest regardless of goal/intensity
+const FORCED_REST_DAYS = ['saturday'];
+
+// Canonical rest marker — used by WorkoutService._buildWorkoutName and
+// checked by the regex /rest/i already in _buildExerciseList
+const REST_MARKER = ['Rest'];
+
 export function generateWorkoutPlan(profile) {
-  
   const validation = validateProfile(profile);
   if (!validation.isValid) {
     throw new Error(`Invalid profile: ${validation.errors.join(', ')}`);
@@ -22,7 +31,14 @@ export function generateWorkoutPlan(profile) {
   );
 
   const intensity = resolveIntensity(activity_level, age, conditions);
-  const weeklySplit = buildWeeklySplit(goal, intensity, conditions);
+  let weeklySplit = buildWeeklySplit(goal, intensity, conditions);
+
+  // ── Hard-enforce rest days ────────────────────────────────────────────────
+  // No matter what the split builder produces, certain days must stay as rest.
+  for (const day of FORCED_REST_DAYS) {
+    weeklySplit[day] = REST_MARKER;
+  }
+
   const workoutDetails = buildWorkoutDetails(goal, intensity, conditions);
 
   return {
@@ -73,7 +89,7 @@ function validateProfile(profile) {
 
 function resolveIntensity(activityLevel, age, conditions) {
   if (conditions.includes('heart_disease')) return 'low';
-  
+
   if (age >= 65) return 'low';
   if (age >= 50) {
     return conditions.length > 0 ? 'low' : 'low-to-moderate';
@@ -83,148 +99,129 @@ function resolveIntensity(activityLevel, age, conditions) {
   if (conditions.length === 1) return 'moderate';
 
   switch (activityLevel) {
-    case 'sedentary':
-      return 'low';
-    case 'lightly_active':
-      return 'low-to-moderate';
-    case 'moderately_active':
-      return 'moderate';
-    case 'very_active':
-      return 'moderate-to-high';
-    case 'athlete':
-      return 'high';
-    default:
-      return 'moderate';
+    case 'sedentary':        return 'low';
+    case 'lightly_active':   return 'low-to-moderate';
+    case 'moderately_active':return 'moderate';
+    case 'very_active':      return 'moderate-to-high';
+    case 'athlete':          return 'high';
+    default:                 return 'moderate';
   }
 }
 
 function buildWeeklySplit(goal, intensity, conditions) {
-  const hasJointIssues =
-    conditions.includes('arthritis') || conditions.includes('injury');
-  const hasCardiacCondition =
-    conditions.includes('heart_disease') || conditions.includes('hypertension');
-  
-  const isLowIntensity = intensity === 'low' || intensity === 'low-to-moderate';
-  
-if (goal === 'muscle_gain') {
-  if (isLowIntensity || hasJointIssues) {
+  const hasJointIssues    = conditions.includes('arthritis') || conditions.includes('injury');
+  const hasCardiacCondition = conditions.includes('heart_disease') || conditions.includes('hypertension');
+  const isLowIntensity    = intensity === 'low' || intensity === 'low-to-moderate';
+
+  if (goal === 'muscle_gain') {
+    if (isLowIntensity || hasJointIssues) {
+      return {
+        sunday:    ['Full Body (Light)'],
+        monday:    ['Upper Body'],
+        tuesday:   ['Rest / Stretching'],
+        wednesday: ['Upper Body (Light)'],
+        thursday:  ['Rest / Mobility'],
+        friday:    ['Lower Body'],
+        saturday:  REST_MARKER,   // always rest — also enforced post-build
+      };
+    }
     return {
-      sunday: ['Full Body (Light)'],
-      monday: ['Upper Body'],
-      tuesday: ['Rest / Stretching'],
-      wednesday: ['Upper Body (Light)'],
-      thursday: ['Rest / Mobility'],
-      friday: ['Lower Body'],
-      saturday: ['Rest'],
+      sunday:    ['Chest', 'Triceps'],
+      monday:    ['Back', 'Biceps'],
+      tuesday:   ['Rest / Light Cardio'],
+      wednesday: ['Shoulders', 'Core'],
+      thursday:  ['Upper Body (Accessory)'],
+      friday:    ['Legs'],
+      saturday:  REST_MARKER,
     };
   }
 
+  if (goal === 'weight_loss') {
+    if (hasCardiacCondition) {
+      return {
+        sunday:    ['Full Body Strength'],
+        monday:    ['Low-Intensity Cardio (30 min)'],
+        tuesday:   ['Upper Body Strength'],
+        wednesday: ['Rest'],
+        thursday:  ['Lower Body Strength'],
+        friday:    ['Legs (Light)'],
+        saturday:  REST_MARKER,
+      };
+    }
+    if (isLowIntensity) {
+      return {
+        sunday:    ['Full Body Strength'],
+        monday:    ['Moderate Cardio'],
+        tuesday:   ['Upper Body', 'Core'],
+        wednesday: ['Rest'],
+        thursday:  ['Lower Body'],
+        friday:    ['Legs', 'Light Cardio'],
+        saturday:  REST_MARKER,
+      };
+    }
+    return {
+      sunday:    ['Full Body', 'Cardio (30 min)'],
+      monday:    ['Upper Body', 'Core'],
+      tuesday:   ['Cardio (Moderate)'],
+      wednesday: ['Lower Body'],
+      thursday:  ['Cardio (30 min)'],
+      friday:    ['Legs', 'Light Cardio'],
+      saturday:  REST_MARKER,
+    };
+  }
+
+  if (goal === 'endurance') {
+    if (hasCardiacCondition || isLowIntensity) {
+      return {
+        sunday:    ['Moderate Cardio (30–40 min)'],
+        monday:    ['Rest'],
+        tuesday:   ['Lower Body Strength'],
+        wednesday: ['Moderate Cardio (30 min)'],
+        thursday:  ['Upper Body Strength'],
+        friday:    ['Legs (Light Strength)'],
+        saturday:  REST_MARKER,
+      };
+    }
+    return {
+      sunday:    ['Cardio (Moderate 40 min)'],
+      monday:    ['Lower Body Strength'],
+      tuesday:   ['Cardio (Intervals 30–40 min)'],
+      wednesday: ['Upper Body Strength'],
+      thursday:  ['Cardio (Moderate)'],
+      friday:    ['Legs (Strength + Short Cardio)'],
+      saturday:  REST_MARKER,
+    };
+  }
+
+  // maintain_fitness fallback
   return {
-    sunday: ['Chest', 'Triceps'],
-    monday: ['Back', 'Biceps'],
-    tuesday: ['Rest / Light Cardio'],
-    wednesday: ['Shoulders', 'Core'],
-    thursday: ['Upper Body (Accessory)'],
-    friday: ['Legs'],
-    saturday: ['Rest'],
+    sunday:    ['Full Body Strength'],
+    monday:    ['Cardio (20–30 min)'],
+    tuesday:   ['Upper Body'],
+    wednesday: ['Rest'],
+    thursday:  ['Lower Body'],
+    friday:    ['Legs'],
+    saturday:  REST_MARKER,
   };
-}
-
-if (goal === 'weight_loss') {
-  if (hasCardiacCondition) {
-    return {
-      sunday: ['Full Body Strength'],
-      monday: ['Low-Intensity Cardio (30 min)'],
-      tuesday: ['Upper Body Strength'],
-      wednesday: ['Rest'],
-      thursday: ['Lower Body Strength'],
-      friday: ['Legs (Light)'],
-      saturday: ['Rest'],
-    };
-  }
-
-  if (isLowIntensity) {
-    return {
-      sunday: ['Full Body Strength'],
-      monday: ['Moderate Cardio'],
-      tuesday: ['Upper Body', 'Core'],
-      wednesday: ['Rest'],
-      thursday: ['Lower Body'],
-      friday: ['Legs', 'Light Cardio'],
-      saturday: ['Rest'],
-    };
-  }
-
-  return {
-    sunday: ['Full Body', 'Cardio (30 min)'],
-    monday: ['Upper Body', 'Core'],
-    tuesday: ['Cardio (Moderate)'],
-    wednesday: ['Lower Body'],
-    thursday: ['Cardio (30 min)'],
-    friday: ['Legs', 'Light Cardio'],
-    saturday: ['Rest'],
-  };
-}
-
-if (goal === 'endurance') {
-  if (hasCardiacCondition || isLowIntensity) {
-    return {
-      sunday: ['Moderate Cardio (30–40 min)'],
-      monday: ['Rest'],
-      tuesday: ['Lower Body Strength'],
-      wednesday: ['Moderate Cardio (30 min)'],
-      thursday: ['Upper Body Strength'],
-      friday: ['Legs (Light Strength)'],
-      saturday: ['Rest'],
-    };
-  }
-
-  return {
-    sunday: ['Cardio (Moderate 40 min)'],
-    monday: ['Lower Body Strength'],
-    tuesday: ['Cardio (Intervals 30–40 min)'],
-    wednesday: ['Upper Body Strength'],
-    thursday: ['Cardio (Moderate)'],
-    friday: ['Legs (Strength + Short Cardio)'],
-    saturday: ['Rest'],
-  };
-}
-
-return {
-  sunday: ['Full Body Strength'],
-  monday: ['Cardio (20–30 min)'],
-  tuesday: ['Upper Body'],
-  wednesday: ['Rest'],
-  thursday: ['Lower Body'],
-  friday: ['Legs'],
-  saturday: ['Rest'],
-};
 }
 
 function buildWorkoutDetails(goal, intensity, conditions) {
-  const details = {
-    sets_range: getSetsRange(intensity),
-    reps_range: getRepsRange(goal, intensity),
-    rest_between_sets: getRestPeriod(goal, intensity),
-    cardio_guidance: getCardioGuidance(goal, intensity, conditions),
+  return {
+    sets_range:         getSetsRange(intensity),
+    reps_range:         getRepsRange(goal, intensity),
+    rest_between_sets:  getRestPeriod(goal, intensity),
+    cardio_guidance:    getCardioGuidance(goal, intensity, conditions),
   };
-
-  return details;
 }
 
 function getSetsRange(intensity) {
   switch (intensity) {
-    case 'low':
-      return '1–2 sets per exercise';
-    case 'low-to-moderate':
-      return '2–3 sets per exercise';
-    case 'moderate':
-      return '3–4 sets per exercise';
+    case 'low':              return '1–2 sets per exercise';
+    case 'low-to-moderate':  return '2–3 sets per exercise';
+    case 'moderate':         return '3–4 sets per exercise';
     case 'moderate-to-high':
-    case 'high':
-      return '3–5 sets per exercise';
-    default:
-      return '3 sets per exercise';
+    case 'high':             return '3–5 sets per exercise';
+    default:                 return '3 sets per exercise';
   }
 }
 
@@ -234,42 +231,22 @@ function getRepsRange(goal, intensity) {
       ? '10–15 reps (lighter weight)'
       : '6–12 reps (moderate to heavy weight)';
   }
-  
-  if (goal === 'endurance') {
-    return '12–20 reps (lighter weight, higher volume)';
-  }
-  
-  if (goal === 'weight_loss') {
-    return '10–15 reps (moderate weight, keep heart rate elevated)';
-  }
-  
+  if (goal === 'endurance') return '12–20 reps (lighter weight, higher volume)';
+  if (goal === 'weight_loss') return '10–15 reps (moderate weight, keep heart rate elevated)';
   return '8–12 reps';
 }
 
 function getRestPeriod(goal, intensity) {
-  if (intensity === 'low' || intensity === 'low-to-moderate') {
-    return '60–90 seconds between sets';
-  }
-  
-  if (goal === 'muscle_gain') {
-    return '60–120 seconds between sets';
-  }
-  
-  if (goal === 'weight_loss') {
-    return '30–60 seconds between sets (circuit style optional)';
-  }
-  
-  if (goal === 'endurance') {
-    return '30–45 seconds between sets';
-  }
-  
+  if (intensity === 'low' || intensity === 'low-to-moderate') return '60–90 seconds between sets';
+  if (goal === 'muscle_gain')  return '60–120 seconds between sets';
+  if (goal === 'weight_loss')  return '30–60 seconds between sets (circuit style optional)';
+  if (goal === 'endurance')    return '30–45 seconds between sets';
   return '60 seconds between sets';
 }
 
 function getCardioGuidance(goal, intensity, conditions) {
-  const hasCardiac = conditions.includes('heart_disease') || 
-                     conditions.includes('hypertension');
-  
+  const hasCardiac = conditions.includes('heart_disease') || conditions.includes('hypertension');
+
   if (hasCardiac) {
     return {
       type: 'Low-intensity steady state',
@@ -279,7 +256,6 @@ function getCardioGuidance(goal, intensity, conditions) {
       note: 'Monitor heart rate closely and stay in safe zone',
     };
   }
-
   if (intensity === 'low' || intensity === 'low-to-moderate') {
     return {
       type: 'Moderate steady state (walking, cycling, swimming)',
@@ -288,7 +264,6 @@ function getCardioGuidance(goal, intensity, conditions) {
       target_heart_rate: '60–70% of max heart rate',
     };
   }
-
   if (goal === 'weight_loss') {
     return {
       type: 'Mix of HIIT and steady state',
@@ -297,7 +272,6 @@ function getCardioGuidance(goal, intensity, conditions) {
       target_heart_rate: '70–85% of max heart rate',
     };
   }
-
   if (goal === 'endurance') {
     return {
       type: 'Long duration steady state with interval training',
@@ -306,7 +280,6 @@ function getCardioGuidance(goal, intensity, conditions) {
       target_heart_rate: '65–80% of max heart rate',
     };
   }
-
   return {
     type: 'Moderate cardio (your choice)',
     duration: '20–30 minutes',
@@ -320,10 +293,10 @@ function buildGuidelines(intensity, conditions) {
     warmup: intensity === 'low' || intensity === 'low-to-moderate'
       ? '5–10 minutes gentle movement and stretching'
       : '5–10 minutes dynamic warm-up',
-    cooldown: '5–10 minutes stretching & light mobility work',
-    progression: getProgressionGuidance(intensity),
-    rest_days: 'At least 1–2 complete rest days per week',
-    hydration: 'Drink water before, during, and after workouts',
+    cooldown:         '5–10 minutes stretching & light mobility work',
+    progression:      getProgressionGuidance(intensity),
+    rest_days:        'At least 1–2 complete rest days per week',
+    hydration:        'Drink water before, during, and after workouts',
     form_over_weight: 'Always prioritize proper form over lifting heavier weights',
   };
 
@@ -336,17 +309,12 @@ function buildGuidelines(intensity, conditions) {
 
 function getProgressionGuidance(intensity) {
   switch (intensity) {
-    case 'low':
-      return 'Increase reps or weight every 2–3 weeks, focus on consistency';
-    case 'low-to-moderate':
-      return 'Increase reps or weight every 1–2 weeks gradually';
-    case 'moderate':
-      return 'Increase weight or reps every 1–2 weeks by small increments (2.5–5 lbs or 1–2 reps)';
+    case 'low':              return 'Increase reps or weight every 2–3 weeks, focus on consistency';
+    case 'low-to-moderate':  return 'Increase reps or weight every 1–2 weeks gradually';
+    case 'moderate':         return 'Increase weight or reps every 1–2 weeks by small increments (2.5–5 lbs or 1–2 reps)';
     case 'moderate-to-high':
-    case 'high':
-      return 'Progressive overload weekly: increase weight, reps, or sets. Consider periodization.';
-    default:
-      return 'Increase difficulty progressively every 1–2 weeks';
+    case 'high':             return 'Progressive overload weekly: increase weight, reps, or sets. Consider periodization.';
+    default:                 return 'Increase difficulty progressively every 1–2 weeks';
   }
 }
 
@@ -365,31 +333,26 @@ function buildSafetyNotes(conditions) {
     notes.push('Avoid holding breath during lifts (no Valsalva maneuver)');
     notes.push('Monitor blood pressure regularly and stay within safe heart rate zones');
   }
-
   if (conditions.includes('diabetes')) {
     notes.push('Monitor blood sugar before and after workouts');
     notes.push('Keep fast-acting carbohydrates nearby in case of hypoglycemia');
     notes.push('Exercise at consistent times to help regulate blood sugar');
   }
-
   if (conditions.includes('heart_disease')) {
     notes.push('Keep intensity low to moderate and avoid sudden spikes in heart rate');
     notes.push('Wear a heart rate monitor and stay within prescribed zones');
     notes.push('Stop immediately if experiencing chest pain, dizziness, or shortness of breath');
   }
-
   if (conditions.includes('arthritis')) {
     notes.push('Avoid high-impact exercises; prefer low-impact alternatives (swimming, cycling)');
     notes.push('Warm up thoroughly before exercise');
     notes.push('Use proper joint protection techniques and consider resistance bands over heavy weights');
   }
-
   if (conditions.includes('injury')) {
     notes.push('Avoid movements that stress injured areas');
     notes.push('Work within pain-free ranges of motion');
     notes.push('Consider working with a physical therapist for rehabilitation exercises');
   }
-
   if (conditions.includes('asthma')) {
     notes.push('Keep rescue inhaler accessible during workouts');
     notes.push('Warm up gradually to prevent exercise-induced symptoms');
@@ -397,6 +360,5 @@ function buildSafetyNotes(conditions) {
   }
 
   notes.push('Always prioritize safety and listen to your body');
-
   return notes;
 }

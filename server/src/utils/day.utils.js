@@ -1,3 +1,4 @@
+// src/utils/day.utils.js
 export const getTodayKey = (input) => {
   const date = input instanceof Date ? input : new Date(input);
 
@@ -5,6 +6,6 @@ export const getTodayKey = (input) => {
     throw new Error("Invalid date passed to getTodayKey");
   }
 
-  const DAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+  const DAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
   return DAYS[date.getDay()];
 };

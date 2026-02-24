@@ -1,4 +1,8 @@
 // src/services/workout.service.js
+// Fix: getWorkoutForDate now returns isRestDay: true when the day is a rest day.
+//      This means the frontend (and any consumer) gets a reliable boolean instead
+//      of having to parse/guess from the workout name string.
+
 import pool from "../config/db.config.js";
 import { getTodayKey } from "../utils/day.utils.js";
 import { generateWorkoutPlan } from "../domain/workout.generator.js";
@@ -10,33 +14,27 @@ class WorkoutService {
     return this.getWorkoutForDate(userId, new Date());
   }
 
-  // ── Auto-generate a plan if none exists, then return today's workout ──
   static async generateTodayWorkout(userId) {
     try {
       const numericUserId = Number(userId);
 
-      // 1. Load profile
       const profile = await ProfileModel.findByUserId(numericUserId);
       if (!profile) return null;
 
-      // 2. Generate plan
       const workoutPlan = generateWorkoutPlan(profile);
       const mealPlan = { diet_type: profile.diet_type, goal: profile.goal };
 
-      // 3. Deactivate old plans
       await pool.query(
         `UPDATE plans SET is_active = false WHERE user_id = $1 AND is_active = true`,
         [numericUserId]
       );
 
-      // 4. Save new plan
       await pool.query(
         `INSERT INTO plans (user_id, workout_plan, meal_plan, is_active, duration_weeks, goals)
          VALUES ($1, $2, $3, true, 4, $4)`,
         [numericUserId, JSON.stringify(workoutPlan), JSON.stringify(mealPlan), profile.goal]
       );
 
-      // 5. Now fetch today's workout from the freshly created plan
       return this.getWorkoutForDate(numericUserId, new Date());
     } catch (err) {
       console.error("WorkoutService:generateTodayWorkout", err);
@@ -49,10 +47,9 @@ class WorkoutService {
       const numericUserId = Number(userId);
       if (!numericUserId || isNaN(numericUserId)) throw new Error("Invalid userId");
 
-      const dayKey = getTodayKey(new Date(date));
+      const dayKey  = getTodayKey(new Date(date));
       const dateStr = date instanceof Date ? date.toISOString().split("T")[0] : date;
 
-      // Get the workout plan
       const { rows: planRows } = await pool.query(
         `SELECT workout_plan FROM plans WHERE user_id = $1 AND is_active = true LIMIT 1`,
         [numericUserId]
@@ -68,7 +65,6 @@ class WorkoutService {
       }
       if (!weeklyPlan || typeof weeklyPlan !== "object") weeklyPlan = {};
 
-      // Get exercise logs for this date
       const { rows: logRows } = await pool.query(
         `SELECT exercise_name, sets_completed, reps_completed, weight_used,
                 duration_minutes, perceived_exertion, fatigue_level, notes, created_at
@@ -79,23 +75,29 @@ class WorkoutService {
       );
 
       const exerciseLogs = logRows.map(row => ({
-        exercise_name:    row.exercise_name,
-        sets_completed:   row.sets_completed,
-        reps_completed:   row.reps_completed,
-        weight_used:      row.weight_used,
-        duration_minutes: row.duration_minutes,
+        exercise_name:      row.exercise_name,
+        sets_completed:     row.sets_completed,
+        reps_completed:     row.reps_completed,
+        weight_used:        row.weight_used,
+        duration_minutes:   row.duration_minutes,
         perceived_exertion: row.perceived_exertion,
-        fatigue_level:    row.fatigue_level,
-        notes:            row.notes,
-        logged_at:        row.created_at,
+        fatigue_level:      row.fatigue_level,
+        notes:              row.notes,
+        logged_at:          row.created_at,
       }));
 
-      // Format exercises for the dashboard UI
       const todayMuscleGroups = weeklyPlan[dayKey] || [];
+
+      // ── Determine rest day ────────────────────────────────────────────────
+      // A day is a rest day when every group in the array matches /rest/i.
+      // This covers: ['Rest'], ['Rest / Stretching'], ['Rest / Light Cardio'], etc.
+      const isRestDay = this._isRestDay(todayMuscleGroups);
+
       const exercises = this._buildExerciseList(todayMuscleGroups, plan.workout_details, exerciseLogs);
 
       return {
         name:          this._buildWorkoutName(todayMuscleGroups),
+        isRestDay,                          // ← reliable boolean for consumers
         day:           dayKey,
         date:          dateStr,
         duration:      plan.workout_details?.cardio_guidance?.duration ?? "45–60 min",
@@ -114,12 +116,15 @@ class WorkoutService {
     }
   }
 
-  // Build a displayable exercise list from muscle groups + logged exercises
-  static _buildExerciseList(muscleGroups, workoutDetails, logs) {
-    const isRest = muscleGroups.some(g => /rest/i.test(g));
-    if (isRest) return [];
+  // ── True if every muscle group entry starts with "rest" (case-insensitive) ──
+  static _isRestDay(muscleGroups) {
+    if (!muscleGroups?.length) return true;          // empty schedule = rest
+    return muscleGroups.every(g => /^rest/i.test(g.trim()));
+  }
 
-    // Use logged exercises if they exist, otherwise show planned placeholders
+  static _buildExerciseList(muscleGroups, workoutDetails, logs) {
+    if (this._isRestDay(muscleGroups)) return [];
+
     if (logs.length > 0) {
       return logs.map(log => ({
         name: log.exercise_name,
@@ -129,7 +134,6 @@ class WorkoutService {
       }));
     }
 
-    // Build placeholder exercises from muscle group names
     const exerciseMap = {
       "Chest":               [{ name: "Bench Press", sets: 3, reps: 10 }, { name: "Push-Ups", sets: 3, reps: 15 }, { name: "Incline Dumbbell Press", sets: 3, reps: 12 }],
       "Back":                [{ name: "Pull-Ups", sets: 3, reps: 8 }, { name: "Bent Over Row", sets: 3, reps: 10 }, { name: "Lat Pulldown", sets: 3, reps: 12 }],
@@ -158,9 +162,8 @@ class WorkoutService {
   }
 
   static _buildWorkoutName(muscleGroups) {
-    if (!muscleGroups?.length) return "Rest Day";
-    const isRest = muscleGroups.some(g => /rest/i.test(g));
-    if (isRest) return "Rest & Recovery";
+    if (!muscleGroups?.length) return "Rest & Recovery";
+    if (this._isRestDay(muscleGroups)) return "Rest & Recovery";
     return muscleGroups.join(" + ");
   }
 
@@ -210,13 +213,13 @@ class WorkoutService {
       const {
         date = new Date(),
         exercise_name,
-        sets_completed = null,
-        reps_completed = null,
-        weight_used = null,
-        duration_minutes = null,
+        sets_completed     = null,
+        reps_completed     = null,
+        weight_used        = null,
+        duration_minutes   = null,
         perceived_exertion = null,
-        fatigue_level = null,
-        notes = null,
+        fatigue_level      = null,
+        notes              = null,
       } = logData;
 
       if (!exercise_name) throw new Error("exercise_name is required");
@@ -249,11 +252,11 @@ class WorkoutService {
 
       const {
         date = new Date(),
-        exercises = [],
-        duration_minutes = null,
+        exercises          = [],
+        duration_minutes   = null,
         perceived_exertion = null,
-        fatigue_level = null,
-        notes = null,
+        fatigue_level      = null,
+        notes              = null,
       } = logData;
 
       if (!Array.isArray(exercises) || exercises.length === 0)
@@ -342,10 +345,10 @@ class WorkoutService {
         [numericUserId, days]
       );
       return {
-        period_days:         days,
-        workouts_completed:  dateRows.length,
-        total_minutes:       Number(statsRows[0].total_minutes),
-        current_streak:      await this._getCurrentStreak(numericUserId),
+        period_days:        days,
+        workouts_completed: dateRows.length,
+        total_minutes:      Number(statsRows[0].total_minutes),
+        current_streak:     await this._getCurrentStreak(numericUserId),
       };
     } catch (err) {
       console.error("WorkoutService:getWorkoutStats", err);
@@ -417,7 +420,12 @@ class WorkoutService {
         const dayIndex = (date.getDay() + 6) % 7;
         const dayKey = daysOfWeek[dayIndex];
         if (summary[dayKey]) {
-          summary[dayKey] = { completed: true, exercises_logged: Number(row.exercises_logged), duration: Number(row.total_duration) || 0, date: row.date };
+          summary[dayKey] = {
+            completed:        true,
+            exercises_logged: Number(row.exercises_logged),
+            duration:         Number(row.total_duration) || 0,
+            date:             row.date,
+          };
         }
       });
 

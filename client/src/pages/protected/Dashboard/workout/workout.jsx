@@ -27,8 +27,8 @@ export default function Workout() {
   const [loading,   setLoading]   = useState(true);
   const [logging,   setLogging]   = useState(false);
   const [alert,     setAlert]     = useState(null);
-  const [logForm,   setLogForm]   = useState(null); // { exerciseName, sets, reps, weight }
-  const [done,      setDone]      = useState({});   // { [exerciseName]: true }
+  const [logForm,   setLogForm]   = useState(null); 
+  const [done,      setDone]      = useState({});   
 
   useEffect(() => { fetchAll(); }, []);
 
