@@ -10,28 +10,8 @@ import {
 import ThemeToggle from "../../../components/ThemeToggle/ThemeToggle";
 import styles from "./Profile.module.css";
 
-/* ════════════════════════════════════════════════════════════
-   CLOUDFLARE IMAGES UPLOAD
-   Set in .env:
-     VITE_CF_ACCOUNT_ID=your_account_id
-     VITE_CF_API_TOKEN=your_api_token
-════════════════════════════════════════════════════════════ */
-const CF_ACCOUNT_ID = import.meta.env.VITE_CF_ACCOUNT_ID;
-const CF_API_TOKEN  = import.meta.env.VITE_CF_API_TOKEN;
-const CF_IMAGES_URL = `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/images/v1`;
-
-async function uploadToCloudflare(file) {
-  const fd = new FormData();
-  fd.append("file", file);
-  const res = await fetch(CF_IMAGES_URL, {
-    method:  "POST",
-    headers: { Authorization: `Bearer ${CF_API_TOKEN}` },
-    body:    fd,
-  });
-  if (!res.ok) throw new Error("Cloudflare upload failed");
-  const json = await res.json();
-  return json.result.variants[0]; // adjust variant name if needed
-}
+// ─── NO Cloudflare direct upload here — API tokens must never be exposed
+// ─── in the browser. Avatar uploads go through your Express backend instead.
 
 /* ─── Format helpers ──────────────────────────────────────── */
 function calcBMI(h, w) {
@@ -47,7 +27,7 @@ function bmiLabel(bmi) {
   if (bmi < 30)   return { label: "Overweight",   color: "#FF5C1A" };
   return                  { label: "Obese",        color: "#FF4D6D" };
 }
-    
+
 const FMT_ACTIVITY = {
   sedentary:         "Sedentary",
   lightly_active:    "Lightly Active",
@@ -155,12 +135,13 @@ export default function Profile() {
   const [errors,     setErrors]     = useState({});
   const [alert,      setAlert]      = useState(null);
 
-  // avatar
+  // avatar — track both current display URL and the last persisted URL
   const [avatarUrl,       setAvatarUrl]       = useState(null);
+  const [savedAvatarUrl,  setSavedAvatarUrl]  = useState(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const fileInputRef = useRef();
 
-  // settings toggles (local UI state only — extend to persist if needed)
+  // settings toggles (local UI state only)
   const [notifs,    setNotifs]    = useState(true);
   const [reminders, setReminders] = useState(false);
 
@@ -172,16 +153,16 @@ export default function Profile() {
   const loadProfile = async () => {
     setLoading(true);
     try {
-      const res  = await getMyProfile();               // GET /api/profile/me
-      const data = res?.data ?? res;                   // unwrap { success, data } if present
+      const res  = await getMyProfile();
+      const data = res?.data ?? res;
       const form = apiToForm(data);
       setProfile(form);
       setOriginal(form);
       setAvatarUrl(data.avatar_url ?? null);
+      setSavedAvatarUrl(data.avatar_url ?? null);
       setIsNew(false);
     } catch (err) {
       if (err?.status === 404 || err?.code === "PROFILE_NOT_FOUND") {
-        // No profile yet — open create form
         setIsNew(true);
         setEditMode(true);
       } else if (err?.status === 401) {
@@ -195,29 +176,51 @@ export default function Profile() {
     }
   };
 
-  /* ── avatar upload ──────────────────────────────────────── */
+  /* ── avatar upload ──────────────────────────────────────────
+     Flow: browser → your Express /api/profile/avatar → Cloudinary
+     Never call Cloudflare / Cloudinary directly from the browser.
+  ─────────────────────────────────────────────────────────── */
   const handleAvatarChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Instant local preview
-    setAvatarUrl(URL.createObjectURL(file));
+    // Instant local preview while uploading
+    const localPreview = URL.createObjectURL(file);
+    setAvatarUrl(localPreview);
     setAvatarUploading(true);
 
     try {
-      // 1. Upload to Cloudflare Images
-      const cfUrl = await uploadToCloudflare(file);
+      const fd = new FormData();
+      fd.append("avatar", file); // must match upload.single("avatar") on the server
 
-      // 2. Persist URL to backend via profile update
-      await updateProfile({ avatar_url: cfUrl });      // PUT /api/profile
-      setAvatarUrl(cfUrl);
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/profile/avatar", {
+        method:  "POST",
+        // ⚠️ Do NOT set Content-Type — the browser sets the correct
+        //    multipart/form-data boundary automatically
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body:    fd,
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson?.message ?? `Upload failed (${res.status})`);
+      }
+
+      const json = await res.json();
+      const uploadedUrl = json?.data?.avatar_url;
+
+      URL.revokeObjectURL(localPreview); // free memory
+      setAvatarUrl(uploadedUrl);
+      setSavedAvatarUrl(uploadedUrl);
       showAlert("success", "Profile photo updated!");
     } catch (err) {
-      showAlert("error", "Photo upload failed. Please try again.");
-      // Restore previous avatar on failure
-      setAvatarUrl(original.avatar_url ?? null);
+      showAlert("error", err?.message ?? "Photo upload failed. Please try again.");
+      setAvatarUrl(savedAvatarUrl); // revert to last persisted avatar
     } finally {
       setAvatarUploading(false);
+      // Reset so the same file can be re-selected if the user retries
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -240,9 +243,6 @@ export default function Profile() {
       return { ...p, medical_conditions: next };
     });
   };
-
-  console.log("Cloudflare Account ID:", CF_ACCOUNT_ID);
-console.log("Cloudflare API Token:", CF_API_TOKEN);
 
   /* ── validation ─────────────────────────────────────────── */
   const validate = () => {
@@ -286,9 +286,9 @@ console.log("Cloudflare API Token:", CF_API_TOKEN);
 
     try {
       if (isNew) {
-        await createProfile(payload);               // POST /api/profile
+        await createProfile(payload);
       } else {
-        await updateProfile(payload);               // PUT  /api/profile
+        await updateProfile(payload);
       }
       setOriginal({ ...profile });
       setIsNew(false);
@@ -314,7 +314,7 @@ console.log("Cloudflare API Token:", CF_API_TOKEN);
   const handleLogout = async () => {
     if (!window.confirm("Are you sure you want to log out?")) return;
     try {
-      logout?.();        // clears token / AuthContext state
+      logout?.();
       navigate("/login");
     } catch {
       navigate("/login");
@@ -328,7 +328,7 @@ console.log("Cloudflare API Token:", CF_API_TOKEN);
     );
     if (!confirmed) return;
     try {
-      await deleteProfile();                          // DELETE /api/profile
+      await deleteProfile();
       logout?.();
       navigate("/");
     } catch (err) {
@@ -347,7 +347,7 @@ console.log("Cloudflare API Token:", CF_API_TOKEN);
   const bmiInfo    = bmi ? bmiLabel(parseFloat(bmi)) : null;
   const hasChanges = JSON.stringify(profile) !== JSON.stringify(original);
 
-  const displayName = user?.name ?? "User";
+  const displayName  = user?.name  ?? "User";
   const displayEmail = user?.email ?? "";
   const initials = displayName
     .split(" ")
@@ -433,6 +433,7 @@ console.log("Cloudflare API Token:", CF_API_TOKEN);
                   onClick={() => fileInputRef.current?.click()}
                   title="Change photo"
                   type="button"
+                  disabled={avatarUploading}
                 >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                     <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>

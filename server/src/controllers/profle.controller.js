@@ -1,6 +1,6 @@
 import ProfileModel from "../models/profile.model.js";
 import pool from "../db/pool.js";
-
+import cloudinary from "../config/cloudinary.js"; // ← add this import
 
 class ProfileController {
   static async getMyProfile(req, res, next) {
@@ -82,13 +82,24 @@ class ProfileController {
     } catch (error) { next(error); }
   }
 
-   static async uploadProfilePicture(req, res, next) {
+  static async uploadProfilePicture(req, res, next) {
     try {
-      if (!req.files || !req.files.profilePicture) {
-        return res.status(400).json({ success: false, message: "No file uploaded" });
+      if (!req.files || !req.files.avatar) {
+        return res.status(400).json({
+          success: false,
+          message: "No file provided. Send the image as form-data with the key 'avatar'.",
+        });
       }
 
-      const file = req.files.profilePicture;
+      const file = req.files.avatar;
+
+      if (!file.mimetype.startsWith("image/")) {
+        return res.status(400).json({ success: false, message: "Only image files are allowed" });
+      }
+
+      if (file.size > 5 * 1024 * 1024) {
+        return res.status(400).json({ success: false, message: "File must be under 5 MB" });
+      }
 
       const result = await cloudinary.uploader.upload(file.tempFilePath, {
         folder: "fitmitra_profiles",
@@ -97,20 +108,22 @@ class ProfileController {
         ],
       });
 
-      const imageUrl = result.secure_url;
+      const avatarUrl = result.secure_url;
 
-      const updatedProfile = await pool.query(
-        "UPDATE profiles SET profile_picture = $1 WHERE user_id = $2 RETURNING *",
-        [imageUrl, req.user.id]
+      await pool.query(
+        `INSERT INTO user_preferences (user_id, avatar_url)
+         VALUES ($1, $2)
+         ON CONFLICT (user_id)
+         DO UPDATE SET avatar_url = EXCLUDED.avatar_url, updated_at = NOW()`,
+        [req.user.id, avatarUrl]
       );
 
       return res.json({
         success: true,
-        message: "Profile picture uploaded successfully",
-        data: updatedProfile.rows[0],
+        message: "Profile photo updated",
+        data: { avatar_url: avatarUrl },
       });
     } catch (error) {
-      console.error(error);
       next(error);
     }
   }
@@ -145,7 +158,6 @@ class ProfileController {
     } catch (error) { next(error); }
   }
 
-  // Get workout plan
   static async getWorkoutPlan(req, res, next) {
     try {
       const profile = await ProfileModel.findByUserId(req.user.id);

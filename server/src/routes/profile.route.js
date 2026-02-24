@@ -5,9 +5,10 @@ import fileUpload from "express-fileupload";
 
 const router = Router();
 
-router.use(fileUpload({ useTempFiles: true}));
-// URL: /api/profile
-router.get("/upload-picture", authMiddleware, ProfileController.uploadProfilePicture);
+router.use(fileUpload({ useTempFiles: true }));
+
+// URL: /api/profile/avatar  ← avatar upload (was wrong method + wrong path)
+router.post("/avatar", authMiddleware, ProfileController.uploadProfilePicture);
 
 // URL: /api/profile/me
 router.get("/me", authMiddleware, ProfileController.getMyProfile);
