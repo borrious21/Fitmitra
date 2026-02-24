@@ -1,0 +1,72 @@
+/* Plans.module.css */
+.wrapper { min-height: 100vh; background: var(--bg, #0a0a0f); color: var(--text, #f0f0f0); font-family: 'DM Sans', 'Segoe UI', sans-serif; }
+
+.nav { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.06); position: sticky; top: 0; z-index: 100; background: rgba(10,10,15,0.85); backdrop-filter: blur(16px); }
+.navLogo { display: flex; align-items: center; gap: 0.5rem; text-decoration: none; color: inherit; }
+.navLogoIcon { width: 28px; height: 28px; color: #FF5C1A; }
+.navLogoWord { font-size: 1.1rem; font-weight: 800; letter-spacing: 0.05em; }
+.navLogoWord span { color: #FF5C1A; }
+.backBtn { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.7); padding: 0.4rem 0.9rem; border-radius: 8px; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; }
+.backBtn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
+.main { max-width: 860px; margin: 0 auto; padding: 2rem 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; }
+
+.alertSuccess, .alertError { padding: 0.85rem 1.2rem; border-radius: 10px; font-size: 0.9rem; }
+.alertSuccess { background: rgba(184,240,0,0.1); border: 1px solid rgba(184,240,0,0.3); color: #B8F000; }
+.alertError   { background: rgba(255,77,109,0.1); border: 1px solid rgba(255,77,109,0.3); color: #FF4D6D; }
+
+.section { opacity: 0; transform: translateY(20px); transition: opacity 0.5s ease, transform 0.5s ease; }
+.section.vis { opacity: 1; transform: none; }
+
+.loadWrap { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; gap: 1rem; color: rgba(255,255,255,0.5); }
+.loadRing { width: 40px; height: 40px; border: 3px solid rgba(255,92,26,0.2); border-top-color: #FF5C1A; border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.title { font-size: 1.8rem; font-weight: 800; margin: 0 0 0.25rem; }
+.sub { color: rgba(255,255,255,0.4); font-size: 0.9rem; margin: 0; text-transform: capitalize; }
+.sectionTitle { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.35); margin-bottom: 0.75rem; }
+
+.generateBtn { background: linear-gradient(135deg, #FF5C1A, #FF8A3D); border: none; color: #fff; padding: 0.65rem 1.2rem; border-radius: 10px; font-size: 0.9rem; font-weight: 700; cursor: pointer; white-space: nowrap; transition: opacity 0.2s; flex-shrink: 0; }
+.generateBtn:disabled { opacity: 0.6; cursor: default; }
+.generateBtn:hover:not(:disabled) { opacity: 0.9; }
+
+.emptyCard { text-align: center; padding: 4rem 2rem; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.07); border-radius: 24px; }
+.emptyEmoji { font-size: 3rem; display: block; margin-bottom: 1rem; }
+.emptyCard h2 { font-size: 1.4rem; margin-bottom: 0.5rem; }
+.emptyCard p { color: rgba(255,255,255,0.45); max-width: 420px; margin: 0 auto 2rem; line-height: 1.6; }
+.generateBtnLg { background: linear-gradient(135deg, #FF5C1A, #FF8A3D); border: none; color: #fff; padding: 0.9rem 2rem; border-radius: 12px; font-size: 1rem; font-weight: 700; cursor: pointer; transition: opacity 0.2s; }
+.generateBtnLg:disabled { opacity: 0.6; cursor: default; }
+
+.metaGrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; }
+@media (max-width: 540px) { .metaGrid { grid-template-columns: repeat(2, 1fr); } }
+.metaCard { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; padding: 1rem; display: flex; flex-direction: column; align-items: center; gap: 0.3rem; text-align: center; }
+.metaIcon { font-size: 1.4rem; }
+.metaVal { font-size: 0.95rem; font-weight: 700; color: #FF8A3D; }
+.metaLabel { font-size: 0.7rem; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: 0.06em; }
+
+.weekGrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.5rem; }
+@media (max-width: 640px) { .weekGrid { grid-template-columns: repeat(4, 1fr); } }
+.weekCard { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; padding: 0.75rem 0.5rem; text-align: center; display: flex; flex-direction: column; gap: 0.3rem; align-items: center; position: relative; }
+.weekCard.today { border-color: rgba(255,92,26,0.5); background: rgba(255,92,26,0.08); }
+.weekCard.restDay { opacity: 0.45; }
+.weekDayLabel { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em; color: rgba(255,255,255,0.4); }
+.weekCard.today .weekDayLabel { color: #FF5C1A; }
+.todayBadge { font-size: 0.55rem; background: rgba(255,92,26,0.2); color: #FF8A3D; border-radius: 4px; padding: 0.1rem 0.35rem; font-weight: 700; letter-spacing: 0.05em; }
+.weekGroups { display: flex; flex-direction: column; gap: 0.2rem; align-items: center; }
+.weekGroup { font-size: 0.65rem; color: rgba(255,255,255,0.55); line-height: 1.3; }
+
+.detailsGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem; }
+.detailCard { display: flex; align-items: flex-start; gap: 0.75rem; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; padding: 0.9rem 1rem; }
+.detailIcon { font-size: 1.2rem; flex-shrink: 0; margin-top: 1px; }
+.detailLabel { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.07em; color: rgba(255,255,255,0.35); margin-bottom: 0.2rem; }
+.detailVal { font-size: 0.85rem; color: rgba(255,255,255,0.8); line-height: 1.4; }
+
+.guideList { display: flex; flex-direction: column; gap: 0.5rem; }
+.guideRow { display: flex; gap: 1rem; align-items: flex-start; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 0.75rem 1rem; }
+.guideKey { font-size: 0.75rem; font-weight: 700; color: rgba(255,255,255,0.4); text-transform: capitalize; min-width: 120px; flex-shrink: 0; }
+.guideVal { font-size: 0.85rem; color: rgba(255,255,255,0.7); line-height: 1.5; }
+
+.safetyList { display: flex; flex-direction: column; gap: 0.5rem; }
+.safetyNote { display: flex; align-items: flex-start; gap: 0.75rem; background: rgba(255,200,0,0.04); border: 1px solid rgba(255,200,0,0.12); border-radius: 10px; padding: 0.75rem 1rem; font-size: 0.85rem; color: rgba(255,255,255,0.65); line-height: 1.5; }
+.safetyDot { width: 6px; height: 6px; border-radius: 50%; background: #FFD700; flex-shrink: 0; margin-top: 5px; }
