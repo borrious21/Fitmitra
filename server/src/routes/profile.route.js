@@ -1,8 +1,13 @@
 import { Router } from "express";
 import authMiddleware from "../middlewares/auth.middleware.js";
 import ProfileController from "../controllers/profle.controller.js";
+import fileUpload from "express-fileupload";
 
 const router = Router();
+
+router.use(fileUpload({ useTempFiles: true}));
+// URL: /api/profile
+router.get("/upload-picture", authMiddleware, ProfileController.uploadProfilePicture);
 
 // URL: /api/profile/me
 router.get("/me", authMiddleware, ProfileController.getMyProfile);

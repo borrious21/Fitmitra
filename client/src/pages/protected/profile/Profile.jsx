@@ -241,6 +241,9 @@ export default function Profile() {
     });
   };
 
+  console.log("Cloudflare Account ID:", CF_ACCOUNT_ID);
+console.log("Cloudflare API Token:", CF_API_TOKEN);
+
   /* ── validation ─────────────────────────────────────────── */
   const validate = () => {
     const e = {};

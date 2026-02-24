@@ -82,6 +82,39 @@ class ProfileController {
     } catch (error) { next(error); }
   }
 
+   static async uploadProfilePicture(req, res, next) {
+    try {
+      if (!req.files || !req.files.profilePicture) {
+        return res.status(400).json({ success: false, message: "No file uploaded" });
+      }
+
+      const file = req.files.profilePicture;
+
+      const result = await cloudinary.uploader.upload(file.tempFilePath, {
+        folder: "fitmitra_profiles",
+        transformation: [
+          { width: 300, height: 300, crop: "fill", gravity: "face" },
+        ],
+      });
+
+      const imageUrl = result.secure_url;
+
+      const updatedProfile = await pool.query(
+        "UPDATE profiles SET profile_picture = $1 WHERE user_id = $2 RETURNING *",
+        [imageUrl, req.user.id]
+      );
+
+      return res.json({
+        success: true,
+        message: "Profile picture uploaded successfully",
+        data: updatedProfile.rows[0],
+      });
+    } catch (error) {
+      console.error(error);
+      next(error);
+    }
+  }
+
   static async getMacroSplit(req, res, next) {
     try {
       const profile = await ProfileModel.findByUserId(req.user.id);
