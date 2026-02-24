@@ -1,7 +1,7 @@
 // src/pages/LogMeal/LogMeal.jsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { apiFetch } from "../../../services/apiClient";
+import { apiFetch } from "../../../../services/apiClient";
 import styles from "./LogMeal.module.css";
 
 const MEAL_TYPES = ["breakfast", "lunch", "dinner", "snacks"];
