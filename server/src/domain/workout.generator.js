@@ -322,22 +322,26 @@ function formatStrengthExercise(ex, goal, difficultyLevel) {
 
 /** Format a cardio exercise with duration/rounds/rest — no sets×reps */
 function formatCardioExercise(ex, goal, difficultyLevel) {
-  // For HIIT, scale rounds up for higher intensity / weight_loss
-  let rounds = ex.rounds ?? 4;
-  if (goal === 'weight_loss' && difficultyLevel >= 2) rounds = Math.min(rounds + 1, 8);
-  if (difficultyLevel === 3) rounds = Math.min(rounds + 1, 10);
+  // Use lookup-based scaling instead of additive stacking.
+  // Additive stacking caused Sprint Intervals to inflate to 9-10 rounds.
+  // Hard cap: no more than 6 rounds per exercise in a single session.
+  const BASE = ex.rounds ?? 4;
+  let rounds;
+  if (goal === 'weight_loss' && difficultyLevel === 3) rounds = Math.min(BASE + 1, 6);
+  else if (goal === 'weight_loss' && difficultyLevel === 2) rounds = Math.min(BASE, 5);
+  else if (difficultyLevel === 3)  rounds = Math.min(BASE, 5);
+  else if (difficultyLevel === 2)  rounds = Math.min(BASE, 4);
+  else                             rounds = Math.min(BASE, 3);
 
   return {
-    name:     ex.name,
-    isCardio: true,
-    type:     ex.type ?? 'hiit',
-    // Expose duration/rest as sets/reps so existing UI still renders them cleanly
-    // but also expose raw fields for a future dedicated cardio UI
-    sets:     rounds,
-    reps:     ex.duration ?? '45 sec',
+    name:         ex.name,
+    isCardio:     true,
+    type:         ex.type ?? 'hiit',
+    sets:         rounds,
+    reps:         ex.duration ?? '45 sec',
     rest_seconds: ex.type === 'steady' ? null : parseDurationToSeconds(ex.rest ?? '20 sec'),
-    duration: ex.duration,
-    rest:     ex.rest,
+    duration:     ex.duration,
+    rest:         ex.rest,
     rounds,
   };
 }

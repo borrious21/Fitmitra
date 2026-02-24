@@ -1,8 +1,4 @@
 // src/pages/Dashboard/Dashboard.jsx
-// Fixes applied:
-// 1. Rest Day — no progress ring or "Continue Workout" button; shows a recovery card instead
-// 2. Empty states — nutrition, meals, health, weekly all show helpful prompts instead of dead zeros
-// 3. Layout declutter — sections with no data collapse gracefully; reduced visual noise
 
 import { useState, useEffect, useRef, useContext } from "react";
 import { useNavigate } from "react-router-dom";
@@ -98,7 +94,6 @@ function LoadingCard() {
   );
 }
 
-/* ─── EmptyState ─────────────────────────────────────────────── */
 function EmptyState({ icon, message, actionLabel, onAction }) {
   return (
     <div className={styles.emptyState}>
@@ -111,9 +106,6 @@ function EmptyState({ icon, message, actionLabel, onAction }) {
   );
 }
 
-/* ─── RestDayCard ────────────────────────────────────────────── */
-// Shown instead of the workout card when workout.isRestDay is true
-// (or when workout.name is "Rest Day" — adjust to match your API shape)
 function RestDayCard() {
   return (
     <div className={`${styles.card} ${styles.accent}`}>
@@ -136,7 +128,6 @@ function RestDayCard() {
   );
 }
 
-/* ─── isRestDay helper ───────────────────────────────────────── */
 function checkRestDay(workout) {
   if (!workout) return false;
   if (workout.isRestDay === true) return true;
@@ -151,21 +142,19 @@ export default function Dashboard() {
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
 
-  const [activeTab,  setActiveTab]  = useState("today");
-
-  const [loading,    setLoading]    = useState(true);
-  const [error,      setError]      = useState(null);
-
-  const [avatarUrl,  setAvatarUrl]  = useState(null);
-  const [goalLabel,  setGoalLabel]  = useState("—");
-  const [weight,     setWeight]     = useState(null);
-  const [nutrition,  setNutrition]  = useState(null);
-  const [workout,    setWorkout]    = useState(null);
-  const [meals,      setMeals]      = useState([]);
-  const [health,     setHealth]     = useState(null);
-  const [weekly,     setWeekly]     = useState(null);
-  const [insights,   setInsights]   = useState([]);
-  const [streak,     setStreak]     = useState(0);
+  const [activeTab, setActiveTab] = useState("today");
+  const [loading,   setLoading]   = useState(true);
+  const [error,     setError]     = useState(null);
+  const [avatarUrl, setAvatarUrl] = useState(null);
+  const [goalLabel, setGoalLabel] = useState("—");
+  const [weight,    setWeight]    = useState(null);
+  const [nutrition, setNutrition] = useState(null);
+  const [workout,   setWorkout]   = useState(null);
+  const [meals,     setMeals]     = useState([]);
+  const [health,    setHealth]    = useState(null);
+  const [weekly,    setWeekly]    = useState(null);
+  const [insights,  setInsights]  = useState([]);
+  const [streak,    setStreak]    = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -222,21 +211,18 @@ export default function Dashboard() {
 
   const isRestDay  = checkRestDay(workout);
   const hasWorkout = !!workout && !isRestDay;
+  const donePct    = hasWorkout ? pct(workout.exercises?.filter(e => e.done).length ?? 0, workout.exercises?.length ?? 1) : 0;
 
-  const donePct   = hasWorkout ? pct(workout.exercises?.filter(e => e.done).length ?? 0, workout.exercises?.length ?? 1) : 0;
+  const hasNutrition  = !!nutrition && (nutrition.calories?.target ?? 0) > 0;
+  const calConsumed   = nutrition?.calories?.consumed ?? 0;
+  const calTarget     = nutrition?.calories?.target   ?? 0;
+  const calPct        = pct(calConsumed, calTarget);
+  const waterConsumed = nutrition?.water?.consumed ?? 0;
+  const waterTarget   = nutrition?.water?.target   ?? 0;
+  const waterPct      = hasNutrition ? pct(waterConsumed, waterTarget) : 0;
+  const waterFilled   = Math.round(waterPct / 10);
 
-  // Nutrition: only treat as "has data" if calories target exists and is > 0
-  const hasNutrition = !!nutrition && (nutrition.calories?.target ?? 0) > 0;
-  const calConsumed  = nutrition?.calories?.consumed ?? 0;
-  const calTarget    = nutrition?.calories?.target   ?? 0;
-  const calPct       = pct(calConsumed, calTarget);
-  const waterPct     = hasNutrition ? pct(nutrition.water?.consumed, nutrition.water?.target) : 0;
-  const waterFilled  = Math.round(waterPct / 10);
-
-  // Health: only show snapshot if at least one value is present
-  const hasAnyHealth = health && (health.bp || health.sleep || health.heartRate || health.recovery);
-
-  // Weekly: only show chart section if at least calories data exists
+  const hasAnyHealth  = health && (health.bp || health.sleep || health.heartRate || health.recovery);
   const hasWeeklyData = weekly && Array.isArray(weekly.calories) && weekly.calories.some(Boolean);
 
   const QUICK_ACTIONS = [
@@ -287,7 +273,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* ── Welcome ──────────────────────────────────────────── */}
+        {/* ── Welcome ── */}
         <Section>
           <div className={styles.welcomeGrid}>
             <div>
@@ -325,13 +311,12 @@ export default function Dashboard() {
           </div>
         </Section>
 
-        {/* ── Two-col: Workout + Nutrition ─────────────────────── */}
+        {/* ── Two-col: Workout + Nutrition ── */}
         <div className={styles.twoCol}>
 
-          {/* ── Workout ── */}
+          {/* Workout */}
           <Section>
             {loading ? <LoadingCard /> : isRestDay ? (
-              /* FIX 1: Rest Day gets its own card — no ring, no progress, no CTA button */
               <RestDayCard />
             ) : hasWorkout ? (
               <div className={`${styles.card} ${styles.accent}`}>
@@ -344,7 +329,6 @@ export default function Dashboard() {
                       <span className={styles.metaPill}>📊 {workout.difficulty}</span>
                     </div>
                   </div>
-                  {/* Ring only shown when there are exercises to track */}
                   {(workout.exercises?.length ?? 0) > 0 && (
                     <div className={styles.circleWrap}>
                       <svg viewBox="0 0 72 72">
@@ -380,7 +364,6 @@ export default function Dashboard() {
                 </button>
               </div>
             ) : (
-              /* FIX 2: No workout scheduled — clean empty state, no misleading ring */
               <div className={`${styles.card} ${styles.accent}`}>
                 <span className={styles.secLabel}>💪 Today's Workout</span>
                 <EmptyState
@@ -393,78 +376,121 @@ export default function Dashboard() {
             )}
           </Section>
 
-          {/* ── Nutrition ── */}
+          {/* Nutrition */}
           <Section>
             {loading ? <LoadingCard /> : hasNutrition ? (
               <div className={`${styles.card} ${styles.accent}`}>
                 <span className={styles.secLabel}>🍽️ Today's Nutrition</span>
 
-                {/* FIX 2: Only show the ring + numbers when calories have actually been consumed */}
                 {calConsumed > 0 ? (
-                  <div className={styles.calRingWrap}>
-                    <div className={styles.ringOuter}>
-                      <svg viewBox="0 0 90 90">
-                        <defs>
-                          <linearGradient id="calGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stopColor="#FF5C1A" /><stop offset="100%" stopColor="#FF8A3D" />
-                          </linearGradient>
-                        </defs>
-                        <circle cx="45" cy="45" r="38" fill="none" stroke="rgba(128,128,128,0.1)" strokeWidth="8" />
-                        <circle cx="45" cy="45" r="38" fill="none" stroke="url(#calGrad)" strokeWidth="8" strokeLinecap="round"
-                          strokeDasharray={`${2 * Math.PI * 38}`}
-                          strokeDashoffset={`${2 * Math.PI * 38 * (1 - calPct / 100)}`}
-                          style={{ transition: "stroke-dashoffset 1.2s ease", filter: "drop-shadow(0 0 10px rgba(255,92,26,0.5))" }}
-                        />
-                      </svg>
-                      <div className={styles.ringInner}>
-                        <span className={styles.ringPct}>{calPct}%</span>
-                        <span className={styles.ringKey}>of goal</span>
+                  /* ── Has real logged data: show ring + macros + water ── */
+                  <>
+                    <div className={styles.calRingWrap}>
+                      <div className={styles.ringOuter}>
+                        <svg viewBox="0 0 90 90">
+                          <defs>
+                            <linearGradient id="calGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                              <stop offset="0%" stopColor="#FF5C1A" /><stop offset="100%" stopColor="#FF8A3D" />
+                            </linearGradient>
+                          </defs>
+                          <circle cx="45" cy="45" r="38" fill="none" stroke="rgba(128,128,128,0.1)" strokeWidth="8" />
+                          <circle cx="45" cy="45" r="38" fill="none" stroke="url(#calGrad)" strokeWidth="8" strokeLinecap="round"
+                            strokeDasharray={`${2 * Math.PI * 38}`}
+                            strokeDashoffset={`${2 * Math.PI * 38 * (1 - calPct / 100)}`}
+                            style={{ transition: "stroke-dashoffset 1.2s ease", filter: "drop-shadow(0 0 10px rgba(255,92,26,0.5))" }}
+                          />
+                        </svg>
+                        <div className={styles.ringInner}>
+                          <span className={styles.ringPct}>{calPct}%</span>
+                          <span className={styles.ringKey}>of goal</span>
+                        </div>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div className={styles.calNum}>
+                          <AnimNum value={calConsumed} />
+                          <span className={styles.calDenom}> / {calTarget}</span>
+                        </div>
+                        <div className={styles.calLabel}>kcal consumed today</div>
+                        <div className={styles.calBar}>
+                          <div className={styles.calBarFill} style={{ width: `${calPct}%` }} />
+                        </div>
                       </div>
                     </div>
-                    <div style={{ flex: 1 }}>
-                      <div className={styles.calNum}>
-                        <AnimNum value={calConsumed} />
-                        <span className={styles.calDenom}> / {calTarget}</span>
-                      </div>
-                      <div className={styles.calLabel}>kcal consumed today</div>
-                      <div className={styles.calBar}><div className={styles.calBarFill} style={{ width: `${calPct}%` }} /></div>
+
+                    <div className={styles.macros}>
+                      <MacroBar label="Protein" value={nutrition.protein?.consumed ?? 0} target={nutrition.protein?.target ?? 0} fillColor="linear-gradient(90deg,#FF5C1A,#FF8A3D)" />
+                      <MacroBar label="Carbs"   value={nutrition.carbs?.consumed   ?? 0} target={nutrition.carbs?.target   ?? 0} fillColor="linear-gradient(90deg,#00C8E0,#0090FF)" />
+                      <MacroBar label="Fats"    value={nutrition.fats?.consumed    ?? 0} target={nutrition.fats?.target    ?? 0} fillColor="linear-gradient(90deg,#B8F000,#80D400)" />
                     </div>
-                  </div>
+
+                    <div className={styles.waterBox}>
+                      <div className={styles.waterHead}>
+                        <span className={styles.waterLabel}>💧 Water Intake</span>
+                        <span className={styles.waterVal}>{waterConsumed}L / {waterTarget}L</span>
+                      </div>
+                      <div className={styles.waterDots}>
+                        {Array.from({ length: 10 }).map((_, i) => (
+                          <div key={i} className={`${styles.waterDot} ${i < waterFilled ? styles.waterFilled : styles.waterEmpty}`} />
+                        ))}
+                      </div>
+                    </div>
+
+                    <div style={{ marginTop: "1rem" }}>
+                      <button className={styles.ghostBtn} onClick={() => navigate("/log-meal")}>+ Log Meal</button>
+                    </div>
+                  </>
                 ) : (
-                  /* FIX 2: Nothing logged yet — show the target as context, with a prompt */
-                  <div className={styles.nutritionEmptyWrap}>
-                    <div className={styles.nutritionTarget}>
-                      <span className={styles.nutritionTargetVal}>{calTarget}</span>
-                      <span className={styles.nutritionTargetLabel}>kcal daily target</span>
+                  /* ── Nothing logged yet ── */
+                  /* Layout: calorie goal header + macro target rows (bars at 0)  */
+                  /* + water goal + single CTA. Bars at 0% make it clear these    */
+                  /* are targets, not current intake. No orphaned numbers.         */
+                  <div className={styles.nutritionUnlogged}>
+
+                    {/* Calorie goal header */}
+                    <div className={styles.nutUnloggedHeader}>
+                      <span className={styles.nutUnloggedCal}>{calTarget} <span className={styles.nutUnloggedCalUnit}>kcal</span></span>
+                      <span className={styles.nutUnloggedCalLabel}>Today's goal · nothing logged yet</span>
                     </div>
-                    <p className={styles.emptyMsg} style={{ marginTop: "0.5rem" }}>No meals logged yet today.</p>
+
+                    {/* Macro target rows — bars at 0% clearly show "not started" */}
+                    <div className={styles.nutUnloggedMacros}>
+                      {[
+                        { label: "Protein", target: nutrition.protein?.target ?? 0, color: "#FF5C1A" },
+                        { label: "Carbs",   target: nutrition.carbs?.target   ?? 0, color: "#00C8E0" },
+                        { label: "Fats",    target: nutrition.fats?.target    ?? 0, color: "#B8F000" },
+                      ].map(m => (
+                        <div key={m.label} className={styles.nutUnloggedRow}>
+                          <div className={styles.nutUnloggedRowHead}>
+                            <span className={styles.nutUnloggedRowLabel}>{m.label}</span>
+                            <span className={styles.nutUnloggedRowTarget} style={{ color: m.color }}>
+                              0 <span className={styles.nutUnloggedRowDenom}>/ {m.target}g</span>
+                            </span>
+                          </div>
+                          <div className={styles.nutUnloggedTrack}>
+                            {/* Bar intentionally empty — shows target length visually */}
+                            <div className={styles.nutUnloggedFill} style={{ width: "0%", background: m.color }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Water goal — simple text, no dots */}
+                    <div className={styles.nutUnloggedWater}>
+                      <span>💧</span>
+                      <span>Water goal: <strong>{nutrition.water?.target ?? 0}L</strong> today</span>
+                    </div>
+
+                    <button
+                      className={styles.primaryBtn}
+                      style={{ marginTop: "1rem", width: "100%" }}
+                      onClick={() => navigate("/log-meal")}
+                    >
+                      + Log Your First Meal
+                    </button>
                   </div>
                 )}
-
-                <div className={styles.macros}>
-                  <MacroBar label="Protein" value={nutrition.protein?.consumed ?? 0} target={nutrition.protein?.target ?? 0} fillColor="linear-gradient(90deg,#FF5C1A,#FF8A3D)" />
-                  <MacroBar label="Carbs"   value={nutrition.carbs?.consumed   ?? 0} target={nutrition.carbs?.target   ?? 0} fillColor="linear-gradient(90deg,#00C8E0,#0090FF)" />
-                  <MacroBar label="Fats"    value={nutrition.fats?.consumed    ?? 0} target={nutrition.fats?.target    ?? 0} fillColor="linear-gradient(90deg,#B8F000,#80D400)" />
-                </div>
-
-                <div className={styles.waterBox}>
-                  <div className={styles.waterHead}>
-                    <span className={styles.waterLabel}>💧 Water Intake</span>
-                    <span className={styles.waterVal}>{nutrition.water?.consumed ?? 0}L / {nutrition.water?.target ?? 0}L</span>
-                  </div>
-                  <div className={styles.waterDots}>
-                    {Array.from({ length: 10 }).map((_, i) => (
-                      <div key={i} className={`${styles.waterDot} ${i < waterFilled ? styles.waterFilled : styles.waterEmpty}`} />
-                    ))}
-                  </div>
-                </div>
-
-                <div style={{ marginTop: "1rem" }}>
-                  <button className={styles.ghostBtn} onClick={() => navigate("/log-meal")}>+ Log Meal</button>
-                </div>
               </div>
             ) : (
-              /* FIX 2: No nutrition profile at all */
               <div className={`${styles.card} ${styles.accent}`}>
                 <span className={styles.secLabel}>🍽️ Today's Nutrition</span>
                 <EmptyState
@@ -478,8 +504,7 @@ export default function Dashboard() {
           </Section>
         </div>
 
-        {/* ── Meals Today — only rendered when there are meals ─── */}
-        {/* FIX 3: Collapsed entirely when empty to reduce clutter; log prompt moved inline above */}
+        {/* ── Meals Today ── */}
         <Section hidden={!loading && meals.length === 0 && !hasNutrition}>
           <span className={styles.secLabel}>Meals Today</span>
           {loading ? <LoadingCard /> : meals.length > 0 ? (
@@ -503,17 +528,17 @@ export default function Dashboard() {
           )}
         </Section>
 
-        {/* ── Health Snapshot — only when there's data or we're loading ── */}
+        {/* ── Health Snapshot ── */}
         <Section>
           <span className={styles.secLabel}>🩺 Health Snapshot</span>
           {loading ? <LoadingCard /> : hasAnyHealth ? (
             <>
               <div className={styles.healthGrid}>
                 {[
-                  { icon: "🫀", label: "Blood Pressure", value: health.bp       && health.bp       !== "—" ? health.bp                    : "Not logged", status: health.bpStatus       && health.bpStatus       !== "—" ? health.bpStatus       : null, color: "#FF5C1A" },
-                  { icon: "😴", label: "Sleep",           value: health.sleep                               ? `${health.sleep}h`           : "Not logged", status: health.sleepStatus    && health.sleepStatus    !== "—" ? health.sleepStatus    : null, color: "#00C8E0" },
-                  { icon: "💓", label: "Heart Rate",      value: health.heartRate                           ? `${health.heartRate} bpm`    : "Not logged", status: health.hrStatus       && health.hrStatus       !== "—" ? health.hrStatus       : null, color: "#FF4D6D" },
-                  { icon: "⚡", label: "Recovery",        value: health.recovery                            ? `${health.recovery}%`        : "Not logged", status: health.recoveryStatus && health.recoveryStatus !== "—" ? health.recoveryStatus : null, color: "#B8F000" },
+                  { icon: "🫀", label: "Blood Pressure", value: health.bp        && health.bp        !== "—" ? health.bp                  : "Not logged", status: health.bpStatus       && health.bpStatus       !== "—" ? health.bpStatus       : null, color: "#FF5C1A" },
+                  { icon: "😴", label: "Sleep",           value: health.sleep                                  ? `${health.sleep}h`        : "Not logged", status: health.sleepStatus    && health.sleepStatus    !== "—" ? health.sleepStatus    : null, color: "#00C8E0" },
+                  { icon: "💓", label: "Heart Rate",      value: health.heartRate                              ? `${health.heartRate} bpm` : "Not logged", status: health.hrStatus       && health.hrStatus       !== "—" ? health.hrStatus       : null, color: "#FF4D6D" },
+                  { icon: "⚡", label: "Recovery",        value: health.recovery                               ? `${health.recovery}%`    : "Not logged", status: health.recoveryStatus && health.recoveryStatus !== "—" ? health.recoveryStatus : null, color: "#B8F000" },
                 ].map(h => (
                   <div key={h.label} className={styles.healthCard}>
                     <span className={styles.healthIcon}>{h.icon}</span>
@@ -533,7 +558,6 @@ export default function Dashboard() {
               )}
             </>
           ) : (
-            /* FIX 2: No health data — single clean prompt instead of 4 "Not logged" cards */
             <EmptyState
               icon="🩺"
               message="Log your blood pressure, sleep, and heart rate to track your health."
@@ -543,8 +567,7 @@ export default function Dashboard() {
           )}
         </Section>
 
-        {/* ── AI Insights ───────────────────────────────────────── */}
-        {/* FIX 3: Hide entire section when loading is done and there are no insights */}
+        {/* ── AI Insights ── */}
         <Section hidden={!loading && insights.length === 0}>
           <div className={`${styles.card} ${styles.accent}`}>
             <div className={styles.aiHeader}>
@@ -575,18 +598,17 @@ export default function Dashboard() {
           </div>
         </Section>
 
-        {/* ── Weekly Progress ───────────────────────────────────── */}
+        {/* ── Weekly Progress ── */}
         <Section>
           <div className={`${styles.card} ${styles.accent}`}>
             <span className={styles.secLabel}>📈 Weekly Progress</span>
             {loading ? <p style={{ opacity: 0.4, marginTop: "1rem" }}>Loading...</p> : weekly ? (
               <>
-                {/* FIX 2: Only show stats that have real values */}
                 <div className={styles.weekStats}>
                   {[
-                    { label: "Consistency",       value: weekly.consistency,      sub: weekly.consistencySub,  color: "#FF5C1A", valid: !!weekly.consistency },
-                    { label: "Calorie Adherence", value: weekly.calorieAdherence, sub: "avg this week",        color: "#B8F000", valid: !!weekly.calorieAdherence && weekly.calorieAdherence !== "—" },
-                    { label: "Weight Lost",       value: weekly.weightLost,       sub: "this week",            color: "#00C8E0", valid: !!weekly.weightLost       && weekly.weightLost       !== "—" },
+                    { label: "Consistency",       value: weekly.consistency,      sub: weekly.consistencySub, color: "#FF5C1A", valid: !!weekly.consistency },
+                    { label: "Calorie Adherence", value: weekly.calorieAdherence, sub: "avg this week",       color: "#B8F000", valid: !!weekly.calorieAdherence && weekly.calorieAdherence !== "—" },
+                    { label: "Weight Lost",       value: weekly.weightLost,       sub: "this week",           color: "#00C8E0", valid: !!weekly.weightLost       && weekly.weightLost       !== "—" },
                   ].filter(s => s.valid).map(s => (
                     <div key={s.label} className={styles.weekStat}>
                       <span className={styles.weekStatVal} style={{ color: s.color, filter: `drop-shadow(0 0 10px ${s.color}66)` }}>{s.value}</span>
@@ -610,8 +632,7 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                {/* FIX 2: Only render calorie chart when there's actual data */}
-                {hasWeeklyData && (
+                {hasWeeklyData ? (
                   <div>
                     <span className={styles.secLabel}>Calories vs Target</span>
                     <div className={styles.calBars}>
@@ -630,10 +651,7 @@ export default function Dashboard() {
                       })}
                     </div>
                   </div>
-                )}
-
-                {/* FIX 2: If it's genuinely day 1, show an encouraging prompt instead of blank chart */}
-                {!hasWeeklyData && (
+                ) : (
                   <p style={{ opacity: 0.45, fontSize: "0.85rem", marginTop: "0.75rem" }}>
                     Start logging to see your weekly calorie chart here.
                   </p>
@@ -648,7 +666,7 @@ export default function Dashboard() {
           </div>
         </Section>
 
-        {/* ── Quick Actions ─────────────────────────────────────── */}
+        {/* ── Quick Actions ── */}
         <Section>
           <span className={styles.secLabel}>Quick Actions</span>
           <div className={styles.actionsGrid}>

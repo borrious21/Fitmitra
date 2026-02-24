@@ -204,7 +204,43 @@ class WorkoutService {
   static _buildWorkoutName(muscleGroups) {
     if (!muscleGroups?.length) return "Rest & Recovery";
     if (this._isRestDay(muscleGroups)) return "Rest & Recovery";
-    return muscleGroups.join(" + ");
+
+    // Map raw split labels to clean human-readable workout names.
+    // This prevents the UI showing internal labels like "Cardio (Moderate)" or "Full Body Strength".
+    const NAME_MAP = {
+      "Cardio (Moderate)":              "HIIT Cardio",
+      "Cardio (Moderate 40 min)":       "Endurance Cardio",
+      "Cardio (30 min)":                "Cardio Circuit",
+      "Cardio (Intervals 30–40 min)": "Interval Training",
+      "Moderate Cardio":                "Moderate Cardio",
+      "Moderate Cardio (30–40 min)":  "Moderate Cardio",
+      "Moderate Cardio (30 min)":       "Moderate Cardio",
+      "Low-Intensity Cardio (30 min)":  "Low-Intensity Cardio",
+      "Full Body Strength":             "Full Body Strength",
+      "Full Body (Light)":              "Full Body (Light)",
+      "Full Body":                      "Full Body",
+      "Upper Body":                     "Upper Body",
+      "Upper Body (Light)":             "Upper Body (Light)",
+      "Upper Body (Accessory)":         "Upper Body Accessory",
+      "Lower Body":                     "Lower Body",
+      "Lower Body Strength":            "Lower Body Strength",
+      "Legs":                           "Leg Day",
+      "Legs (Light)":                   "Legs (Light)",
+      "Legs (Light Strength)":          "Legs (Light)",
+      "Legs (Strength + Short Cardio)": "Legs + Cardio",
+      "Chest":                          "Chest Day",
+      "Back":                           "Back Day",
+      "Shoulders":                      "Shoulder Day",
+      "Biceps":                         "Biceps",
+      "Triceps":                        "Triceps",
+      "Core":                           "Core Work",
+    };
+
+    // Map each group; fall back to the raw label if not in the map
+    const named = muscleGroups.map(g => NAME_MAP[g.trim()] ?? g.trim());
+    // Deduplicate consecutive identical names (e.g. "Leg Day + Leg Day")
+    const deduped = named.filter((n, i) => i === 0 || n !== named[i - 1]);
+    return deduped.join(" + ");
   }
 
   static _mapIntensityLabel(intensity) {

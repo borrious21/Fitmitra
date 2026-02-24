@@ -6,13 +6,7 @@
   padding: 0;
 }
 
-/* ─────────────────────────────────────────────────────────────
-   .wrapper reads from global [data-theme] CSS variables set in
-   Landing.module.css (or your global stylesheet). Brand tokens
-   that never change are still defined locally here.
-───────────────────────────────────────────────────────────── */
 .wrapper {
-  /* ── Brand tokens (same in both themes) ── */
   --orange:        #FF5C1A;
   --orange-lt:     #FF8A3D;
   --orange-dk:     #D44814;
@@ -35,10 +29,6 @@
   --r-xl:   1.75rem;
   --r-full: 9999px;
 
-  /* ── Theme-aware tokens — inherited from global [data-theme] ──
-     Fallback values are the dark-mode defaults so the dashboard
-     works even if Landing.module.css isn't loaded.
-  ── */
   --d-bg:           var(--bg,         #0A0C0F);
   --d-bg-2:         var(--bg-2,       #0F1217);
   --d-bg-3:         var(--bg-3,       #141820);
@@ -80,7 +70,7 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* ─── NAV ────────────────────────────────────────────────────── */
+/* ─── NAV ─────────────────────────────────────────────────────── */
 .nav {
   position: sticky;
   top: 0;
@@ -147,14 +137,12 @@
   cursor: pointer;
   transition: all 0.2s;
 }
-
 .navTab.active {
   color: #fff;
   background: var(--grad-orange);
   box-shadow: 0 4px 14px rgba(255, 92, 26, 0.35);
 }
 
-/* Right side of nav: toggle + avatar */
 .navRight {
   display: flex;
   align-items: center;
@@ -162,7 +150,6 @@
   flex-shrink: 0;
 }
 
-/* Avatar link wrapper */
 .navAvatarLink {
   display: flex;
   align-items: center;
@@ -176,7 +163,6 @@
   box-shadow: 0 0 0 2px var(--orange);
 }
 
-/* Initials fallback */
 .navAvatar {
   width: 2.25rem;
   height: 2.25rem;
@@ -192,7 +178,6 @@
   flex-shrink: 0;
 }
 
-/* Real photo from profile */
 .navAvatarImg {
   width: 2.25rem;
   height: 2.25rem;
@@ -203,7 +188,7 @@
   display: block;
 }
 
-/* ─── MAIN LAYOUT ────────────────────────────────────────────── */
+/* ─── MAIN LAYOUT ─────────────────────────────────────────────── */
 .main {
   max-width: 1160px;
   margin: 0 auto;
@@ -213,18 +198,19 @@
   gap: 1.5rem;
 }
 
-/* ─── SECTION REVEAL ─────────────────────────────────────────── */
+/* ─── SECTION REVEAL ──────────────────────────────────────────── */
 .section {
   opacity: 0;
   transform: translateY(20px);
   transition: opacity 0.6s ease, transform 0.6s ease;
+  min-width: 0; /* FIX: prevents grid children from overflowing */
 }
 .section.visible {
   opacity: 1;
   transform: translateY(0);
 }
 
-/* ─── CARD ───────────────────────────────────────────────────── */
+/* ─── CARD ────────────────────────────────────────────────────── */
 .card {
   background: var(--d-card);
   border-radius: var(--r-xl);
@@ -234,8 +220,9 @@
   box-shadow: var(--d-card-shadow);
   padding: 1.5rem;
   transition: background 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
+  /* FIX: removed any implicit stretching; cards size to their content */
+  width: 100%;
 }
-
 .card.accent::before {
   content: '';
   position: absolute;
@@ -244,7 +231,7 @@
   background: var(--grad-orange);
 }
 
-/* ─── WELCOME ────────────────────────────────────────────────── */
+/* ─── WELCOME ─────────────────────────────────────────────────── */
 .welcomeGrid {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -272,13 +259,11 @@
   align-items: center;
   gap: 0.4rem;
 }
-
 .badgeLime {
   color: var(--lime);
   background: rgba(184, 240, 0, 0.08);
   border: 1px solid rgba(184, 240, 0, 0.25);
 }
-
 .badgeOrange {
   color: var(--orange);
   background: rgba(255, 92, 26, 0.08);
@@ -323,13 +308,12 @@
   transition: color 0.35s;
 }
 
-/* ─── WEIGHT CHIP ────────────────────────────────────────────── */
+/* ─── WEIGHT CHIP ─────────────────────────────────────────────── */
 .weightChip {
   padding: 1rem 1.25rem;
   min-width: 130px;
   text-align: center;
 }
-
 .weightLabel {
   font-size: 0.55rem;
   font-weight: 700;
@@ -340,7 +324,6 @@
   display: block;
   transition: color 0.35s;
 }
-
 .weightVal {
   font-family: var(--font-display);
   font-size: 2rem;
@@ -349,7 +332,6 @@
   line-height: 1;
 }
 .weightVal span { font-size: 1rem; }
-
 .weightChange {
   font-size: 0.7rem;
   font-weight: 700;
@@ -358,18 +340,25 @@
   display: block;
 }
 
-/* ─── TWO COLUMN ─────────────────────────────────────────────── */
+/* ─── TWO COLUMN ──────────────────────────────────────────────── */
 .twoCol {
   display: grid;
   grid-template-columns: 1fr;
   gap: 1.5rem;
+  align-items: start; /* FIX: each column sizes to its own content, no stretching */
 }
-
 @media (min-width: 768px) {
-  .twoCol { grid-template-columns: 1fr 1fr; }
+  .twoCol {
+    grid-template-columns: 1fr 1fr;
+  }
+  /* FIX: prevent grid children (Section wrappers) from overflowing */
+  .twoCol > * {
+    min-width: 0;
+    overflow: hidden;
+  }
 }
 
-/* ─── WORKOUT ────────────────────────────────────────────────── */
+/* ─── WORKOUT CARD ────────────────────────────────────────────── */
 .workoutHeader {
   display: flex;
   justify-content: space-between;
@@ -378,7 +367,6 @@
   flex-wrap: wrap;
   gap: 0.75rem;
 }
-
 .workoutTitle {
   font-family: var(--font-display);
   font-size: 1.5rem;
@@ -389,13 +377,11 @@
   color: var(--d-t1);
   transition: color 0.35s;
 }
-
 .workoutMeta {
   display: flex;
   gap: 0.625rem;
   flex-wrap: wrap;
 }
-
 .metaPill {
   font-size: 0.65rem;
   font-weight: 600;
@@ -412,13 +398,11 @@
   height: 72px;
   flex-shrink: 0;
 }
-
 .circleWrap svg {
   position: absolute;
   inset: 0;
   transform: rotate(-90deg);
 }
-
 .circleInner {
   position: absolute;
   inset: 0;
@@ -427,7 +411,6 @@
   align-items: center;
   justify-content: center;
 }
-
 .circleVal {
   font-family: var(--font-display);
   font-size: 1.25rem;
@@ -435,7 +418,6 @@
   color: var(--orange);
   line-height: 1;
 }
-
 .circleKey {
   font-size: 0.45rem;
   font-weight: 700;
@@ -452,27 +434,22 @@
   gap: 0.5rem;
   margin-bottom: 1.25rem;
 }
-
 .exerciseRow {
   display: flex;
   align-items: center;
   gap: 0.875rem;
   padding: 0.75rem;
   border-radius: 0.75rem;
-  cursor: pointer;
   transition: all 0.2s;
 }
-
 .exDone {
   background: rgba(184, 240, 0, 0.05);
   border: 1px solid rgba(184, 240, 0, 0.18);
 }
-
 .exPending {
   background: var(--d-border);
   border: 1px solid var(--d-border);
 }
-
 .exerciseBullet {
   width: 1.625rem;
   height: 1.625rem;
@@ -483,19 +460,16 @@
   justify-content: center;
   font-size: 0.6rem;
 }
-
 .bulletDone {
   background: rgba(184, 240, 0, 0.12);
   border: 2px solid var(--lime);
   color: var(--lime);
 }
-
 .bulletPending {
   background: var(--d-border);
   border: 2px solid var(--d-border-hi);
   color: var(--d-t3);
 }
-
 .exerciseName {
   font-size: 0.8125rem;
   font-weight: 600;
@@ -506,7 +480,6 @@
   color: var(--d-t3) !important;
   text-decoration: line-through;
 }
-
 .exerciseReps {
   font-size: 0.625rem;
   color: var(--d-t3);
@@ -514,12 +487,7 @@
   transition: color 0.35s;
 }
 
-.chevron {
-  font-size: 0.55rem;
-  color: var(--d-t3);
-  transition: color 0.35s;
-}
-
+/* ─── BUTTONS ─────────────────────────────────────────────────── */
 .primaryBtn {
   width: 100%;
   padding: 0.875rem;
@@ -561,177 +529,7 @@
   color: var(--orange);
 }
 
-/* ─── NUTRITION ──────────────────────────────────────────────── */
-.calRingWrap {
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-  margin-bottom: 1.25rem;
-}
-
-.ringOuter {
-  position: relative;
-  width: 90px;
-  height: 90px;
-  flex-shrink: 0;
-}
-
-.ringOuter svg {
-  position: absolute;
-  inset: 0;
-  transform: rotate(-90deg);
-}
-
-.ringInner {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-
-.ringPct {
-  font-family: var(--font-display);
-  font-size: 1.375rem;
-  font-weight: 900;
-  color: var(--orange);
-  line-height: 1;
-}
-
-.ringKey {
-  font-size: 0.4rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--d-t3);
-  transition: color 0.35s;
-}
-
-.calNum {
-  font-family: var(--font-display);
-  font-size: 2rem;
-  font-weight: 900;
-  color: var(--orange);
-  line-height: 1;
-}
-
-.calDenom {
-  font-size: 1rem;
-  color: var(--d-t3);
-  transition: color 0.35s;
-}
-
-.calLabel {
-  font-size: 0.7rem;
-  color: var(--d-t2);
-  margin-top: 0.25rem;
-  transition: color 0.35s;
-}
-
-.calBar {
-  margin-top: 0.625rem;
-  height: 6px;
-  border-radius: 3px;
-  background: var(--d-border);
-  overflow: hidden;
-  transition: background 0.35s;
-}
-
-.calBarFill {
-  height: 100%;
-  border-radius: 3px;
-  background: var(--grad-orange);
-  transition: width 1.2s ease;
-}
-
-/* ─── MACROS ─────────────────────────────────────────────────── */
-.macros {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  margin-bottom: 1.25rem;
-}
-
-.macroRow {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
-
-.macroHead {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--d-t2);
-  transition: color 0.35s;
-}
-
-.macroDenom { color: var(--d-t3); transition: color 0.35s; }
-
-.macroTrack {
-  height: 6px;
-  border-radius: 3px;
-  background: var(--d-border);
-  overflow: hidden;
-  transition: background 0.35s;
-}
-
-.macroFill {
-  height: 100%;
-  border-radius: 3px;
-  transition: width 1s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-/* ─── WATER ──────────────────────────────────────────────────── */
-.waterBox {
-  padding: 0.875rem;
-  border-radius: 0.75rem;
-  background: rgba(0, 200, 224, 0.05);
-  border: 1px solid rgba(0, 200, 224, 0.15);
-  transition: background 0.35s;
-}
-
-.waterHead {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 0.5rem;
-}
-
-.waterLabel {
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--d-t3);
-  transition: color 0.35s;
-}
-
-.waterVal {
-  font-size: 0.7rem;
-  font-weight: 700;
-  color: var(--cyan);
-}
-
-.waterDots {
-  display: flex;
-  gap: 0.3rem;
-}
-
-.waterDot {
-  flex: 1;
-  height: 8px;
-  border-radius: 2px;
-  transition: background 0.3s;
-}
-
-.waterFilled { background: var(--cyan); }
-.waterEmpty  { background: var(--d-border); }
-
-/* ─── SEC LABEL ──────────────────────────────────────────────── */
+/* ─── SEC LABEL ───────────────────────────────────────────────── */
 .secLabel {
   font-size: 0.55rem;
   font-weight: 700;
@@ -743,10 +541,334 @@
   transition: color 0.35s;
 }
 
-/* ─── MEALS ──────────────────────────────────────────────────── */
+/* ─── NUTRITION — logged state ────────────────────────────────── */
+.calRingWrap {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  margin-bottom: 1.25rem;
+  /* FIX: prevent ring from overflowing narrow columns */
+  flex-wrap: wrap;
+}
+.ringOuter {
+  position: relative;
+  width: 90px;
+  height: 90px;
+  flex-shrink: 0;
+}
+.ringOuter svg {
+  position: absolute;
+  inset: 0;
+  transform: rotate(-90deg);
+}
+.ringInner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.ringPct {
+  font-family: var(--font-display);
+  font-size: 1.375rem;
+  font-weight: 900;
+  color: var(--orange);
+  line-height: 1;
+}
+.ringKey {
+  font-size: 0.4rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--d-t3);
+  transition: color 0.35s;
+}
+.calNum {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 900;
+  color: var(--orange);
+  line-height: 1;
+  /* FIX: large number shouldn't push card wider */
+  word-break: break-all;
+}
+.calDenom {
+  font-size: 1rem;
+  color: var(--d-t3);
+  transition: color 0.35s;
+}
+.calLabel {
+  font-size: 0.7rem;
+  color: var(--d-t2);
+  margin-top: 0.25rem;
+  transition: color 0.35s;
+}
+.calBar {
+  margin-top: 0.625rem;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--d-border);
+  overflow: hidden;
+  transition: background 0.35s;
+}
+.calBarFill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--grad-orange);
+  transition: width 1.2s ease;
+}
+
+/* ─── MACROS — logged state ───────────────────────────────────── */
+.macros {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+.macroRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.macroHead {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--d-t2);
+  transition: color 0.35s;
+  /* FIX: prevent text overflow on narrow columns */
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.macroDenom { color: var(--d-t3); transition: color 0.35s; }
+.macroTrack {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--d-border);
+  overflow: hidden;
+  transition: background 0.35s;
+}
+.macroFill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 1s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ─── WATER — logged state ────────────────────────────────────── */
+.waterBox {
+  padding: 0.875rem;
+  border-radius: 0.75rem;
+  background: rgba(0, 200, 224, 0.05);
+  border: 1px solid rgba(0, 200, 224, 0.15);
+  transition: background 0.35s;
+}
+.waterHead {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+  /* FIX: wrap if narrow */
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+.waterLabel {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--d-t3);
+  transition: color 0.35s;
+}
+.waterVal {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--cyan);
+}
+.waterDots {
+  display: flex;
+  gap: 0.3rem;
+  /* FIX: dots must not overflow card width */
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+.waterDot {
+  flex: 1;
+  height: 8px;
+  border-radius: 2px;
+  transition: background 0.3s;
+  min-width: 0; /* FIX: allow shrinking below content size */
+}
+.waterFilled { background: var(--cyan); }
+.waterEmpty  { background: var(--d-border); }
+
+/* ─── NUTRITION — unlogged state ─────────────────────────────── */
+.nutritionUnlogged {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding-top: 0.5rem;
+}
+
+.nutUnloggedHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin-bottom: 1.1rem;
+}
+.nutUnloggedCal {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 900;
+  color: var(--d-t1);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.nutUnloggedCalUnit {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--d-t2);
+}
+.nutUnloggedCalLabel {
+  font-size: 0.72rem;
+  color: var(--d-t3);
+  letter-spacing: 0.01em;
+  margin-top: 0.2rem;
+}
+
+.nutUnloggedMacros {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-bottom: 0.85rem;
+}
+.nutUnloggedRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.nutUnloggedRowHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  /* FIX: wrap on very narrow columns */
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.nutUnloggedRowLabel {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--d-t2);
+}
+.nutUnloggedRowTarget {
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.nutUnloggedRowDenom {
+  font-weight: 400;
+  color: var(--d-t3);
+  font-size: 0.65rem;
+}
+.nutUnloggedTrack {
+  height: 5px;
+  border-radius: 100px;
+  background: var(--d-border);
+  overflow: hidden;
+}
+.nutUnloggedFill {
+  height: 100%;
+  border-radius: 100px;
+  transition: width 0.8s ease;
+}
+
+.nutUnloggedWater {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  color: var(--d-t3);
+  padding: 0.55rem 0;
+  border-top: 1px solid var(--d-border);
+  margin-top: 0.15rem;
+}
+.nutUnloggedWater strong {
+  color: var(--d-t1);
+  font-weight: 600;
+}
+
+/* ─── EMPTY STATE ─────────────────────────────────────────────── */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: 2rem 1rem;
+  text-align: center;
+}
+.emptyIcon {
+  font-size: 2rem;
+  opacity: 0.6;
+}
+.emptyMsg {
+  font-size: 0.875rem;
+  color: var(--d-t2);
+  opacity: 0.7;
+  max-width: 280px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ─── REST DAY CARD ───────────────────────────────────────────── */
+.restDayWrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+.restDayEmoji {
+  font-size: 2.5rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.restDayTitle {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--d-t1);
+  margin-bottom: 0.3rem;
+}
+.restDaySub {
+  font-size: 0.82rem;
+  color: var(--d-t2);
+  line-height: 1.55;
+}
+.restTips {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
+.restTip {
+  font-size: 0.8rem;
+  color: var(--d-t2);
+  padding: 0.45rem 0.75rem;
+  border-radius: 0.5rem;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--d-border);
+}
+
+/* ─── MEALS ───────────────────────────────────────────────────── */
 .mealsGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  /* FIX: minmax floor raised so cells don't get too narrow */
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 1px;
   background: var(--d-border);
   border-radius: var(--r-lg);
@@ -754,15 +876,15 @@
   border: 1px solid var(--d-border);
   transition: background 0.35s;
 }
-
 .mealCell {
   background: var(--d-card);
   padding: 1.125rem;
   transition: background 0.2s;
-  cursor: default;
+  /* FIX: don't let long meal names blow the cell */
+  overflow: hidden;
+  word-break: break-word;
 }
 .mealCell:hover { background: var(--d-card-2); }
-
 .mealTime {
   font-size: 0.55rem;
   font-weight: 700;
@@ -773,9 +895,7 @@
   display: block;
   transition: color 0.35s;
 }
-
 .mealEmoji { font-size: 1.75rem; margin-bottom: 0.375rem; display: block; }
-
 .mealName {
   font-size: 0.8rem;
   font-weight: 600;
@@ -784,20 +904,22 @@
   color: var(--d-t1);
   transition: color 0.35s;
 }
-
 .mealMacro {
   font-size: 0.65rem;
   color: var(--d-t3);
   transition: color 0.35s;
+  /* FIX: wrap macro string instead of overflowing */
+  white-space: normal;
+  word-break: break-word;
 }
 
-/* ─── HEALTH SNAPSHOT ────────────────────────────────────────── */
+/* ─── HEALTH SNAPSHOT ─────────────────────────────────────────── */
 .healthGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  /* FIX: minmax floor raised; auto-fill handles count changes cleanly */
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 0.75rem;
 }
-
 .healthCard {
   background: var(--d-card);
   border-radius: var(--r-lg);
@@ -805,10 +927,11 @@
   padding: 1.125rem;
   box-shadow: var(--d-card-shadow);
   transition: background 0.35s, border-color 0.35s;
+  /* FIX: prevent overflow from long values */
+  overflow: hidden;
+  word-break: break-word;
 }
-
 .healthIcon  { font-size: 1.5rem; margin-bottom: 0.5rem; display: block; }
-
 .healthLabel {
   font-size: 0.55rem;
   font-weight: 700;
@@ -819,7 +942,6 @@
   display: block;
   transition: color 0.35s;
 }
-
 .healthVal {
   font-family: var(--font-display);
   font-size: 1.5rem;
@@ -827,8 +949,11 @@
   line-height: 1;
   margin-bottom: 0.25rem;
   display: block;
+  /* FIX: values like "120/80" shouldn't break layout */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-
 .healthStatus {
   font-size: 0.6rem;
   font-weight: 700;
@@ -836,8 +961,9 @@
   text-transform: uppercase;
   padding: 0.15rem 0.5rem;
   border-radius: var(--r-full);
+  /* FIX: inline-block so it doesn't stretch full width */
+  display: inline-block;
 }
-
 .alertBanner {
   margin-top: 0.75rem;
   padding: 0.875rem 1rem;
@@ -851,10 +977,9 @@
   gap: 0.625rem;
   transition: color 0.35s;
 }
-
 .alertIcon { font-size: 1.125rem; flex-shrink: 0; }
 
-/* ─── AI COACH ───────────────────────────────────────────────── */
+/* ─── AI INSIGHTS ─────────────────────────────────────────────── */
 .aiHeader {
   display: flex;
   align-items: center;
@@ -862,7 +987,6 @@
   margin-bottom: 1.25rem;
   flex-wrap: wrap;
 }
-
 .aiIconWrap {
   width: 2.25rem;
   height: 2.25rem;
@@ -875,7 +999,6 @@
   font-size: 1rem;
   flex-shrink: 0;
 }
-
 .aiTitle {
   font-family: var(--font-display);
   font-size: 1.125rem;
@@ -886,14 +1009,12 @@
   color: var(--d-t1);
   transition: color 0.35s;
 }
-
 .aiSub {
   font-size: 0.65rem;
   color: var(--d-t3);
   display: block;
   transition: color 0.35s;
 }
-
 .aiBadge {
   margin-left: auto;
   font-family: var(--font-display);
@@ -906,56 +1027,46 @@
   border: 1px solid rgba(0, 200, 224, 0.25);
   padding: 0.2rem 0.625rem;
   border-radius: var(--r-full);
+  /* FIX: don't let it push aiHeader wider than container */
+  flex-shrink: 0;
+  white-space: nowrap;
 }
-
 .insightList {
   display: flex;
   flex-direction: column;
   gap: 0.625rem;
 }
-
 .insightRow {
   padding: 0.875rem 1rem;
   border-radius: 0.875rem;
   cursor: pointer;
   transition: all 0.2s;
 }
-
 .insightInner {
   display: flex;
   align-items: flex-start;
   gap: 0.75rem;
 }
-
 .insightIcon { font-size: 1.125rem; flex-shrink: 0; }
-
 .insightText {
   font-size: 0.8125rem;
   color: var(--d-t2);
   line-height: 1.6;
   flex: 1;
   transition: color 0.35s;
+  /* FIX: long text wraps instead of overflowing */
+  word-break: break-word;
+  min-width: 0;
 }
 
-.whyBtn {
-  font-size: 0.6rem;
-  font-weight: 700;
-  border: none;
-  padding: 0.25rem 0.625rem;
-  border-radius: var(--r-full);
-  cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-/* ─── WEEKLY PROGRESS ────────────────────────────────────────── */
+/* ─── WEEKLY PROGRESS ─────────────────────────────────────────── */
 .weekStats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  /* FIX: auto-fit handles 1–3 valid stats without orphaned columns */
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
   gap: 0.75rem;
   margin-bottom: 1.5rem;
 }
-
 .weekStat {
   text-align: center;
   padding: 1rem 0.5rem;
@@ -963,16 +1074,21 @@
   background: var(--d-border);
   border: 1px solid var(--d-border);
   transition: background 0.35s;
+  /* FIX: prevent large numbers from pushing cell wider */
+  overflow: hidden;
+  min-width: 0;
 }
-
 .weekStatVal {
   font-family: var(--font-display);
   font-size: 1.75rem;
   font-weight: 900;
   line-height: 1;
   display: block;
+  /* FIX: allow shrink if value is wide */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-
 .weekStatLabel {
   font-size: 0.55rem;
   font-weight: 700;
@@ -983,7 +1099,6 @@
   display: block;
   transition: color 0.35s;
 }
-
 .weekStatSub {
   font-size: 0.6rem;
   color: var(--d-t3);
@@ -992,22 +1107,21 @@
   opacity: 0.6;
   transition: color 0.35s;
 }
-
 .dayTracker { margin-bottom: 1.25rem; }
-
 .dayRow {
   display: flex;
   gap: 0.5rem;
+  /* FIX: prevent row from overflowing on small screens */
+  overflow: hidden;
 }
-
 .dayCol {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.35rem;
+  min-width: 0; /* FIX: allow flex children to shrink properly */
 }
-
 .dayBox {
   width: 100%;
   aspect-ratio: 1;
@@ -1019,19 +1133,16 @@
   color: #fff;
   transition: all 0.2s;
 }
-
 .dayDone {
   background: var(--grad-orange);
   border: 1px solid rgba(255, 92, 26, 0.4);
   box-shadow: 0 4px 14px rgba(255, 92, 26, 0.3);
 }
-
 .dayMiss {
   background: var(--d-border);
   border: 1px solid var(--d-border);
   color: transparent;
 }
-
 .dayName {
   font-size: 0.5rem;
   font-weight: 700;
@@ -1039,16 +1150,22 @@
   text-transform: uppercase;
   color: var(--d-t3);
   transition: color 0.35s;
+  /* FIX: label truncates instead of overflowing cell */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
-/* ─── WEEKLY CAL BARS ────────────────────────────────────────── */
+/* ─── WEEKLY CAL BARS ─────────────────────────────────────────── */
 .calBars {
   display: flex;
   align-items: flex-end;
   gap: 0.375rem;
   height: 72px;
+  /* FIX: bars must not spill past the card edge */
+  overflow: hidden;
 }
-
 .calBarCol {
   flex: 1;
   display: flex;
@@ -1056,8 +1173,8 @@
   justify-content: flex-end;
   height: 100%;
   gap: 0.25rem;
+  min-width: 0; /* FIX: allow bar columns to compress */
 }
-
 .calBarTrack {
   flex: 1;
   display: flex;
@@ -1067,18 +1184,15 @@
   overflow: hidden;
   transition: background 0.35s;
 }
-
 .calBarFillWk {
   width: 100%;
   border-radius: 3px 3px 0 0;
   transition: height 1s ease;
   transform-origin: bottom;
 }
-
 .wkHot    { background: var(--grad-orange); }
 .wkNormal { background: rgba(255, 92, 26, 0.3); }
 .wkEmpty  { height: 0 !important; }
-
 .calBarDay {
   font-size: 0.5rem;
   font-weight: 700;
@@ -1087,19 +1201,21 @@
   color: var(--d-t3);
   text-align: center;
   transition: color 0.35s;
+  /* FIX: label must not overflow its flex column */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* ─── QUICK ACTIONS ──────────────────────────────────────────── */
+/* ─── QUICK ACTIONS ───────────────────────────────────────────── */
 .actionsGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 0.625rem;
 }
-
 @media (min-width: 480px) {
   .actionsGrid { grid-template-columns: repeat(6, 1fr); }
 }
-
 .actionBtn {
   padding: 1rem 0.5rem;
   border-radius: 0.875rem;
@@ -1111,14 +1227,15 @@
   align-items: center;
   gap: 0.5rem;
   transition: all 0.2s;
+  /* FIX: label text must not push button wider */
+  overflow: hidden;
+  min-width: 0;
 }
 .actionBtn:hover {
   background: rgba(255, 92, 26, 0.06);
   border-color: rgba(255, 92, 26, 0.3);
 }
-
 .actionIcon { font-size: 1.375rem; }
-
 .actionLabel {
   font-family: var(--font-display);
   font-size: 0.65rem;
@@ -1127,105 +1244,13 @@
   text-transform: uppercase;
   color: var(--d-t2);
   transition: color 0.35s;
+  /* FIX: wrap label if needed rather than overflow */
+  text-align: center;
+  word-break: break-word;
+  line-height: 1.2;
 }
 
-/* ─── SCROLLBAR ──────────────────────────────────────────────── */
+/* ─── SCROLLBAR ───────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: var(--d-bg); }
 ::-webkit-scrollbar-thumb { background: rgba(255, 92, 26, 0.3); border-radius: 2px; }
-
-/* ─────────────────────────────────────────────────────────────
-   ADD THESE RULES TO Dashboard.module.css
-   They support the new EmptyState, RestDayCard, and
-   nutritionEmptyWrap components added in the Dashboard fix.
-───────────────────────────────────────────────────────────── */
-
-/* ── EmptyState ─────────────────────────────────────────────── */
-.emptyState {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.6rem;
-  padding: 2rem 1rem;
-  text-align: center;
-}
-
-.emptyIcon {
-  font-size: 2rem;
-  opacity: 0.6;
-}
-
-.emptyMsg {
-  font-size: 0.875rem;
-  opacity: 0.55;
-  max-width: 280px;
-  line-height: 1.5;
-  margin: 0;
-}
-
-/* ── Rest Day Card ──────────────────────────────────────────── */
-.restDayWrap {
-  display: flex;
-  align-items: flex-start;
-  gap: 1rem;
-  margin-top: 1rem;
-}
-
-.restDayEmoji {
-  font-size: 2.5rem;
-  line-height: 1;
-  flex-shrink: 0;
-}
-
-.restDayTitle {
-  font-size: 1.25rem;
-  font-weight: 700;
-  margin-bottom: 0.3rem;
-}
-
-.restDaySub {
-  font-size: 0.85rem;
-  opacity: 0.6;
-  line-height: 1.5;
-}
-
-.restTips {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  margin-top: 1.25rem;
-}
-
-.restTip {
-  font-size: 0.83rem;
-  opacity: 0.7;
-  padding: 0.45rem 0.75rem;
-  border-radius: 8px;
-  background: rgba(128, 128, 128, 0.07);
-  border: 1px solid rgba(128, 128, 128, 0.12);
-}
-
-/* ── Nutrition empty (target shown, no data yet) ─────────────── */
-.nutritionEmptyWrap {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 1.25rem 0 0.5rem;
-  gap: 0.25rem;
-  text-align: center;
-}
-
-.nutritionTargetVal {
-  font-size: 2.25rem;
-  font-weight: 800;
-  letter-spacing: -1px;
-  color: var(--accent, #FF5C1A);
-}
-
-.nutritionTargetLabel {
-  font-size: 0.8rem;
-  opacity: 0.5;
-  display: block;
-  margin-top: 0.1rem;
-}

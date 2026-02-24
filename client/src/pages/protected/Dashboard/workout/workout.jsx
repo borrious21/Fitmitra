@@ -214,14 +214,18 @@ export default function Workout() {
                 {exercises.map((ex, i) => {
                   const isDone = !!done[ex.name];
 
-                  // FIX: Cardio exercises use rounds + duration, not sets × reps
+                  // Cardio: show "5 rounds · 30 sec on / 30 sec rest" or "30 min steady"
+                  // Strength: show "3 sets × 10 reps · 60s rest"
                   let metaLine;
                   if (ex.isCardio) {
+                    const rounds = ex.rounds ?? ex.sets;
                     if (ex.type === 'steady') {
-                      metaLine = `${ex.duration} steady state`;
+                      metaLine = `${ex.duration ?? ex.reps} · steady state`;
                     } else {
-                      metaLine = `${ex.rounds ?? ex.sets} rounds × ${ex.duration ?? ex.reps}`;
-                      if (ex.rest) metaLine += ` · ${ex.rest} rest`;
+                      const workDur = ex.duration ?? ex.reps;
+                      const restDur = ex.rest ?? (ex.rest_seconds ? `${ex.rest_seconds}s` : null);
+                      metaLine = `${rounds} rounds · ${workDur} on`;
+                      if (restDur) metaLine += ` / ${restDur} rest`;
                     }
                   } else {
                     metaLine = `${ex.sets} sets × ${ex.reps} reps`;
