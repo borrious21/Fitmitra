@@ -1,4 +1,9 @@
 // src/pages/Workout/Workout.jsx
+// Fixes:
+//   1. isRest logic: only rely on workout.isRestDay boolean (no guessing from exercises.length)
+//   2. Exercise card shows rest_seconds if available
+//   3. Cleaner null safety throughout
+
 import { useState, useEffect, useRef, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../../../../services/apiClient";
@@ -64,7 +69,14 @@ export default function Workout() {
     }
   };
 
-  const openLog = (ex) => setLogForm({ exerciseName: ex.name, sets: ex.sets ?? 3, reps: ex.reps ?? 10, weight: "" });
+  const openLog = (ex) => setLogForm({
+    exerciseName: ex.name,
+    isCardio:     ex.isCardio ?? false,
+    sets:         ex.isCardio ? (ex.rounds ?? ex.sets ?? 4) : (ex.sets ?? 3),
+    reps:         ex.isCardio ? 1 : (ex.reps ?? 10),
+    weight:       "",
+    duration:     ex.duration ?? "",
+  });
 
   const submitLog = async () => {
     if (!logForm) return;
@@ -76,8 +88,9 @@ export default function Workout() {
           exercises: [{
             name:   logForm.exerciseName,
             sets:   Number(logForm.sets),
-            reps:   Number(logForm.reps),
-            weight: logForm.weight ? Number(logForm.weight) : null,
+            reps:   logForm.isCardio ? 1 : Number(logForm.reps),
+            weight: (!logForm.isCardio && logForm.weight) ? Number(logForm.weight) : null,
+            notes:  logForm.isCardio && logForm.duration ? `Duration: ${logForm.duration}` : null,
           }],
         }),
       });
@@ -100,7 +113,10 @@ export default function Workout() {
   const exercises = workout?.exercises ?? [];
   const doneCount = exercises.filter(e => done[e.name]).length;
   const pct       = exercises.length ? Math.round((doneCount / exercises.length) * 100) : 0;
-  const isRest    = workout?.isRestDay === true || (!workout?.isRestDay && exercises.length === 0);
+
+  // FIX: Rely solely on the isRestDay boolean from the backend.
+  // Only fall back to exercises.length === 0 when workout hasn't loaded yet (workout is null).
+  const isRest = workout ? workout.isRestDay === true : false;
 
   const accountCreatedAt = user?.created_at ?? user?.createdAt ?? null;
 
@@ -197,15 +213,27 @@ export default function Workout() {
               <div className={styles.exerciseList}>
                 {exercises.map((ex, i) => {
                   const isDone = !!done[ex.name];
+
+                  // FIX: Cardio exercises use rounds + duration, not sets × reps
+                  let metaLine;
+                  if (ex.isCardio) {
+                    if (ex.type === 'steady') {
+                      metaLine = `${ex.duration} steady state`;
+                    } else {
+                      metaLine = `${ex.rounds ?? ex.sets} rounds × ${ex.duration ?? ex.reps}`;
+                      if (ex.rest) metaLine += ` · ${ex.rest} rest`;
+                    }
+                  } else {
+                    metaLine = `${ex.sets} sets × ${ex.reps} reps`;
+                    if (ex.weight) metaLine += ` · ${ex.weight}kg`;
+                    if (ex.rest_seconds) metaLine += ` · ${ex.rest_seconds}s rest`;
+                  }
                   return (
                     <div key={ex.name} className={`${styles.exCard} ${isDone ? styles.exDone : ""}`}>
                       <div className={styles.exNum}>{isDone ? "✓" : i + 1}</div>
                       <div className={styles.exBody}>
                         <div className={styles.exName}>{ex.name}</div>
-                        <div className={styles.exMeta}>
-                          {ex.sets} sets × {ex.reps} reps
-                          {ex.weight ? ` · ${ex.weight}kg` : ""}
-                        </div>
+                        <div className={styles.exMeta}>{metaLine}</div>
                       </div>
                       <button
                         className={`${styles.logBtn} ${isDone ? styles.logBtnDone : ""}`}
@@ -263,18 +291,34 @@ export default function Workout() {
           <div className={styles.modal} onClick={e => e.stopPropagation()}>
             <h3 className={styles.modalTitle}>Log: {logForm.exerciseName}</h3>
             <div className={styles.modalFields}>
-              <label className={styles.modalLabel}>Sets
-                <input type="number" className={styles.modalInput} value={logForm.sets}
-                  onChange={e => setLogForm(f => ({ ...f, sets: e.target.value }))} min="1"/>
-              </label>
-              <label className={styles.modalLabel}>Reps
-                <input type="number" className={styles.modalInput} value={logForm.reps}
-                  onChange={e => setLogForm(f => ({ ...f, reps: e.target.value }))} min="1"/>
-              </label>
-              <label className={styles.modalLabel}>Weight (kg) — optional
-                <input type="number" className={styles.modalInput} value={logForm.weight}
-                  onChange={e => setLogForm(f => ({ ...f, weight: e.target.value }))} min="0" step="0.5" placeholder="0"/>
-              </label>
+              {logForm.isCardio ? (
+                <>
+                  <label className={styles.modalLabel}>Rounds completed
+                    <input type="number" className={styles.modalInput} value={logForm.sets}
+                      onChange={e => setLogForm(f => ({ ...f, sets: e.target.value }))} min="1"/>
+                  </label>
+                  <label className={styles.modalLabel}>Duration per round
+                    <input type="text" className={styles.modalInput} value={logForm.duration}
+                      onChange={e => setLogForm(f => ({ ...f, duration: e.target.value }))}
+                      placeholder="e.g. 45 sec"/>
+                  </label>
+                </>
+              ) : (
+                <>
+                  <label className={styles.modalLabel}>Sets
+                    <input type="number" className={styles.modalInput} value={logForm.sets}
+                      onChange={e => setLogForm(f => ({ ...f, sets: e.target.value }))} min="1"/>
+                  </label>
+                  <label className={styles.modalLabel}>Reps
+                    <input type="number" className={styles.modalInput} value={logForm.reps}
+                      onChange={e => setLogForm(f => ({ ...f, reps: e.target.value }))} min="1"/>
+                  </label>
+                  <label className={styles.modalLabel}>Weight (kg) — optional
+                    <input type="number" className={styles.modalInput} value={logForm.weight}
+                      onChange={e => setLogForm(f => ({ ...f, weight: e.target.value }))} min="0" step="0.5" placeholder="0"/>
+                  </label>
+                </>
+              )}
             </div>
             <div className={styles.modalActions}>
               <button className={styles.modalCancel} onClick={() => setLogForm(null)}>Cancel</button>

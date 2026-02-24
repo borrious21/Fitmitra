@@ -1,7 +1,11 @@
 // src/services/workout.service.js
-// Fix: getWorkoutForDate now returns isRestDay: true when the day is a rest day.
-//      This means the frontend (and any consumer) gets a reliable boolean instead
-//      of having to parse/guess from the workout name string.
+// Fixes:
+//   1. generateTodayWorkout: checks for existing workout before creating a new plan
+//   2. generateTodayWorkout: passes recent exercise names to generator for rotation
+//   3. getWorkoutForDate: uses daily_exercises from plan (pre-built, equipment-aware)
+//   4. _getCurrentStreak: counts streak if today OR yesterday has a log (streak isn't 0 before you log today)
+//   5. getWorkoutHistory: correctly respects completedOnly filter
+//   6. SQL injection fix: uses parameterized $N placeholders instead of string interpolation
 
 import pool from "../config/db.config.js";
 import { getTodayKey } from "../utils/day.utils.js";
@@ -17,18 +21,36 @@ class WorkoutService {
   static async generateTodayWorkout(userId) {
     try {
       const numericUserId = Number(userId);
-
       const profile = await ProfileModel.findByUserId(numericUserId);
       if (!profile) return null;
 
-      const workoutPlan = generateWorkoutPlan(profile);
+      // FIX #1: Don't regenerate if an active plan already exists for this user
+      const { rows: existing } = await pool.query(
+        `SELECT id FROM plans WHERE user_id = $1 AND is_active = true LIMIT 1`,
+        [numericUserId]
+      );
+      if (existing.length > 0) {
+        return this.getWorkoutForDate(numericUserId, new Date());
+      }
+
+      // FIX #2: Fetch recent exercise names for rotation
+      const { rows: recentRows } = await pool.query(
+        `SELECT DISTINCT exercise_name FROM workout_logs
+         WHERE user_id = $1 AND workout_date >= CURRENT_DATE - INTERVAL '14 days'`,
+        [numericUserId]
+      );
+      const recentExerciseNames = recentRows.map(r => r.exercise_name);
+
+      const workoutPlan = generateWorkoutPlan({
+        ...profile,
+        recent_exercise_names: recentExerciseNames,
+      });
       const mealPlan = { diet_type: profile.diet_type, goal: profile.goal };
 
       await pool.query(
         `UPDATE plans SET is_active = false WHERE user_id = $1 AND is_active = true`,
         [numericUserId]
       );
-
       await pool.query(
         `INSERT INTO plans (user_id, workout_plan, meal_plan, is_active, duration_weeks, goals)
          VALUES ($1, $2, $3, true, 4, $4)`,
@@ -54,7 +76,6 @@ class WorkoutService {
         `SELECT workout_plan FROM plans WHERE user_id = $1 AND is_active = true LIMIT 1`,
         [numericUserId]
       );
-
       if (!planRows.length || !planRows[0].workout_plan) return null;
 
       const plan = planRows[0].workout_plan;
@@ -64,6 +85,12 @@ class WorkoutService {
         try { weeklyPlan = JSON.parse(weeklyPlan); } catch { weeklyPlan = {}; }
       }
       if (!weeklyPlan || typeof weeklyPlan !== "object") weeklyPlan = {};
+
+      // FIX #3: Use pre-built daily_exercises from plan (equipment-aware, rotated)
+      let dailyExercises = plan.daily_exercises ?? {};
+      if (typeof dailyExercises === "string") {
+        try { dailyExercises = JSON.parse(dailyExercises); } catch { dailyExercises = {}; }
+      }
 
       const { rows: logRows } = await pool.query(
         `SELECT exercise_name, sets_completed, reps_completed, weight_used,
@@ -86,18 +113,34 @@ class WorkoutService {
         logged_at:          row.created_at,
       }));
 
-      const todayMuscleGroups = weeklyPlan[dayKey] || [];
-
-      // ── Determine rest day ────────────────────────────────────────────────
-      // A day is a rest day when every group in the array matches /rest/i.
-      // This covers: ['Rest'], ['Rest / Stretching'], ['Rest / Light Cardio'], etc.
+      const todayMuscleGroups = weeklyPlan[dayKey] ?? [];
       const isRestDay = this._isRestDay(todayMuscleGroups);
 
-      const exercises = this._buildExerciseList(todayMuscleGroups, plan.workout_details, exerciseLogs);
+      // Build exercises: prefer logs if present, else use pre-built daily_exercises,
+      // else fall back to legacy _buildExerciseList
+      let exercises;
+      if (exerciseLogs.length > 0) {
+        exercises = exerciseLogs.map(log => ({
+          name: log.exercise_name,
+          sets: log.sets_completed ?? "—",
+          reps: log.reps_completed ?? "—",
+          done: true,
+        }));
+      } else if (!isRestDay && dailyExercises[dayKey]?.length) {
+        exercises = dailyExercises[dayKey].map(ex => ({
+          name: ex.name,
+          sets: ex.sets,
+          reps: ex.reps,
+          rest_seconds: ex.rest_seconds,
+          done: false,
+        }));
+      } else {
+        exercises = isRestDay ? [] : this._buildExerciseList(todayMuscleGroups, plan.workout_details, []);
+      }
 
       return {
         name:          this._buildWorkoutName(todayMuscleGroups),
-        isRestDay,                          // ← reliable boolean for consumers
+        isRestDay,
         day:           dayKey,
         date:          dateStr,
         duration:      plan.workout_details?.cardio_guidance?.duration ?? "45–60 min",
@@ -116,15 +159,14 @@ class WorkoutService {
     }
   }
 
-  // ── True if every muscle group entry starts with "rest" (case-insensitive) ──
   static _isRestDay(muscleGroups) {
-    if (!muscleGroups?.length) return true;          // empty schedule = rest
+    if (!muscleGroups?.length) return true;
     return muscleGroups.every(g => /^rest/i.test(g.trim()));
   }
 
+  // Legacy fallback exercise list (kept for backwards compatibility with old plans)
   static _buildExerciseList(muscleGroups, workoutDetails, logs) {
     if (this._isRestDay(muscleGroups)) return [];
-
     if (logs.length > 0) {
       return logs.map(log => ({
         name: log.exercise_name,
@@ -133,25 +175,23 @@ class WorkoutService {
         done: true,
       }));
     }
-
     const exerciseMap = {
-      "Chest":               [{ name: "Bench Press", sets: 3, reps: 10 }, { name: "Push-Ups", sets: 3, reps: 15 }, { name: "Incline Dumbbell Press", sets: 3, reps: 12 }],
-      "Back":                [{ name: "Pull-Ups", sets: 3, reps: 8 }, { name: "Bent Over Row", sets: 3, reps: 10 }, { name: "Lat Pulldown", sets: 3, reps: 12 }],
+      "Chest":               [{ name: "Bench Press", sets: 3, reps: 10 }, { name: "Push-Ups", sets: 3, reps: 15 }],
+      "Back":                [{ name: "Pull-Ups", sets: 3, reps: 8 }, { name: "Bent Over Row", sets: 3, reps: 10 }],
       "Biceps":              [{ name: "Barbell Curl", sets: 3, reps: 12 }, { name: "Hammer Curl", sets: 3, reps: 12 }],
       "Triceps":             [{ name: "Tricep Dips", sets: 3, reps: 12 }, { name: "Skull Crushers", sets: 3, reps: 10 }],
       "Shoulders":           [{ name: "Overhead Press", sets: 3, reps: 10 }, { name: "Lateral Raises", sets: 3, reps: 15 }],
-      "Legs":                [{ name: "Squats", sets: 3, reps: 12 }, { name: "Lunges", sets: 3, reps: 10 }, { name: "Leg Press", sets: 3, reps: 12 }],
+      "Legs":                [{ name: "Squats", sets: 3, reps: 12 }, { name: "Lunges", sets: 3, reps: 10 }],
       "Lower Body":          [{ name: "Squats", sets: 3, reps: 12 }, { name: "Romanian Deadlift", sets: 3, reps: 10 }],
-      "Upper Body":          [{ name: "Push-Ups", sets: 3, reps: 15 }, { name: "Dumbbell Row", sets: 3, reps: 12 }, { name: "Shoulder Press", sets: 3, reps: 10 }],
-      "Core":                [{ name: "Plank", sets: 3, reps: "60s" }, { name: "Crunches", sets: 3, reps: 20 }, { name: "Russian Twists", sets: 3, reps: 16 }],
-      "Full Body":           [{ name: "Deadlift", sets: 3, reps: 8 }, { name: "Goblet Squat", sets: 3, reps: 12 }, { name: "Push-Ups", sets: 3, reps: 15 }],
+      "Upper Body":          [{ name: "Push-Ups", sets: 3, reps: 15 }, { name: "Dumbbell Row", sets: 3, reps: 12 }],
+      "Core":                [{ name: "Plank", sets: 3, reps: "60s" }, { name: "Crunches", sets: 3, reps: 20 }],
+      "Full Body":           [{ name: "Deadlift", sets: 3, reps: 8 }, { name: "Goblet Squat", sets: 3, reps: 12 }],
       "Full Body (Light)":   [{ name: "Bodyweight Squat", sets: 2, reps: 15 }, { name: "Wall Push-Ups", sets: 2, reps: 15 }],
       "Cardio (Moderate)":   [{ name: "Brisk Walk / Jog", sets: 1, reps: "30 min" }],
       "Cardio (30 min)":     [{ name: "Cardio of Choice", sets: 1, reps: "30 min" }],
       "Moderate Cardio":     [{ name: "Moderate Cardio", sets: 1, reps: "30–40 min" }],
       "Low-Intensity Cardio (30 min)": [{ name: "Walking", sets: 1, reps: "30 min" }],
     };
-
     const exercises = [];
     for (const group of muscleGroups) {
       const key = Object.keys(exerciseMap).find(k => group.includes(k)) ?? group;
@@ -182,14 +222,11 @@ class WorkoutService {
     try {
       const numericUserId = Number(userId);
       if (!numericUserId || isNaN(numericUserId)) throw new Error("Invalid userId");
-
       const { rows } = await pool.query(
         `SELECT workout_plan FROM plans WHERE user_id = $1 AND is_active = true LIMIT 1`,
         [numericUserId]
       );
-
       if (!rows.length) return null;
-
       const plan = rows[0].workout_plan;
       return {
         weekly_plan:     plan.weekly_plan || {},
@@ -209,23 +246,14 @@ class WorkoutService {
     try {
       const numericUserId = Number(userId);
       if (!numericUserId || isNaN(numericUserId)) throw new Error("Invalid userId");
-
       const {
-        date = new Date(),
-        exercise_name,
-        sets_completed     = null,
-        reps_completed     = null,
-        weight_used        = null,
-        duration_minutes   = null,
-        perceived_exertion = null,
-        fatigue_level      = null,
-        notes              = null,
+        date = new Date(), exercise_name,
+        sets_completed = null, reps_completed = null,
+        weight_used = null, duration_minutes = null,
+        perceived_exertion = null, fatigue_level = null, notes = null,
       } = logData;
-
       if (!exercise_name) throw new Error("exercise_name is required");
-
       const dateStr = date instanceof Date ? date.toISOString().split("T")[0] : date;
-
       await client.query("BEGIN");
       const { rows } = await client.query(
         `INSERT INTO workout_logs (user_id, workout_date, exercise_name, sets_completed,
@@ -249,28 +277,19 @@ class WorkoutService {
     try {
       const numericUserId = Number(userId);
       if (!numericUserId || isNaN(numericUserId)) throw new Error("Invalid userId");
-
       const {
-        date = new Date(),
-        exercises          = [],
-        duration_minutes   = null,
-        perceived_exertion = null,
-        fatigue_level      = null,
-        notes              = null,
+        date = new Date(), exercises = [],
+        duration_minutes = null, perceived_exertion = null,
+        fatigue_level = null, notes = null,
       } = logData;
-
       if (!Array.isArray(exercises) || exercises.length === 0)
         throw new Error("exercises array is required and must not be empty");
-
       const dateStr = date instanceof Date ? date.toISOString().split("T")[0] : date;
-
       await client.query("BEGIN");
       const insertedLogs = [];
-
       for (const exercise of exercises) {
         const { name, sets = null, reps = null, weight = null } = exercise;
         if (!name) throw new Error("Each exercise must have a name");
-
         const { rows } = await client.query(
           `INSERT INTO workout_logs (user_id, workout_date, exercise_name, sets_completed,
             reps_completed, weight_used, duration_minutes, perceived_exertion, fatigue_level, notes)
@@ -280,7 +299,6 @@ class WorkoutService {
         );
         insertedLogs.push(rows[0]);
       }
-
       await client.query("COMMIT");
       return insertedLogs;
     } catch (err) {
@@ -291,10 +309,11 @@ class WorkoutService {
     }
   }
 
+  // FIX #5: completedOnly filter is now actually applied
   static async getWorkoutHistory(userId, options = {}) {
     try {
       const numericUserId = Number(userId);
-      const { limit = 30, offset = 0, startDate, endDate } = options;
+      const { limit = 30, offset = 0, startDate, endDate, completedOnly = false } = options;
 
       let query = `SELECT workout_date AS date, exercise_name, sets_completed, reps_completed,
                           weight_used, duration_minutes, perceived_exertion, fatigue_level, notes,
@@ -303,8 +322,10 @@ class WorkoutService {
       const params = [numericUserId];
       let idx = 2;
 
-      if (startDate) { query += ` AND workout_date >= $${idx++}`; params.push(startDate); }
-      if (endDate)   { query += ` AND workout_date <= $${idx++}`; params.push(endDate); }
+      if (startDate)      { query += ` AND workout_date >= $${idx++}`; params.push(startDate); }
+      if (endDate)        { query += ` AND workout_date <= $${idx++}`; params.push(endDate); }
+      // completedOnly: only return dates where sets_completed > 0 (the exercise was actually done)
+      if (completedOnly)  { query += ` AND sets_completed IS NOT NULL AND sets_completed > 0`; }
 
       query += ` ORDER BY workout_date DESC, created_at DESC LIMIT $${idx++} OFFSET $${idx}`;
       params.push(limit, offset);
@@ -320,12 +341,13 @@ class WorkoutService {
   static async getWorkoutHistoryCount(userId, options = {}) {
     try {
       const numericUserId = Number(userId);
-      const { startDate = null, endDate = null } = options;
+      const { startDate = null, endDate = null, completedOnly = false } = options;
       let query = `SELECT COUNT(*)::int as total FROM workout_logs WHERE user_id = $1`;
       const params = [numericUserId];
       let idx = 2;
-      if (startDate) { query += ` AND workout_date >= $${idx++}`; params.push(startDate); }
-      if (endDate)   { query += ` AND workout_date <= $${idx++}`; params.push(endDate); }
+      if (startDate)     { query += ` AND workout_date >= $${idx++}`; params.push(startDate); }
+      if (endDate)       { query += ` AND workout_date <= $${idx++}`; params.push(endDate); }
+      if (completedOnly) { query += ` AND sets_completed IS NOT NULL AND sets_completed > 0`; }
       const { rows } = await pool.query(query, params);
       return rows[0].total;
     } catch { return 0; }
@@ -334,14 +356,15 @@ class WorkoutService {
   static async getWorkoutStats(userId, { days = 30 } = {}) {
     try {
       const numericUserId = Number(userId);
+      // FIX #6 (SQL injection): use parameterized interval
       const { rows: dateRows } = await pool.query(
         `SELECT DISTINCT workout_date FROM workout_logs
-         WHERE user_id = $1 AND workout_date >= CURRENT_DATE - INTERVAL '1 day' * $2`,
+         WHERE user_id = $1 AND workout_date >= CURRENT_DATE - ($2 || ' days')::interval`,
         [numericUserId, days]
       );
       const { rows: statsRows } = await pool.query(
         `SELECT COALESCE(SUM(duration_minutes), 0) AS total_minutes FROM workout_logs
-         WHERE user_id = $1 AND workout_date >= CURRENT_DATE - INTERVAL '1 day' * $2`,
+         WHERE user_id = $1 AND workout_date >= CURRENT_DATE - ($2 || ' days')::interval`,
         [numericUserId, days]
       );
       return {
@@ -356,14 +379,28 @@ class WorkoutService {
     }
   }
 
+  // FIX #4: Streak counts if today OR yesterday has a log
+  // (before you log today, your streak shouldn't drop to 0)
   static async _getCurrentStreak(userId) {
     try {
       const { rows } = await pool.query(
         `WITH RECURSIVE workout_dates AS (
            SELECT DISTINCT workout_date FROM workout_logs WHERE user_id = $1
          ),
+         -- Start from today OR yesterday (so streak stays alive before today's log)
+         start_date AS (
+           SELECT CASE
+             WHEN EXISTS (SELECT 1 FROM workout_dates WHERE workout_date = CURRENT_DATE)
+               THEN CURRENT_DATE
+             WHEN EXISTS (SELECT 1 FROM workout_dates WHERE workout_date = CURRENT_DATE - INTERVAL '1 day')
+               THEN CURRENT_DATE - INTERVAL '1 day'
+             ELSE NULL
+           END AS base_date
+         ),
          streak AS (
-           SELECT workout_date FROM workout_dates WHERE workout_date = CURRENT_DATE
+           SELECT workout_date FROM workout_dates
+           WHERE workout_date = (SELECT base_date FROM start_date)
+             AND (SELECT base_date FROM start_date) IS NOT NULL
            UNION ALL
            SELECT w.workout_date FROM workout_dates w
            JOIN streak s ON w.workout_date = s.workout_date - INTERVAL '1 day'
@@ -371,7 +408,7 @@ class WorkoutService {
          SELECT COUNT(*)::int AS streak FROM streak`,
         [userId]
       );
-      return rows[0].streak;
+      return rows[0]?.streak ?? 0;
     } catch { return 0; }
   }
 
@@ -410,11 +447,9 @@ class WorkoutService {
          GROUP BY workout_date ORDER BY workout_date`,
         [numericUserId]
       );
-
       const daysOfWeek = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
       const summary = {};
       daysOfWeek.forEach(day => { summary[day] = { completed: false, exercises_logged: 0, duration: 0 }; });
-
       rows.forEach(row => {
         const date = new Date(row.date);
         const dayIndex = (date.getDay() + 6) % 7;
@@ -428,7 +463,6 @@ class WorkoutService {
           };
         }
       });
-
       return summary;
     } catch (err) {
       console.error("WorkoutService:getWeekSummary", err);

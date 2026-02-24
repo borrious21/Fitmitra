@@ -1,4 +1,5 @@
 // src/components/ActivityCalendar/ActivityCalendar.jsx
+// Fix: completedDates now handles both h.date and h.workout_date robustly
 
 import { useState } from "react";
 import styles from "./ActivityCalendar.module.css";
@@ -8,12 +9,10 @@ const MONTH_NAMES = ["January","February","March","April","May","June",
                      "July","August","September","October","November","December"];
 const DAYS_KEY    = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"];
 
-// Shorten long workout names to fit in a small cell
 function shortenLabel(groups) {
   if (!groups?.length) return "";
   const joined = groups.join(" + ");
   if (joined.length <= 18) return joined;
-  // abbreviate each group
   return groups.map(g =>
     g.replace("Cardio", "Cardio")
      .replace("(Moderate)", "")
@@ -27,6 +26,17 @@ function shortenLabel(groups) {
   ).join(" + ");
 }
 
+// FIX: Robust date extraction — handles both `date` and `workout_date` fields
+function extractDateStr(historyItem) {
+  const raw = historyItem.date ?? historyItem.workout_date;
+  if (!raw) return null;
+  const d = new Date(raw);
+  if (isNaN(d.getTime())) return null;
+  // Normalize to midnight local to avoid timezone shifts
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString().split("T")[0];
+}
+
 export default function ActivityCalendar({ history, weeklyPlan, accountCreatedAt }) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -38,11 +48,9 @@ export default function ActivityCalendar({ history, weeklyPlan, accountCreatedAt
     ? new Date(new Date(accountCreatedAt).toDateString())
     : new Date(today);
 
+  // FIX: Use robust extraction, filter out nulls
   const completedDates = new Set(
-    (history ?? []).map(h => {
-      const d = new Date(new Date(h.date ?? h.workout_date).toDateString());
-      return d.toISOString().split("T")[0];
-    })
+    (history ?? []).map(extractDateStr).filter(Boolean)
   );
 
   const prevMonth = () => {
@@ -58,7 +66,6 @@ export default function ActivityCalendar({ history, weeklyPlan, accountCreatedAt
 
   const isCurrentMonth = viewYear === today.getFullYear() && viewMonth === today.getMonth();
 
-  // Build cells
   const firstDay    = new Date(viewYear, viewMonth, 1).getDay();
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
   const cells = [...Array(firstDay).fill(null)];
@@ -72,7 +79,6 @@ export default function ActivityCalendar({ history, weeklyPlan, accountCreatedAt
     const dateStr = date.toISOString().split("T")[0];
     const dayIdx  = date.getDay();
     const dayKey  = DAYS_KEY[dayIdx];
-    const isSat   = dayIdx === 6;
     const isFuture    = date > today;
     const isToday     = date.getTime() === today.getTime();
     const isPreSignup = date < accountDate;
@@ -80,22 +86,19 @@ export default function ActivityCalendar({ history, weeklyPlan, accountCreatedAt
     const planGroups    = weeklyPlan?.[dayKey] ?? [];
     const isRestInPlan  = planGroups.length > 0 &&
       planGroups.every(g => /^rest/i.test(g.trim()));
+    const isSat           = dayIdx === 6;
     const isScheduledRest = isSat || isRestInPlan;
 
-    // Workout label for the cell
     let label = "";
-    if (isScheduledRest) {
-      label = "🛌 Rest";
-    } else if (planGroups.length > 0) {
-      label = shortenLabel(planGroups);
-    }
+    if (isScheduledRest)         label = "🛌 Rest";
+    else if (planGroups.length)  label = shortenLabel(planGroups);
 
     let status;
-    if (isPreSignup)         status = "presignup";
-    else if (isScheduledRest) status = isFuture ? "rest-future" : "rest";
-    else if (isFuture)        status = "upcoming";
+    if (isPreSignup)              status = "presignup";
+    else if (isScheduledRest)     status = isFuture ? "rest-future" : "rest";
+    else if (isFuture)            status = "upcoming";
     else if (completedDates.has(dateStr)) status = "done";
-    else                      status = "missed";
+    else                          status = "missed";
 
     return { dateStr, status, isToday, isPreSignup, isFuture, label };
   };
@@ -103,19 +106,17 @@ export default function ActivityCalendar({ history, weeklyPlan, accountCreatedAt
   const weeks = [];
   for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
 
-  // Status → visual style
   const STYLE = {
-    done:         { bg: "#22c55e18", border: "#22c55e55", numColor: "#22c55e", dot: "#22c55e" },
-    missed:       { bg: "#eab30818", border: "#eab30855", numColor: "#eab308", dot: "#eab308" },
-    rest:         { bg: "#ef444418", border: "#ef444455", numColor: "#ef4444", dot: "#ef4444" },
-    "rest-future":{ bg: "#ef444408", border: "#ef444428", numColor: "#ef444488", dot: null   },
-    upcoming:     { bg: "transparent", border: "rgba(255,255,255,0.06)", numColor: null, dot: null },
-    presignup:    { bg: "transparent", border: "transparent", numColor: null, dot: null },
+    done:          { bg: "#22c55e18", border: "#22c55e55", numColor: "#22c55e", dot: "#22c55e" },
+    missed:        { bg: "#eab30818", border: "#eab30855", numColor: "#eab308", dot: "#eab308" },
+    rest:          { bg: "#ef444418", border: "#ef444455", numColor: "#ef4444", dot: "#ef4444" },
+    "rest-future": { bg: "#ef444408", border: "#ef444428", numColor: "#ef444488", dot: null },
+    upcoming:      { bg: "transparent", border: "rgba(255,255,255,0.06)", numColor: null, dot: null },
+    presignup:     { bg: "transparent", border: "transparent", numColor: null, dot: null },
   };
 
   return (
     <div className={styles.wrap}>
-      {/* Header */}
       <div className={styles.header}>
         <div className={styles.navRow}>
           <button className={styles.navBtn} onClick={prevMonth}>‹</button>
@@ -136,14 +137,12 @@ export default function ActivityCalendar({ history, weeklyPlan, accountCreatedAt
         </div>
       </div>
 
-      {/* Day name headers */}
       <div className={styles.dayHeaders}>
         {DAYS_SHORT.map(d => (
           <div key={d} className={styles.dayHeader}>{d}</div>
         ))}
       </div>
 
-      {/* Calendar grid */}
       <div className={styles.grid}>
         {weeks.map((week, wi) => (
           <div key={wi} className={styles.weekRow}>
@@ -161,28 +160,17 @@ export default function ActivityCalendar({ history, weeklyPlan, accountCreatedAt
                   className={`${styles.cell} ${muted ? styles.cellMuted : ""} ${data.isToday ? styles.cellToday : ""}`}
                   style={{ background: st.bg, borderColor: st.border }}
                 >
-                  {/* Day number */}
-                  <div
-                    className={styles.dayNum}
-                    style={st.numColor ? { color: st.numColor } : {}}
-                  >
+                  <div className={styles.dayNum} style={st.numColor ? { color: st.numColor } : {}}>
                     {data.isToday
                       ? <span className={styles.todayBadge}>{day}</span>
                       : day
                     }
                   </div>
-
-                  {/* Workout label */}
                   {data.label && (
-                    <div
-                      className={styles.workoutLabel}
-                      style={st.numColor ? { color: st.numColor } : {}}
-                    >
+                    <div className={styles.workoutLabel} style={st.numColor ? { color: st.numColor } : {}}>
                       {data.label}
                     </div>
                   )}
-
-                  {/* Status dot for completed/missed */}
                   {st.dot && !muted && (
                     <div className={styles.statusDot} style={{ background: st.dot }}/>
                   )}
