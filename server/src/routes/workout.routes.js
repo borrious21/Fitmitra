@@ -1,36 +1,58 @@
-import { Router } from "express";
-import WorkoutController from "../controllers/workout.controller.js";
-import authMiddleware from "../middlewares/auth.middleware.js";
+// src/routes/workout.routes.js
+
+import { Router }         from 'express';
+import WorkoutController  from '../controllers/workout.controller.js';
+import authMiddleware     from '../middlewares/auth.middleware.js';
 
 const router = Router();
-
 router.use(authMiddleware);
 
-// URL: /api/workouts/log
-router.post("/log", WorkoutController.logWorkout);
+// POST /api/workouts/log
+router.post('/log', WorkoutController.logWorkout);
 
-// URL: /api/workouts/today
-router.get("/today", WorkoutController.getTodayWorkout);
+// POST /api/workouts/feedback
+router.post('/feedback', WorkoutController.submitFeedback);
 
-// URL: /api/workouts/date
-router.get("/date", WorkoutController.getWorkoutByDate);
+// GET /api/workouts/today
+router.get('/today', WorkoutController.getTodayWorkout);
 
-// URL: /api/workouts/weekly
-router.get("/weekly", WorkoutController.getWeeklyPlan);
+// GET /api/workouts/date?date=YYYY-MM-DD
+router.get('/date', WorkoutController.getWorkoutByDate);
 
-// URL: /api/workouts/history
-router.get("/history", WorkoutController.getWorkoutHistory);
+// GET /api/workouts/weekly
+router.get('/weekly', WorkoutController.getWeeklyPlan);
 
-// URL: /api/workouts/stats
-router.get("/stats", WorkoutController.getWorkoutStats);
+// POST /api/workouts/advance-week  (typically cron — also callable by admin)
+router.post('/advance-week', WorkoutController.advanceMesocycleWeek);
 
-// URL: /api/workouts/streak
-router.get("/streak", WorkoutController.getStreak);
+// GET /api/workouts/history?limit=30&offset=0&startDate=&endDate=&completedOnly=true
+router.get('/history', WorkoutController.getWorkoutHistory);
 
-// URL: /api/workouts/achievements
-router.get("/achievements", WorkoutController.getAchievements);
+// GET /api/workouts/stats?days=30
+router.get('/stats', WorkoutController.getWorkoutStats);
 
-// URL: /api/workouts/log/:id
-router.delete("/log/:id", WorkoutController.deleteWorkout);
+// GET /api/workouts/streak
+router.get('/streak', WorkoutController.getStreak);
+
+// GET /api/workouts/insights
+router.get('/insights', WorkoutController.getInsights);
+
+// GET /api/workouts/dashboard?days=30
+router.get('/dashboard', WorkoutController.getDashboard);
+
+// GET /api/workouts/prs
+router.get('/prs', WorkoutController.getPersonalRecords);
+
+// GET /api/workouts/volume?days=30
+router.get('/volume', WorkoutController.getVolumeStats);
+
+// POST /api/workouts/adapt-nutrition
+router.post('/adapt-nutrition', WorkoutController.adaptNutrition);
+
+// GET /api/workouts/achievements
+router.get('/achievements', WorkoutController.getAchievements);
+
+// DELETE /api/workouts/log/:id
+router.delete('/log/:id', WorkoutController.deleteWorkout);
 
 export default router;
