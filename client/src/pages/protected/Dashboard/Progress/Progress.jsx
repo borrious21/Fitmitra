@@ -88,7 +88,6 @@ export default function Progress() {
     setTimeout(() => setAlert(null), 4000);
   };
 
-  // Latest stats
   const latest = logs[0];
   const prev   = logs[1];
   const weightDiff = latest?.weight_kg && prev?.weight_kg
@@ -146,7 +145,6 @@ export default function Progress() {
           </Section>
         )}
 
-        {/* LOG FORM */}
         <Section delay={120}>
           <h2 className={styles.sectionTitle}>Log Today</h2>
           <form onSubmit={handleSubmit} className={styles.form}>

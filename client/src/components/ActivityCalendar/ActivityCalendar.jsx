@@ -1,5 +1,4 @@
 // src/components/ActivityCalendar/ActivityCalendar.jsx
-// Fix: completedDates now handles both h.date and h.workout_date robustly
 
 import { useState } from "react";
 import styles from "./ActivityCalendar.module.css";
@@ -8,6 +7,13 @@ const DAYS_SHORT  = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const MONTH_NAMES = ["January","February","March","April","May","June",
                      "July","August","September","October","November","December"];
 const DAYS_KEY    = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"];
+
+function toLocalDateStr(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
 
 function shortenLabel(groups) {
   if (!groups?.length) return "";
@@ -26,15 +32,20 @@ function shortenLabel(groups) {
   ).join(" + ");
 }
 
-// FIX: Robust date extraction — handles both `date` and `workout_date` fields
 function extractDateStr(historyItem) {
-  const raw = historyItem.date ?? historyItem.workout_date;
+  const raw = historyItem.date
+    ?? historyItem.workout_date
+    ?? historyItem.logged_at
+    ?? historyItem.created_at;
   if (!raw) return null;
-  const d = new Date(raw);
+
+  if (typeof raw === "string" && /^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+
+  if (typeof raw === "string" && raw.includes("T")) return raw.slice(0, 10);
+
+  const d = new Date(typeof raw === "number" && raw < 1e12 ? raw * 1000 : raw);
   if (isNaN(d.getTime())) return null;
-  // Normalize to midnight local to avoid timezone shifts
-  d.setHours(0, 0, 0, 0);
-  return d.toISOString().split("T")[0];
+  return toLocalDateStr(d);
 }
 
 export default function ActivityCalendar({ history, weeklyPlan, accountCreatedAt }) {
@@ -48,7 +59,6 @@ export default function ActivityCalendar({ history, weeklyPlan, accountCreatedAt
     ? new Date(new Date(accountCreatedAt).toDateString())
     : new Date(today);
 
-  // FIX: Use robust extraction, filter out nulls
   const completedDates = new Set(
     (history ?? []).map(extractDateStr).filter(Boolean)
   );
@@ -74,13 +84,14 @@ export default function ActivityCalendar({ history, weeklyPlan, accountCreatedAt
 
   const getCellData = (day) => {
     if (!day) return null;
-    const date    = new Date(viewYear, viewMonth, day);
+    const date   = new Date(viewYear, viewMonth, day);
     date.setHours(0, 0, 0, 0);
-    const dateStr = date.toISOString().split("T")[0];
-    const dayIdx  = date.getDay();
-    const dayKey  = DAYS_KEY[dayIdx];
-    const isFuture    = date > today;
-    const isToday     = date.getTime() === today.getTime();
+   
+    const dateStr    = toLocalDateStr(date);
+    const dayIdx     = date.getDay();
+    const dayKey     = DAYS_KEY[dayIdx];
+    const isFuture   = date > today;
+    const isToday    = date.getTime() === today.getTime();
     const isPreSignup = date < accountDate;
 
     const planGroups    = weeklyPlan?.[dayKey] ?? [];
@@ -94,11 +105,11 @@ export default function ActivityCalendar({ history, weeklyPlan, accountCreatedAt
     else if (planGroups.length)  label = shortenLabel(planGroups);
 
     let status;
-    if (isPreSignup)              status = "presignup";
-    else if (isScheduledRest)     status = isFuture ? "rest-future" : "rest";
-    else if (isFuture)            status = "upcoming";
-    else if (completedDates.has(dateStr)) status = "done";
-    else                          status = "missed";
+    if (isPreSignup)                       status = "presignup";
+    else if (isScheduledRest)              status = isFuture ? "rest-future" : "rest";
+    else if (isFuture)                     status = "upcoming";
+    else if (completedDates.has(dateStr))  status = "done";
+    else                                   status = "missed";
 
     return { dateStr, status, isToday, isPreSignup, isFuture, label };
   };

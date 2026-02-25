@@ -1,14 +1,11 @@
 // src/pages/Workout/Workout.jsx
-// Fixes:
-//   1. isRest logic: only rely on workout.isRestDay boolean (no guessing from exercises.length)
-//   2. Exercise card shows rest_seconds if available
-//   3. Cleaner null safety throughout
 
 import { useState, useEffect, useRef, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../../../../services/apiClient";
 import { AuthContext } from "../../../../context/AuthContext";
 import ActivityCalendar from "../../../../components/ActivityCalendar/ActivityCalendar";
+import ThemeToggle from "../../../../components/ThemeToggle/ThemeToggle";
 import styles from "./Workout.module.css";
 
 const DAYS = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"];
@@ -18,13 +15,20 @@ function Section({ children, delay = 0 }) {
   const [vis, setVis] = useState(false);
   useEffect(() => {
     const t = setTimeout(() => {
-      const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setVis(true); }, { threshold: 0.06 });
+      const obs = new IntersectionObserver(
+        ([e]) => { if (e.isIntersecting) setVis(true); },
+        { threshold: 0.06 }
+      );
       if (ref.current) obs.observe(ref.current);
       return () => obs.disconnect();
     }, delay);
     return () => clearTimeout(t);
   }, [delay]);
-  return <div ref={ref} className={`${styles.section}${vis ? " " + styles.vis : ""}`}>{children}</div>;
+  return (
+    <div ref={ref} className={`${styles.section}${vis ? " " + styles.vis : ""}`}>
+      {children}
+    </div>
+  );
 }
 
 export default function Workout() {
@@ -57,12 +61,14 @@ export default function Workout() {
         (d?.exercises ?? []).forEach(e => { if (e.done) doneMap[e.name] = true; });
         setDone(doneMap);
       }
-      if (wk.status === "fulfilled")   setWeekly(wk.value?.data ?? wk.value);
+      if (wk.status === "fulfilled") setWeekly(wk.value?.data ?? wk.value);
       if (hist.status === "fulfilled") {
         const d = hist.value?.data ?? hist.value;
-        setHistory(Array.isArray(d) ? d : []);
+        const arr = Array.isArray(d) ? d : [];
+        setHistory(arr);
       }
-    } catch {
+    } catch (e) {
+      console.error("fetchAll error:", e);
       showAlert("error", "Failed to load workout.");
     } finally {
       setLoading(false);
@@ -97,6 +103,9 @@ export default function Workout() {
       setDone(d => ({ ...d, [logForm.exerciseName]: true }));
       setLogForm(null);
       showAlert("success", `${logForm.exerciseName} logged! 💪`);
+      const hist = await apiFetch("/workouts/history?limit=200");
+      const d = hist?.data ?? hist;
+      setHistory(Array.isArray(d) ? d : []);
     } catch (e) {
       showAlert("error", e?.message ?? "Failed to log exercise.");
     } finally {
@@ -113,35 +122,42 @@ export default function Workout() {
   const exercises = workout?.exercises ?? [];
   const doneCount = exercises.filter(e => done[e.name]).length;
   const pct       = exercises.length ? Math.round((doneCount / exercises.length) * 100) : 0;
-
-  // FIX: Rely solely on the isRestDay boolean from the backend.
-  // Only fall back to exercises.length === 0 when workout hasn't loaded yet (workout is null).
-  const isRest = workout ? workout.isRestDay === true : false;
-
+  const isRest    = workout ? workout.isRestDay === true : false;
   const accountCreatedAt = user?.created_at ?? user?.createdAt ?? null;
 
   if (loading) return (
     <div className={styles.wrapper}>
-      <div className={styles.loadWrap}><div className={styles.loadRing}/><span>Loading workout…</span></div>
+      <div className={styles.loadWrap}>
+        <div className={styles.loadRing}/>
+        <span>Loading workout…</span>
+      </div>
     </div>
   );
 
   return (
     <div className={styles.wrapper}>
+
       <nav className={styles.nav}>
         <a className={styles.navLogo} href="/dashboard">
           <span className={styles.navLogoIcon}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
-              <line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/>
+              <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
+              <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+              <line x1="6" y1="1" x2="6" y2="4"/>
+              <line x1="10" y1="1" x2="10" y2="4"/>
+              <line x1="14" y1="1" x2="14" y2="4"/>
             </svg>
           </span>
           <span className={styles.navLogoWord}>FIT<span>MITRA</span></span>
         </a>
-        <button className={styles.backBtn} onClick={() => navigate(-1)}>← Dashboard</button>
+        <div className={styles.navRight}>
+          <ThemeToggle />
+          <button className={styles.backBtn} onClick={() => navigate(-1)}>← Dashboard</button>
+        </div>
       </nav>
 
       <main className={styles.main}>
+
         {alert && (
           <div className={alert.type === "success" ? styles.alertSuccess : styles.alertError}>
             {alert.type === "success" ? "✅" : "❌"} {alert.msg}
@@ -153,9 +169,9 @@ export default function Workout() {
             <div className={styles.heroBg}/>
             <div className={styles.heroContent}>
               <div className={styles.heroLeft}>
-                <span className={styles.dayLabel}>
+                <div className={styles.dayLabel}>
                   {isRest ? "🛌" : "💪"} {todayKey.charAt(0).toUpperCase() + todayKey.slice(1)}'s Workout
-                </span>
+                </div>
                 <h1 className={styles.heroTitle}>{workout?.name ?? "Rest Day"}</h1>
                 {!isRest && (
                   <div className={styles.heroPills}>
@@ -167,6 +183,7 @@ export default function Workout() {
                   </div>
                 )}
               </div>
+
               {!isRest && (
                 <div className={styles.ringWrap}>
                   <svg viewBox="0 0 100 100" className={styles.ring}>
@@ -179,7 +196,8 @@ export default function Workout() {
                     />
                     <defs>
                       <linearGradient id="wGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#FF5C1A"/><stop offset="100%" stopColor="#FF8A3D"/>
+                        <stop offset="0%" stopColor="#FF5C1A"/>
+                        <stop offset="100%" stopColor="#FF8A3D"/>
                       </linearGradient>
                     </defs>
                   </svg>
@@ -200,9 +218,12 @@ export default function Workout() {
               <h2>Rest & Recovery</h2>
               <p>Your muscles grow during rest. Take it easy today — stretch, hydrate, and sleep well.</p>
               <div className={styles.restTips}>
-                {["💧 Drink at least 2L of water","🧘 10 min light stretching","😴 Aim for 8h sleep tonight","🚶 A light walk is fine"].map(t => (
-                  <div key={t} className={styles.restTip}>{t}</div>
-                ))}
+                {[
+                  "💧 Drink at least 2L of water",
+                  "🧘 10 min light stretching",
+                  "😴 Aim for 8h sleep tonight",
+                  "🚶 A light walk is fine",
+                ].map(t => <div key={t} className={styles.restTip}>{t}</div>)}
               </div>
             </div>
           </Section>
@@ -213,13 +234,10 @@ export default function Workout() {
               <div className={styles.exerciseList}>
                 {exercises.map((ex, i) => {
                   const isDone = !!done[ex.name];
-
-                  // Cardio: show "5 rounds · 30 sec on / 30 sec rest" or "30 min steady"
-                  // Strength: show "3 sets × 10 reps · 60s rest"
                   let metaLine;
                   if (ex.isCardio) {
                     const rounds = ex.rounds ?? ex.sets;
-                    if (ex.type === 'steady') {
+                    if (ex.type === "steady") {
                       metaLine = `${ex.duration ?? ex.reps} · steady state`;
                     } else {
                       const workDur = ex.duration ?? ex.reps;
@@ -229,7 +247,7 @@ export default function Workout() {
                     }
                   } else {
                     metaLine = `${ex.sets} sets × ${ex.reps} reps`;
-                    if (ex.weight) metaLine += ` · ${ex.weight}kg`;
+                    if (ex.weight)       metaLine += ` · ${ex.weight}kg`;
                     if (ex.rest_seconds) metaLine += ` · ${ex.rest_seconds}s rest`;
                   }
                   return (
@@ -244,7 +262,7 @@ export default function Workout() {
                         onClick={() => !isDone && openLog(ex)}
                         disabled={isDone}
                       >
-                        {isDone ? "Logged" : "Log"}
+                        {isDone ? "Logged ✓" : "Log"}
                       </button>
                     </div>
                   );
@@ -254,7 +272,7 @@ export default function Workout() {
 
             {workout?.guidelines && Object.keys(workout.guidelines).length > 0 && (
               <Section delay={120}>
-                <h2 className={styles.sectionTitle}>📋 Guidelines</h2>
+                <h2 className={styles.sectionTitle}>Guidelines</h2>
                 <div className={styles.guideGrid}>
                   {Object.entries(workout.guidelines).map(([k, v]) => (
                     <div key={k} className={styles.guideCard}>
@@ -268,7 +286,7 @@ export default function Workout() {
 
             {workout?.safety_notes?.length > 0 && (
               <Section delay={160}>
-                <h2 className={styles.sectionTitle}>⚠️ Safety Notes</h2>
+                <h2 className={styles.sectionTitle}>Safety Notes</h2>
                 <div className={styles.safetyList}>
                   {workout.safety_notes.map((n, i) => (
                     <div key={i} className={styles.safetyNote}>
@@ -282,14 +300,18 @@ export default function Workout() {
         )}
 
         <Section delay={220}>
-          <ActivityCalendar
-            history={history}
-            weeklyPlan={weekly?.weekly_plan}
-            accountCreatedAt={accountCreatedAt}
-          />
+          <div className={styles.calendarSection}>
+            <ActivityCalendar
+              history={history}
+              weeklyPlan={weekly?.weekly_plan}
+              accountCreatedAt={accountCreatedAt}
+            />
+          </div>
         </Section>
+
       </main>
 
+      {/* ── LOG MODAL ─────────────────────────────────────────── */}
       {logForm && (
         <div className={styles.modalOverlay} onClick={() => setLogForm(null)}>
           <div className={styles.modal} onClick={e => e.stopPropagation()}>
@@ -297,11 +319,13 @@ export default function Workout() {
             <div className={styles.modalFields}>
               {logForm.isCardio ? (
                 <>
-                  <label className={styles.modalLabel}>Rounds completed
+                  <label className={styles.modalLabel}>
+                    Rounds completed
                     <input type="number" className={styles.modalInput} value={logForm.sets}
                       onChange={e => setLogForm(f => ({ ...f, sets: e.target.value }))} min="1"/>
                   </label>
-                  <label className={styles.modalLabel}>Duration per round
+                  <label className={styles.modalLabel}>
+                    Duration per round
                     <input type="text" className={styles.modalInput} value={logForm.duration}
                       onChange={e => setLogForm(f => ({ ...f, duration: e.target.value }))}
                       placeholder="e.g. 45 sec"/>
@@ -309,17 +333,21 @@ export default function Workout() {
                 </>
               ) : (
                 <>
-                  <label className={styles.modalLabel}>Sets
+                  <label className={styles.modalLabel}>
+                    Sets
                     <input type="number" className={styles.modalInput} value={logForm.sets}
                       onChange={e => setLogForm(f => ({ ...f, sets: e.target.value }))} min="1"/>
                   </label>
-                  <label className={styles.modalLabel}>Reps
+                  <label className={styles.modalLabel}>
+                    Reps
                     <input type="number" className={styles.modalInput} value={logForm.reps}
                       onChange={e => setLogForm(f => ({ ...f, reps: e.target.value }))} min="1"/>
                   </label>
-                  <label className={styles.modalLabel}>Weight (kg) — optional
+                  <label className={styles.modalLabel}>
+                    Weight (kg) — optional
                     <input type="number" className={styles.modalInput} value={logForm.weight}
-                      onChange={e => setLogForm(f => ({ ...f, weight: e.target.value }))} min="0" step="0.5" placeholder="0"/>
+                      onChange={e => setLogForm(f => ({ ...f, weight: e.target.value }))}
+                      min="0" step="0.5" placeholder="0"/>
                   </label>
                 </>
               )}

@@ -1,16 +1,19 @@
 // src/services/workout.service.js
-// Fixes:
-//   1. generateTodayWorkout: checks for existing workout before creating a new plan
-//   2. generateTodayWorkout: passes recent exercise names to generator for rotation
-//   3. getWorkoutForDate: uses daily_exercises from plan (pre-built, equipment-aware)
-//   4. _getCurrentStreak: counts streak if today OR yesterday has a log (streak isn't 0 before you log today)
-//   5. getWorkoutHistory: correctly respects completedOnly filter
-//   6. SQL injection fix: uses parameterized $N placeholders instead of string interpolation
 
 import pool from "../config/db.config.js";
 import { getTodayKey } from "../utils/day.utils.js";
 import { generateWorkoutPlan } from "../domain/workout.generator.js";
 import ProfileModel from "../models/profile.model.js";
+
+// FIX: Never use .toISOString() for date strings — it converts to UTC and
+// shifts the date for UTC+ timezones (e.g. Nepal UTC+5:45 shifts back 1 day).
+// Always build YYYY-MM-DD from local parts instead.
+function toLocalDateStr(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
 
 class WorkoutService {
 
@@ -24,7 +27,6 @@ class WorkoutService {
       const profile = await ProfileModel.findByUserId(numericUserId);
       if (!profile) return null;
 
-      // FIX #1: Don't regenerate if an active plan already exists for this user
       const { rows: existing } = await pool.query(
         `SELECT id FROM plans WHERE user_id = $1 AND is_active = true LIMIT 1`,
         [numericUserId]
@@ -33,7 +35,6 @@ class WorkoutService {
         return this.getWorkoutForDate(numericUserId, new Date());
       }
 
-      // FIX #2: Fetch recent exercise names for rotation
       const { rows: recentRows } = await pool.query(
         `SELECT DISTINCT exercise_name FROM workout_logs
          WHERE user_id = $1 AND workout_date >= CURRENT_DATE - INTERVAL '14 days'`,
@@ -69,8 +70,9 @@ class WorkoutService {
       const numericUserId = Number(userId);
       if (!numericUserId || isNaN(numericUserId)) throw new Error("Invalid userId");
 
-      const dayKey  = getTodayKey(new Date(date));
-      const dateStr = date instanceof Date ? date.toISOString().split("T")[0] : date;
+      const dayKey = getTodayKey(new Date(date));
+      // FIX: use toLocalDateStr instead of toISOString() to avoid UTC shift
+      const dateStr = date instanceof Date ? toLocalDateStr(date) : date;
 
       const { rows: planRows } = await pool.query(
         `SELECT workout_plan FROM plans WHERE user_id = $1 AND is_active = true LIMIT 1`,
@@ -86,7 +88,6 @@ class WorkoutService {
       }
       if (!weeklyPlan || typeof weeklyPlan !== "object") weeklyPlan = {};
 
-      // FIX #3: Use pre-built daily_exercises from plan (equipment-aware, rotated)
       let dailyExercises = plan.daily_exercises ?? {};
       if (typeof dailyExercises === "string") {
         try { dailyExercises = JSON.parse(dailyExercises); } catch { dailyExercises = {}; }
@@ -116,8 +117,6 @@ class WorkoutService {
       const todayMuscleGroups = weeklyPlan[dayKey] ?? [];
       const isRestDay = this._isRestDay(todayMuscleGroups);
 
-      // Build exercises: prefer logs if present, else use pre-built daily_exercises,
-      // else fall back to legacy _buildExerciseList
       let exercises;
       if (exerciseLogs.length > 0) {
         exercises = exerciseLogs.map(log => ({
@@ -164,7 +163,6 @@ class WorkoutService {
     return muscleGroups.every(g => /^rest/i.test(g.trim()));
   }
 
-  // Legacy fallback exercise list (kept for backwards compatibility with old plans)
   static _buildExerciseList(muscleGroups, workoutDetails, logs) {
     if (this._isRestDay(muscleGroups)) return [];
     if (logs.length > 0) {
@@ -204,16 +202,13 @@ class WorkoutService {
   static _buildWorkoutName(muscleGroups) {
     if (!muscleGroups?.length) return "Rest & Recovery";
     if (this._isRestDay(muscleGroups)) return "Rest & Recovery";
-
-    // Map raw split labels to clean human-readable workout names.
-    // This prevents the UI showing internal labels like "Cardio (Moderate)" or "Full Body Strength".
     const NAME_MAP = {
       "Cardio (Moderate)":              "HIIT Cardio",
       "Cardio (Moderate 40 min)":       "Endurance Cardio",
       "Cardio (30 min)":                "Cardio Circuit",
-      "Cardio (Intervals 30–40 min)": "Interval Training",
+      "Cardio (Intervals 30–40 min)":   "Interval Training",
       "Moderate Cardio":                "Moderate Cardio",
-      "Moderate Cardio (30–40 min)":  "Moderate Cardio",
+      "Moderate Cardio (30–40 min)":    "Moderate Cardio",
       "Moderate Cardio (30 min)":       "Moderate Cardio",
       "Low-Intensity Cardio (30 min)":  "Low-Intensity Cardio",
       "Full Body Strength":             "Full Body Strength",
@@ -235,10 +230,7 @@ class WorkoutService {
       "Triceps":                        "Triceps",
       "Core":                           "Core Work",
     };
-
-    // Map each group; fall back to the raw label if not in the map
     const named = muscleGroups.map(g => NAME_MAP[g.trim()] ?? g.trim());
-    // Deduplicate consecutive identical names (e.g. "Leg Day + Leg Day")
     const deduped = named.filter((n, i) => i === 0 || n !== named[i - 1]);
     return deduped.join(" + ");
   }
@@ -289,7 +281,8 @@ class WorkoutService {
         perceived_exertion = null, fatigue_level = null, notes = null,
       } = logData;
       if (!exercise_name) throw new Error("exercise_name is required");
-      const dateStr = date instanceof Date ? date.toISOString().split("T")[0] : date;
+      // FIX: toLocalDateStr instead of toISOString()
+      const dateStr = date instanceof Date ? toLocalDateStr(date) : date;
       await client.query("BEGIN");
       const { rows } = await client.query(
         `INSERT INTO workout_logs (user_id, workout_date, exercise_name, sets_completed,
@@ -320,7 +313,8 @@ class WorkoutService {
       } = logData;
       if (!Array.isArray(exercises) || exercises.length === 0)
         throw new Error("exercises array is required and must not be empty");
-      const dateStr = date instanceof Date ? date.toISOString().split("T")[0] : date;
+      // FIX: toLocalDateStr instead of toISOString()
+      const dateStr = date instanceof Date ? toLocalDateStr(date) : date;
       await client.query("BEGIN");
       const insertedLogs = [];
       for (const exercise of exercises) {
@@ -345,23 +339,26 @@ class WorkoutService {
     }
   }
 
-  // FIX #5: completedOnly filter is now actually applied
   static async getWorkoutHistory(userId, options = {}) {
     try {
       const numericUserId = Number(userId);
       const { limit = 30, offset = 0, startDate, endDate, completedOnly = false } = options;
 
-      let query = `SELECT workout_date AS date, exercise_name, sets_completed, reps_completed,
-                          weight_used, duration_minutes, perceived_exertion, fatigue_level, notes,
-                          created_at, updated_at
+      // FIX: Cast workout_date::text so pg driver returns a plain "YYYY-MM-DD"
+      // string instead of a JS Date object. pg auto-converts DATE columns to
+      // Date objects which then get UTC-shifted when stringified, causing
+      // calendar date mismatches for UTC+ timezones like Nepal (UTC+5:45).
+      let query = `SELECT workout_date::text AS date,
+                          exercise_name, sets_completed, reps_completed,
+                          weight_used, duration_minutes, perceived_exertion,
+                          fatigue_level, notes, created_at, updated_at
                    FROM workout_logs WHERE user_id = $1`;
       const params = [numericUserId];
       let idx = 2;
 
-      if (startDate)      { query += ` AND workout_date >= $${idx++}`; params.push(startDate); }
-      if (endDate)        { query += ` AND workout_date <= $${idx++}`; params.push(endDate); }
-      // completedOnly: only return dates where sets_completed > 0 (the exercise was actually done)
-      if (completedOnly)  { query += ` AND sets_completed IS NOT NULL AND sets_completed > 0`; }
+      if (startDate)     { query += ` AND workout_date >= $${idx++}`; params.push(startDate); }
+      if (endDate)       { query += ` AND workout_date <= $${idx++}`; params.push(endDate); }
+      if (completedOnly) { query += ` AND sets_completed IS NOT NULL AND sets_completed > 0`; }
 
       query += ` ORDER BY workout_date DESC, created_at DESC LIMIT $${idx++} OFFSET $${idx}`;
       params.push(limit, offset);
@@ -392,7 +389,6 @@ class WorkoutService {
   static async getWorkoutStats(userId, { days = 30 } = {}) {
     try {
       const numericUserId = Number(userId);
-      // FIX #6 (SQL injection): use parameterized interval
       const { rows: dateRows } = await pool.query(
         `SELECT DISTINCT workout_date FROM workout_logs
          WHERE user_id = $1 AND workout_date >= CURRENT_DATE - ($2 || ' days')::interval`,
@@ -415,15 +411,12 @@ class WorkoutService {
     }
   }
 
-  // FIX #4: Streak counts if today OR yesterday has a log
-  // (before you log today, your streak shouldn't drop to 0)
   static async _getCurrentStreak(userId) {
     try {
       const { rows } = await pool.query(
         `WITH RECURSIVE workout_dates AS (
            SELECT DISTINCT workout_date FROM workout_logs WHERE user_id = $1
          ),
-         -- Start from today OR yesterday (so streak stays alive before today's log)
          start_date AS (
            SELECT CASE
              WHEN EXISTS (SELECT 1 FROM workout_dates WHERE workout_date = CURRENT_DATE)
@@ -474,8 +467,11 @@ class WorkoutService {
   static async getWeekSummary(userId) {
     try {
       const numericUserId = Number(userId);
+      // FIX: Cast workout_date::text to avoid pg Date object UTC shift
       const { rows } = await pool.query(
-        `SELECT workout_date AS date, COUNT(*) as exercises_logged, SUM(duration_minutes) as total_duration
+        `SELECT workout_date::text AS date,
+                COUNT(*) as exercises_logged,
+                SUM(duration_minutes) as total_duration
          FROM workout_logs
          WHERE user_id = $1
            AND workout_date >= DATE_TRUNC('week', CURRENT_DATE)
@@ -487,7 +483,9 @@ class WorkoutService {
       const summary = {};
       daysOfWeek.forEach(day => { summary[day] = { completed: false, exercises_logged: 0, duration: 0 }; });
       rows.forEach(row => {
-        const date = new Date(row.date);
+        // row.date is now a plain "YYYY-MM-DD" string — parse safely
+        const [year, month, day] = row.date.split("-").map(Number);
+        const date = new Date(year, month - 1, day); // local constructor, no UTC shift
         const dayIndex = (date.getDay() + 6) % 7;
         const dayKey = daysOfWeek[dayIndex];
         if (summary[dayKey]) {

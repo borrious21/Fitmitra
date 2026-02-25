@@ -1,6 +1,9 @@
+// src/context/ThemeContext.jsx
+
 import { createContext, useContext, useEffect, useState } from "react";
 
 const ThemeContext = createContext(null);
+export default ThemeContext;
 
 export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState(() => {

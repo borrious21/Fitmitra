@@ -1,7 +1,7 @@
 // src/pages/Dashboard/Dashboard.jsx
 
 import { useState, useEffect, useRef, useContext } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import styles from "./Dashboard.module.css";
 import ThemeToggle from "../../../components/ThemeToggle/ThemeToggle";
 import { AuthContext } from "../../../context/AuthContext";
@@ -24,7 +24,12 @@ const GOAL_LABELS = {
   wellness:         "Wellness",
 };
 
-/* ─── Utils ──────────────────────────────────────────────────── */
+const NAV_TABS = [
+  { key: "today",    label: "today",    path: "/dashboard" },
+  { key: "progress", label: "progress", path: "/progress"  },
+  { key: "plans",    label: "plans",    path: "/plans"      },
+];
+
 function pct(v, t) { return t ? Math.min(100, Math.round((v / t) * 100)) : 0; }
 
 function useCountUp(target, duration = 1200) {
@@ -135,14 +140,13 @@ function checkRestDay(workout) {
   return name === "rest day" || name === "rest" || name === "recovery day";
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   Dashboard
-═══════════════════════════════════════════════════════════════ */
 export default function Dashboard() {
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const [activeTab, setActiveTab] = useState("today");
+  const activeTab = NAV_TABS.find(t => t.path === location.pathname)?.key ?? "today";
+
   const [loading,   setLoading]   = useState(true);
   const [error,     setError]     = useState(null);
   const [avatarUrl, setAvatarUrl] = useState(null);
@@ -229,14 +233,13 @@ export default function Dashboard() {
     { icon: "⚖️", label: "Log Weight",  action: () => navigate("/progress") },
     { icon: "🩺", label: "Log BP",      action: () => navigate("/progress") },
     { icon: "🍽️", label: "Log Meal",    action: () => navigate("/log-meal") },
-    { icon: "📋", label: "Full Plan",   action: () => navigate("/plans") },
-    { icon: "🎯", label: "Update Goal", action: () => navigate("/profile") },
-    { icon: "💪", label: "Workout",     action: () => navigate("/workout") },
+    { icon: "📋", label: "Full Plan",   action: () => navigate("/plan")     },
+    { icon: "🎯", label: "Update Goal", action: () => navigate("/profile")  },
+    { icon: "💪", label: "Workout",     action: () => navigate("/workout")  },
   ];
 
   return (
     <div className={styles.wrapper}>
-      {/* ══ NAV ══════════════════════════════════════════════════ */}
       <nav className={styles.nav}>
         <a className={styles.navLogo} href="#">
           <span className={styles.navLogoIcon}>
@@ -251,9 +254,13 @@ export default function Dashboard() {
           <span className={styles.navLogoWord}>FIT<span>MITRA</span></span>
         </a>
         <div className={styles.navTabs}>
-          {["today","progress","plans"].map(t => (
-            <button key={t} className={`${styles.navTab}${activeTab === t ? " " + styles.active : ""}`} onClick={() => setActiveTab(t)}>
-              {t}
+          {NAV_TABS.map(t => (
+            <button
+              key={t.key}
+              className={`${styles.navTab}${activeTab === t.key ? " " + styles.active : ""}`}
+              onClick={() => navigate(t.path)}
+            >
+              {t.label}
             </button>
           ))}
         </div>
@@ -273,7 +280,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* ── Welcome ── */}
         <Section>
           <div className={styles.welcomeGrid}>
             <div>
@@ -311,10 +317,8 @@ export default function Dashboard() {
           </div>
         </Section>
 
-        {/* ── Two-col: Workout + Nutrition ── */}
         <div className={styles.twoCol}>
 
-          {/* Workout */}
           <Section>
             {loading ? <LoadingCard /> : isRestDay ? (
               <RestDayCard />
@@ -370,20 +374,18 @@ export default function Dashboard() {
                   icon="📋"
                   message="No workout scheduled for today. Generate a plan to get started."
                   actionLabel="Generate Plan →"
-                  onAction={() => navigate("/plans")}
+                  onAction={() => navigate("/plan")}
                 />
               </div>
             )}
           </Section>
 
-          {/* Nutrition */}
           <Section>
             {loading ? <LoadingCard /> : hasNutrition ? (
               <div className={`${styles.card} ${styles.accent}`}>
                 <span className={styles.secLabel}>🍽️ Today's Nutrition</span>
 
                 {calConsumed > 0 ? (
-                  /* ── Has real logged data: show ring + macros + water ── */
                   <>
                     <div className={styles.calRingWrap}>
                       <div className={styles.ringOuter}>
@@ -440,19 +442,12 @@ export default function Dashboard() {
                     </div>
                   </>
                 ) : (
-                  /* ── Nothing logged yet ── */
-                  /* Layout: calorie goal header + macro target rows (bars at 0)  */
-                  /* + water goal + single CTA. Bars at 0% make it clear these    */
-                  /* are targets, not current intake. No orphaned numbers.         */
                   <div className={styles.nutritionUnlogged}>
-
-                    {/* Calorie goal header */}
                     <div className={styles.nutUnloggedHeader}>
                       <span className={styles.nutUnloggedCal}>{calTarget} <span className={styles.nutUnloggedCalUnit}>kcal</span></span>
                       <span className={styles.nutUnloggedCalLabel}>Today's goal · nothing logged yet</span>
                     </div>
 
-                    {/* Macro target rows — bars at 0% clearly show "not started" */}
                     <div className={styles.nutUnloggedMacros}>
                       {[
                         { label: "Protein", target: nutrition.protein?.target ?? 0, color: "#FF5C1A" },
@@ -467,14 +462,12 @@ export default function Dashboard() {
                             </span>
                           </div>
                           <div className={styles.nutUnloggedTrack}>
-                            {/* Bar intentionally empty — shows target length visually */}
                             <div className={styles.nutUnloggedFill} style={{ width: "0%", background: m.color }} />
                           </div>
                         </div>
                       ))}
                     </div>
 
-                    {/* Water goal — simple text, no dots */}
                     <div className={styles.nutUnloggedWater}>
                       <span>💧</span>
                       <span>Water goal: <strong>{nutrition.water?.target ?? 0}L</strong> today</span>
@@ -504,7 +497,6 @@ export default function Dashboard() {
           </Section>
         </div>
 
-        {/* ── Meals Today ── */}
         <Section hidden={!loading && meals.length === 0 && !hasNutrition}>
           <span className={styles.secLabel}>Meals Today</span>
           {loading ? <LoadingCard /> : meals.length > 0 ? (
@@ -528,7 +520,6 @@ export default function Dashboard() {
           )}
         </Section>
 
-        {/* ── Health Snapshot ── */}
         <Section>
           <span className={styles.secLabel}>🩺 Health Snapshot</span>
           {loading ? <LoadingCard /> : hasAnyHealth ? (
@@ -567,7 +558,6 @@ export default function Dashboard() {
           )}
         </Section>
 
-        {/* ── AI Insights ── */}
         <Section hidden={!loading && insights.length === 0}>
           <div className={`${styles.card} ${styles.accent}`}>
             <div className={styles.aiHeader}>
@@ -598,7 +588,6 @@ export default function Dashboard() {
           </div>
         </Section>
 
-        {/* ── Weekly Progress ── */}
         <Section>
           <div className={`${styles.card} ${styles.accent}`}>
             <span className={styles.secLabel}>📈 Weekly Progress</span>
@@ -666,7 +655,6 @@ export default function Dashboard() {
           </div>
         </Section>
 
-        {/* ── Quick Actions ── */}
         <Section>
           <span className={styles.secLabel}>Quick Actions</span>
           <div className={styles.actionsGrid}>
