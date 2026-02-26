@@ -36,7 +36,11 @@ const IcoArrow = () => (
 );
 const IcoPulse = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+    <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
+    <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+    <line x1="6" y1="1" x2="6" y2="4"/>
+    <line x1="10" y1="1" x2="10" y2="4"/>
+    <line x1="14" y1="1" x2="14" y2="4"/>
   </svg>
 );
 const IcoMenu = () => (
@@ -128,9 +132,9 @@ export default function LandingPage() {
   ];
 
   const testimonials = [
-    { name: "Priya Sharma", role: "Lost 14 kg · 5 months",   quote: "FitMitra felt like having a personal trainer AND nutritionist in my pocket. The AI adapts before I even realise I need it.", metric: "−14kg", avatar: "PS" },
-    { name: "Arjun Mehta",  role: "Gained 8 kg lean muscle", quote: "The macro-tracking is insanely accurate. Five apps before this — none came close to this level of personalisation.",      metric: "+8kg",  avatar: "AM" },
-    { name: "Neha Kapoor",  role: "Marathon finisher",        quote: "Couch to half-marathon in 16 weeks. The streak feature carried me through the hard days.",                                 metric: "21km",  avatar: "NK" },
+    { name: "Priya Sharma", role: "LOST 14 KG · 5 MONTHS",   quote: "FitMitra felt like having a personal trainer AND nutritionist in my pocket. The AI adapts before I even realise I need it.", metric: "−14kg", avatar: "PS" },
+    { name: "Arjun Mehta",  role: "GAINED 8 KG LEAN MUSCLE", quote: "The macro-tracking is insanely accurate. Five apps before this — none came close to this level of personalisation.",      metric: "+8kg",  avatar: "AM" },
+    { name: "Neha Kapoor",  role: "MARATHON FINISHER",        quote: "Couch to half-marathon in 16 weeks. The streak feature carried me through the hard days.",                                 metric: "21km",  avatar: "NK" },
   ];
 
   return (
@@ -141,7 +145,8 @@ export default function LandingPage() {
         <div className={styles.navInner}>
           <Link to="/" className={styles.logo}>
             <span className={styles.logoMark}><IcoPulse /></span>
-            <span className={styles.logoWord}>FitMitra</span>
+            {/* Split logo word to match Workout page: FIT + MITRA colored */}
+            <span className={styles.logoWord}>FIT<span>MITRA</span></span>
           </Link>
 
           <ul className={styles.navLinks}>
@@ -151,13 +156,11 @@ export default function LandingPage() {
           </ul>
 
           <div className={styles.navRight}>
-            {/* Theme toggle always visible */}
             <ThemeToggle />
             <Link to="/login" className={styles.navSignin}>Sign in</Link>
             <Link to="/signup" className={styles.navBtn}>Get started free →</Link>
           </div>
 
-          {/* Mobile: toggle + burger */}
           <div className={styles.navMobileRight}>
             <ThemeToggle />
             <button className={styles.burger} onClick={() => setMenuOpen(p => !p)} aria-label="Menu">
@@ -168,9 +171,9 @@ export default function LandingPage() {
 
         {menuOpen && (
           <div className={styles.drawer}>
-            <a href="#features" onClick={() => setMenuOpen(false)}>Features</a>
-            <a href="#how"      onClick={() => setMenuOpen(false)}>How it works</a>
-            <a href="#stories"  onClick={() => setMenuOpen(false)}>Stories</a>
+            <a href="#features" onClick={() => setMenuOpen(false)}>// Features</a>
+            <a href="#how"      onClick={() => setMenuOpen(false)}>// How it works</a>
+            <a href="#stories"  onClick={() => setMenuOpen(false)}>// Stories</a>
             <Link to="/login"   onClick={() => setMenuOpen(false)}>Sign in</Link>
             <Link to="/signup" className={styles.drawerCta} onClick={() => setMenuOpen(false)}>
               Get started free →
@@ -197,7 +200,8 @@ export default function LandingPage() {
             <h1 className={styles.heroH}>
               <span className={styles.line1}>Move with</span>
               <span className={styles.line2}>intelligence.</span>
-              <span className={styles.line3}>Live without limits.</span>
+              {/* line3 cursor is handled via CSS ::after */}
+              <span className={styles.line3}>Live without limits</span>
             </h1>
 
             <p className={styles.heroP}>
@@ -280,15 +284,15 @@ export default function LandingPage() {
             {/* Float chips */}
             <div className={`${styles.float} ${styles.f1}`}>
               <span>✓</span>
-              <div><b>Workout logged</b><br />+480 kcal burned</div>
+              <div><b>Workout logged</b>+480 kcal burned</div>
             </div>
             <div className={`${styles.float} ${styles.f2}`}>
               <span>🎯</span>
-              <div><b>Goal on track</b><br />−2.1kg this month</div>
+              <div><b>Goal on track</b>−2.1kg this month</div>
             </div>
             <div className={`${styles.float} ${styles.f3}`}>
               <span>⚡</span>
-              <div><b>Plan adapted</b><br />Rest day added</div>
+              <div><b>Plan adapted</b>Rest day added</div>
             </div>
           </div>
         </div>

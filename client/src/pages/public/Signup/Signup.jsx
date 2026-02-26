@@ -100,9 +100,10 @@ const Signup = () => {
         <div className={styles.imageOverlay} />
         <div className={styles.leftContent}>
 
+          {/* Logo — matches nav: FIT + MITRA colored */}
           <div className={styles.brandLogo}>
             <Activity className={styles.brandIcon} />
-            <span className={styles.brandName}>FitMitra</span>
+            <span className={styles.brandName}>FIT<span>MITRA</span></span>
           </div>
 
           <h2 className={styles.leftTitle}>
@@ -285,7 +286,7 @@ const Signup = () => {
               {/* Submit */}
               <button type="submit" disabled={isLoading} className={styles.submitButton}>
                 {isLoading ? (
-                  <><Loader2 className={styles.loadingSpinner} /> Creating your account...</>
+                  <><Loader2 className={styles.loadingSpinner} /> Initialising profile...</>
                 ) : (
                   <><Activity className={styles.buttonIcon} /> Start Your Journey</>
                 )}
@@ -304,7 +305,7 @@ const Signup = () => {
 
             {/* Sign in link */}
             <div className={styles.signinLinkWrapper}>
-              <Link to="/login" className={styles.signinLink}>Sign in</Link>
+              <Link to="/login" className={styles.signinLink}>Sign in →</Link>
             </div>
 
           </div>

@@ -37,12 +37,9 @@ const Login = () => {
 
   useEffect(() => {
     if (isAuthenticated && user && !isInitializing) {
-      if (!user.isVerified) return; // don't redirect unverified users
-
-      // Normalize both camelCase and snake_case variants from the backend
+      if (!user.isVerified) return;
       const hasOnboarded =
         user.hasCompletedOnboarding ?? user.has_completed_onboarding ?? false;
-
       const destination = hasOnboarded ? from : "/onboarding";
       navigate(destination, { replace: true });
     }
@@ -92,7 +89,7 @@ const Login = () => {
       const { token, user: rawUser } = await loginService(formData.email, formData.password);
       login(token, rawUser);
     } catch (err) {
-      if (err?.status === 403) logout(); // clear stale token so redirect guard doesn't fire
+      if (err?.status === 403) logout();
       setLocalError(err);
     } finally {
       setIsLoading(false);
@@ -153,13 +150,14 @@ const Login = () => {
   return (
     <div className={styles.container}>
 
+      {/* ── LEFT PANEL ──────────────────────────────────────── */}
       <div className={styles.leftPanel}>
         <div className={styles.imageOverlay} />
         <div className={styles.leftContent}>
 
           <div className={styles.brandLogo}>
             <Activity className={styles.brandIcon} />
-            <span className={styles.brandName}>FitMitra</span>
+            <span className={styles.brandName}>FIT<span>MITRA</span></span>
           </div>
 
           <h2 className={styles.leftTitle}>
@@ -196,6 +194,7 @@ const Login = () => {
         </div>
       </div>
 
+      {/* ── RIGHT PANEL ─────────────────────────────────────── */}
       <div className={styles.rightPanel}>
 
         <div className={styles.themeToggleWrap}>
@@ -272,7 +271,7 @@ const Login = () => {
                       error={!!verifyError}
                     />
                     {verifyError && (
-                      <p style={{ color:"var(--err-icon)", fontSize:"0.8rem", marginTop:"0.5rem", textAlign:"center", fontWeight:600 }}>
+                      <p style={{ color:"var(--err-icon)", fontSize:"0.75rem", marginTop:"0.5rem", textAlign:"center", fontWeight:700, fontFamily:"var(--font-mono)", letterSpacing:"0.06em" }}>
                         {verifyError}
                       </p>
                     )}
@@ -286,7 +285,7 @@ const Login = () => {
                         <><Loader2 className={styles.loadingSpinner} /> Verifying...</>
                       ) : "Verify & Sign In"}
                     </button>
-                    <p style={{ fontSize:"0.775rem", color:"var(--ok-text)", marginTop:"0.75rem", textAlign:"center" }}>
+                    <p style={{ fontSize:"0.7rem", color:"var(--ok-text)", marginTop:"0.75rem", textAlign:"center", fontFamily:"var(--font-mono)", letterSpacing:"0.06em", textTransform:"uppercase" }}>
                       Prefer a separate page?{" "}
                       <Link
                         to="/verify-email"
@@ -305,12 +304,8 @@ const Login = () => {
               <div className={styles.formGroup}>
                 <label htmlFor="email" className={styles.label}>Email Address</label>
                 <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  disabled={isLoading}
+                  type="email" id="email" name="email"
+                  value={formData.email} onChange={handleChange} disabled={isLoading}
                   className={`${styles.input} ${validationErrors.email ? styles.inputError : ""}`}
                   placeholder="you@example.com"
                 />
@@ -324,11 +319,8 @@ const Login = () => {
                 <div className={styles.passwordWrapper}>
                   <input
                     type={showPassword ? "text" : "password"}
-                    id="password"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    disabled={isLoading}
+                    id="password" name="password"
+                    value={formData.password} onChange={handleChange} disabled={isLoading}
                     className={`${styles.input} ${validationErrors.password ? styles.inputError : ""}`}
                     placeholder="Enter your password"
                   />
@@ -339,11 +331,7 @@ const Login = () => {
                     disabled={isLoading}
                     aria-label={showPassword ? "Hide password" : "Show password"}
                   >
-                    {showPassword ? (
-                      <EyeOff className={styles.toggleIcon} />
-                    ) : (
-                      <Eye className={styles.toggleIcon} />
-                    )}
+                    {showPassword ? <EyeOff className={styles.toggleIcon} /> : <Eye className={styles.toggleIcon} />}
                   </button>
                 </div>
                 {validationErrors.password && (
@@ -376,9 +364,7 @@ const Login = () => {
             </div>
 
             <div className={styles.signupLinkWrapper}>
-              <Link to="/signup" className={styles.signupLink}>
-                Create account
-              </Link>
+              <Link to="/signup" className={styles.signupLink}>Create account →</Link>
             </div>
 
           </div>
