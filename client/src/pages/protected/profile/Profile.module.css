@@ -890,7 +890,6 @@
   box-shadow: 0 0 16px rgba(255, 77, 109, 0.15);
 }
 
-/* ─── LOADING ────────────────────────────────────────────────── */
 .loadingWrap {
   min-height: 100vh;
   display: flex;
@@ -910,24 +909,16 @@
   animation: spin 0.8s linear infinite;
 }
 
-/* ─── SCROLLBAR ─────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: #0A0C0F; }
 ::-webkit-scrollbar-thumb { background: rgba(255,92,26,0.3); border-radius: 2px; }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   Profile.module.css — v2 ADDITIONS
-   Paste these at the END of your existing Profile.module.css
-   ───────────────────────────────────────────────────────────────────────────── */
-
-/* ── v2: purple hero badge ────────────────────────────────────────────────── */
 .badgePurple {
   background: rgba(168,85,247,0.12);
   border:     1px solid rgba(168,85,247,0.3);
   color:      #c084fc;
 }
 
-/* ── v2: XP Bar ───────────────────────────────────────────────────────────── */
 .xpBar {
   background: rgba(255,255,255,0.03);
   border:     1px solid rgba(255,255,255,0.07);

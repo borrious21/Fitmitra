@@ -1,13 +1,4 @@
-// src/pages/Dashboard/Dashboard.jsx
-// v3 — New features on top of v2:
-//   • Gamification XP bar + level + streak in welcome section
-//   • Adaptive difficulty signal banner
-//   • Missed workout recovery suggestion on rest days
-//   • Progress metrics (weight trend, strength PRs) card
-//   • Deload week wellness tip card
-//   • Per-day hydration target from plan
-//   • Recovery protocol snippet on deload week
-//   • Warm-up / Cooldown reminder in workout card
+
 
 import { useState, useEffect, useRef, useContext, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -20,8 +11,6 @@ import {
   getDashboardHealth, getDashboardWeekly, getDashboardInsights, getDashboardStreak,
 } from "../../../services/dashboardService";
 import { apiFetch } from "../../../services/apiClient";
-
-// ─── Constants ────────────────────────────────────────────────────────────────
 
 const GOAL_LABELS = {
   weight_loss: "Weight Loss", maintain_fitness: "Maintain Fitness",
@@ -49,8 +38,6 @@ const LEVEL_LABELS = {
   5:"⚡ Athlete", 6:"🥈 Contender", 7:"🥇 Champion", 8:"🏆 Elite",
   9:"💎 Legend", 10:"🚀 GOAT",
 };
-
-// ─── Utility ──────────────────────────────────────────────────────────────────
 
 function pct(v, t) { return t ? Math.min(100, Math.round((v / t) * 100)) : 0; }
 
@@ -97,7 +84,7 @@ function Section({ children, hidden, delay = 0 }) {
   );
 }
 
-// ─── Small reusable UI pieces ──────────────────────────────────────────────────
+
 
 function MacroBar({ label, value, target, fillColor }) {
   const p = pct(value, target);
@@ -213,9 +200,9 @@ function ExerciseReps({ ex }) {
   );
 }
 
-// ─── NEW v3 Components ─────────────────────────────────────────────────────────
 
-// XP + Level Bar
+
+
 function XPBar({ xp = 0, level = {}, streak = {} }) {
   const p     = level.progress_pct ?? 0;
   const label = LEVEL_LABELS[level.current] ?? `Level ${level.current ?? 1}`;
@@ -242,7 +229,6 @@ function XPBar({ xp = 0, level = {}, streak = {} }) {
   );
 }
 
-// Badge row
 function BadgeRow({ badges = [] }) {
   if (!badges.length) return null;
   return (
@@ -254,7 +240,6 @@ function BadgeRow({ badges = [] }) {
   );
 }
 
-// Adaptive difficulty banner
 function AdaptiveBanner({ signal }) {
   if (!signal || signal.signal === "maintain") return null;
   const isUp = signal.signal === "increase";
@@ -272,7 +257,6 @@ function AdaptiveBanner({ signal }) {
   );
 }
 
-// Deload wellness card
 function DeloadWellnessCard({ recovery }) {
   if (!recovery) return null;
   return (
@@ -296,7 +280,6 @@ function DeloadWellnessCard({ recovery }) {
   );
 }
 
-// Progress metrics card (weight trend + PRs)
 function ProgressMetricsCard({ metrics }) {
   if (!metrics) return null;
   const hasWeight   = metrics.weight_change_kg !== undefined;
@@ -344,7 +327,6 @@ function ProgressMetricsCard({ metrics }) {
   );
 }
 
-// Warm-up reminder chip in workout card
 function WarmupReminder({ warmup = [] }) {
   if (!warmup.length) return null;
   return (
@@ -354,8 +336,6 @@ function WarmupReminder({ warmup = [] }) {
     </div>
   );
 }
-
-// ─── Main Dashboard ────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
   const { user }  = useContext(AuthContext);
@@ -379,7 +359,6 @@ export default function Dashboard() {
   const [prs,           setPRs]           = useState([]);
   const [volumeDelta,   setVolumeDelta]   = useState([]);
   const [dashboard,     setDashboard]     = useState(null);
-  // ── v3 new state ──
   const [gamification,  setGamification]  = useState(null);
   const [adaptSignal,   setAdaptSignal]   = useState(null);
   const [progressMetrics, setProgressMetrics] = useState(null);
@@ -403,7 +382,7 @@ export default function Dashboard() {
           apiFetch("/workouts/prs"),
           apiFetch("/workouts/volume"),
           apiFetch("/workouts/dashboard?days=30"),
-          // v3 additions
+          
           apiFetch("/plans/gamification"),
           apiFetch("/plans/active"),
         ]);
@@ -443,7 +422,7 @@ export default function Dashboard() {
           const d = results[10].value?.data ?? results[10].value;
           setDashboard(d ?? null);
         }
-        // v3
+        
         if (results[11].status === "fulfilled") {
           const d = results[11].value?.data ?? results[11].value;
           setGamification(d ?? null);
@@ -453,24 +432,22 @@ export default function Dashboard() {
           setActivePlan(d ?? null);
         }
 
-        // Fetch adaptive difficulty signal from recent effort logs (if available)
         try {
-          const recentLogs = []; // TODO: populate from workout logs
+          const recentLogs = []; 
           const sigRes = await apiFetch("/plans/adaptive-difficulty", {
             method: "POST",
             body: JSON.stringify({ recent_logs: recentLogs }),
           });
           if (!cancelled) setAdaptSignal(sigRes?.data ?? sigRes ?? null);
-        } catch { /* ok */ }
+        } catch { }
 
-        // Fetch progress metrics
         try {
           const metRes = await apiFetch("/plans/progress-metrics", {
             method: "POST",
             body: JSON.stringify({ weight_logs: [], strength_logs: [], measurements: [] }),
           });
           if (!cancelled) setProgressMetrics(metRes?.data ?? metRes ?? null);
-        } catch { /* ok */ }
+        } catch { }
 
       } catch {
         if (!cancelled) setError("Failed to load dashboard data.");

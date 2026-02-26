@@ -1,11 +1,4 @@
 // src/pages/Profile/Profile.jsx
-// v2 — adds:
-//   • GamificationPanel (XP bar, streak, stats, badges)
-//   • ActivePlanCard (goal, duration, macro targets)
-//   • Plan Settings form section (plan_duration, target_kcal)
-//   • plan_duration + target_kcal sent to save payload
-//   • Level badge in heroCard badges row
-//   • Streak shown as 4th hero stat
 
 import { useState, useEffect, useRef, useContext } from "react";
 import { useNavigate } from "react-router-dom";
@@ -56,7 +49,6 @@ const LEVEL_LABELS = {
   9:"💎 Legend", 10:"🚀 GOAT",
 };
 
-// ─── Condition map helpers ────────────────────────────────────────────────────
 
 function mapConditionsFromApi(mc = {}) {
   const result = [];
@@ -89,13 +81,10 @@ function apiToForm(d) {
     goal:               d.goal           ?? "",
     diet_type:          d.diet_type      ?? "",
     medical_conditions: mapConditionsFromApi(d.medical_conditions),
-    // v2 plan customisation fields
     plan_duration:      d.plan_duration  ? String(d.plan_duration) : "4",
     target_kcal:        d.target_kcal    ? String(d.target_kcal)   : "",
   };
 }
-
-// ─── Section ──────────────────────────────────────────────────────────────────
 
 function Section({ children, delay = 0 }) {
   const ref = useRef();
@@ -118,8 +107,6 @@ function Section({ children, delay = 0 }) {
   );
 }
 
-// ─── v2: XP Bar ───────────────────────────────────────────────────────────────
-
 function XPBar({ xp = 0, level = {}, streak = {} }) {
   const p     = level.progress_pct ?? 0;
   const label = LEVEL_LABELS[level.current] ?? `Level ${level.current ?? 1}`;
@@ -139,8 +126,6 @@ function XPBar({ xp = 0, level = {}, streak = {} }) {
     </div>
   );
 }
-
-// ─── v2: Gamification panel ───────────────────────────────────────────────────
 
 function GamificationPanel({ data }) {
   if (!data) return null;
@@ -176,8 +161,6 @@ function GamificationPanel({ data }) {
     </div>
   );
 }
-
-// ─── v2: Active Plan card ─────────────────────────────────────────────────────
 
 function ActivePlanCard({ plan, onNavigate }) {
   if (!plan) return null;
@@ -215,18 +198,12 @@ function ActivePlanCard({ plan, onNavigate }) {
   );
 }
 
-// ─── Empty form ───────────────────────────────────────────────────────────────
-
 const EMPTY_FORM = {
   age: "", gender: "", height_cm: "", weight_kg: "",
   activity_level: "", goal: "", diet_type: "",
   medical_conditions: ["none"],
   plan_duration: "4", target_kcal: "",
 };
-
-// ═════════════════════════════════════════════════════════════════════════════
-// PROFILE PAGE
-// ═════════════════════════════════════════════════════════════════════════════
 
 export default function Profile() {
   const navigate        = useNavigate();
@@ -245,7 +222,6 @@ export default function Profile() {
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [notifs,          setNotifs]          = useState(true);
   const [reminders,       setReminders]       = useState(false);
-  // v2
   const [gamification,    setGamification]    = useState(null);
   const [activePlan,      setActivePlan]      = useState(null);
 
@@ -253,7 +229,6 @@ export default function Profile() {
 
   useEffect(() => {
     loadProfile();
-    // Gamification and active plan are non-blocking — load in parallel
     apiFetch("/plans/gamification")
       .then(r => setGamification(r?.data ?? r ?? null))
       .catch(() => {});
@@ -286,7 +261,6 @@ export default function Profile() {
     }
   };
 
-  // ── Avatar upload ─────────────────────────────────────────────────────────
 
   const handleAvatarChange = async (e) => {
     const file = e.target.files?.[0];
@@ -322,7 +296,6 @@ export default function Profile() {
     }
   };
 
-  // ── Field helpers ─────────────────────────────────────────────────────────
 
   const setField = (field, value) => {
     setProfile(p => ({ ...p, [field]: value }));
@@ -343,7 +316,6 @@ export default function Profile() {
     });
   };
 
-  // ── Validation ────────────────────────────────────────────────────────────
 
   const validate = () => {
     const e = {};
@@ -370,7 +342,6 @@ export default function Profile() {
     return Object.keys(e).length === 0;
   };
 
-  // ── Save ──────────────────────────────────────────────────────────────────
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -385,7 +356,6 @@ export default function Profile() {
       goal:               profile.goal,
       diet_type:          profile.diet_type,
       medical_conditions: mapConditionsToApi(profile.medical_conditions),
-      // v2: plan personalisation fields
       plan_duration: Number(profile.plan_duration) || 4,
       target_kcal:   profile.target_kcal ? Number(profile.target_kcal) : null,
     };
@@ -402,15 +372,11 @@ export default function Profile() {
     }
   };
 
-  // ── Cancel ────────────────────────────────────────────────────────────────
-
   const handleCancel = () => {
     const changed = JSON.stringify(profile) !== JSON.stringify(original);
     if (changed && !window.confirm("Discard unsaved changes?")) return;
     setProfile({ ...original }); setErrors({}); setEditMode(false);
   };
-
-  // ── Logout / Delete ───────────────────────────────────────────────────────
 
   const handleLogout = async () => {
     if (!window.confirm("Are you sure you want to log out?")) return;
@@ -425,14 +391,10 @@ export default function Profile() {
     catch (err) { showAlert("error", err?.message ?? "Delete failed. Please try again."); }
   };
 
-  // ── Alert ─────────────────────────────────────────────────────────────────
-
   const showAlert = (type, msg) => {
     setAlert({ type, msg });
     setTimeout(() => setAlert(null), 4500);
   };
-
-  // ── Derived values ────────────────────────────────────────────────────────
 
   const bmi        = calcBMI(profile.height_cm, profile.weight_kg);
   const bmiInfo    = bmi ? bmiLabel(parseFloat(bmi)) : null;
@@ -456,10 +418,6 @@ export default function Profile() {
       </div>
     </div>
   );
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // RENDER
-  // ══════════════════════════════════════════════════════════════════════════
 
   return (
     <div className={styles.wrapper}>
@@ -541,7 +499,6 @@ export default function Profile() {
                 {profile.activity_level && (
                   <span className={`${styles.heroBadge} ${styles.badgeOrange}`}>{FMT_ACTIVITY[profile.activity_level]}</span>
                 )}
-                {/* v2: level badge */}
                 {gamification?.level?.current && (
                   <span className={`${styles.heroBadge} ${styles.badgePurple}`}>
                     {LEVEL_LABELS[gamification.level.current] ?? `Level ${gamification.level.current}`}
@@ -559,7 +516,6 @@ export default function Profile() {
                       : "—",
                     key: "BMI",
                   },
-                  // v2: streak as 4th stat
                   {
                     val: gamification?.streak?.current
                       ? <span style={{ color: "#FF5C1A" }}>{gamification.streak.current}d 🔥</span>
@@ -577,21 +533,18 @@ export default function Profile() {
           </div>
         </Section>
 
-        {/* ── v2: GAMIFICATION PANEL ───────────────────────────────────── */}
         {!isNew && gamification && (
           <Section delay={40}>
             <GamificationPanel data={gamification} />
           </Section>
         )}
 
-        {/* ── v2: ACTIVE PLAN SUMMARY ──────────────────────────────────── */}
         {!isNew && !editMode && activePlan && (
           <Section delay={50}>
             <ActivePlanCard plan={activePlan} onNavigate={() => navigate("/plans")} />
           </Section>
         )}
 
-        {/* ── VIEW MODE ────────────────────────────────────────────────── */}
         {!editMode && !isNew && (
           <>
             <Section delay={60}>
@@ -675,7 +628,6 @@ export default function Profile() {
                   </div>
                 </div>
 
-                {/* v2: Plan Settings card */}
                 <div className={styles.detailCard}>
                   <div className={styles.detailCardHeader}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -709,12 +661,10 @@ export default function Profile() {
           </>
         )}
 
-        {/* ── EDIT / CREATE FORM ────────────────────────────────────────── */}
         {(editMode || isNew) && (
           <Section delay={0}>
             <form onSubmit={handleSave} className={styles.form}>
 
-              {/* Basic Info */}
               <div className={`${styles.formSection} ${styles.accent}`}>
                 <div className={styles.formSectionTitle}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -815,7 +765,6 @@ export default function Profile() {
                 </div>
               </div>
 
-              {/* v2: Plan Settings */}
               <div className={`${styles.formSection} ${styles.accent}`}>
                 <div className={styles.formSectionTitle}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -851,7 +800,6 @@ export default function Profile() {
                 </div>
               </div>
 
-              {/* Health Conditions */}
               <div className={`${styles.formSection} ${styles.accent}`}>
                 <div className={styles.formSectionTitle}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -899,7 +847,6 @@ export default function Profile() {
           </Section>
         )}
 
-        {/* ── SETTINGS ─────────────────────────────────────────────────── */}
         {!isNew && (
           <Section delay={180}>
             <span className={styles.secLabel}>⚙️ Settings</span>
@@ -967,7 +914,6 @@ export default function Profile() {
           </Section>
         )}
 
-        {/* ── LOGOUT ───────────────────────────────────────────────────── */}
         {!isNew && (
           <Section delay={240}>
             <div className={styles.logoutCard}>
@@ -983,7 +929,6 @@ export default function Profile() {
           </Section>
         )}
 
-        {/* ── DANGER ZONE ──────────────────────────────────────────────── */}
         {!isNew && (
           <Section delay={300}>
             <div className={styles.dangerZone}>
