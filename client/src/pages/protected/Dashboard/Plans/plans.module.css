@@ -70,3 +70,208 @@
 .safetyList { display: flex; flex-direction: column; gap: 0.5rem; }
 .safetyNote { display: flex; align-items: flex-start; gap: 0.75rem; background: rgba(255,200,0,0.04); border: 1px solid rgba(255,200,0,0.12); border-radius: 10px; padding: 0.75rem 1rem; font-size: 0.85rem; color: rgba(255,255,255,0.65); line-height: 1.5; }
 .safetyDot { width: 6px; height: 6px; border-radius: 50%; background: #FFD700; flex-shrink: 0; margin-top: 5px; }
+
+/* ── Paste these additions into your Plans.module.css ── */
+
+/* Week selector tabs */
+.weekSelector {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+.weekTab {
+  padding: 0.35rem 0.85rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.04);
+  color: rgba(255,255,255,0.6);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.weekTab:hover { background: rgba(255,255,255,0.08); color: #fff; }
+.weekTabActive {
+  background: rgba(184,240,0,0.15);
+  border-color: rgba(184,240,0,0.4);
+  color: #b8f000;
+  font-weight: 600;
+}
+.weekTabDeload {
+  border-color: rgba(0,200,224,0.3);
+  color: rgba(0,200,224,0.8);
+}
+.weekFocus {
+  font-size: 0.82rem;
+  color: rgba(255,255,255,0.45);
+  margin: 0.25rem 0 0;
+}
+
+/* Week card upgrades */
+.weekKcal {
+  font-size: 0.68rem;
+  color: rgba(255,92,26,0.8);
+  margin-top: 0.15rem;
+  display: block;
+}
+.muscleChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  margin-top: 0.4rem;
+}
+.muscleChip {
+  font-size: 0.62rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 9999px;
+  background: rgba(184,240,0,0.1);
+  border: 1px solid rgba(184,240,0,0.2);
+  color: rgba(184,240,0,0.8);
+}
+.activeDay {
+  border-color: rgba(184,240,0,0.5) !important;
+  background: rgba(184,240,0,0.06) !important;
+}
+
+/* Day detail panel */
+.dayPanel {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  margin-top: 0.5rem;
+}
+.dayPanelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.25rem;
+}
+.dayPanelTitle {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.25rem;
+}
+.dayPanelSub {
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.4);
+  margin: 0;
+}
+.variationBadge {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+  background: rgba(0,200,224,0.12);
+  border: 1px solid rgba(0,200,224,0.25);
+  color: #00c8e0;
+  font-weight: 500;
+}
+.closePanelBtn {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 9999px;
+  color: rgba(255,255,255,0.5);
+  width: 2rem;
+  height: 2rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+}
+.closePanelBtn:hover { background: rgba(255,77,109,0.15); color: #ff4d6d; }
+
+/* Exercise cards */
+.exerciseList { display: flex; flex-direction: column; gap: 0.75rem; }
+.exerciseCard {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  transition: border-color 0.2s;
+}
+.exerciseCard:hover { border-color: rgba(184,240,0,0.2); }
+.deloadEx { border-color: rgba(0,200,224,0.2); background: rgba(0,200,224,0.03); }
+.exHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.6rem;
+}
+.exNum {
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  background: rgba(184,240,0,0.12);
+  border: 1px solid rgba(184,240,0,0.25);
+  color: #b8f000;
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.exName {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #fff;
+}
+.deloadBadge {
+  font-size: 0.65rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 9999px;
+  background: rgba(0,200,224,0.12);
+  border: 1px solid rgba(0,200,224,0.25);
+  color: #00c8e0;
+}
+.exMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+.exStat {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.7);
+}
+.exMuscles { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.progressionNote {
+  font-size: 0.75rem;
+  color: rgba(184,240,0,0.7);
+  margin: 0.5rem 0 0;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+
+/* Meal panel inside day detail */
+.mealPanel { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid rgba(255,255,255,0.07); }
+.mealPanelTitle { font-size: 0.9rem; font-weight: 600; color: rgba(255,255,255,0.7); margin: 0 0 0.75rem; }
+.mealGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.6rem; }
+.mealCard {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 0.65rem;
+  padding: 0.75rem;
+}
+.mealLabel { display: block; font-size: 0.72rem; color: rgba(255,255,255,0.4); margin-bottom: 0.3rem; }
+.mealVal { font-size: 0.82rem; color: rgba(255,255,255,0.85); line-height: 1.4; }
+
+/* Full week meal grid */
+.mealWeekGrid { display: flex; flex-direction: column; gap: 0.75rem; }
+.mealWeekCard {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 0.75rem;
+  padding: 1rem;
+}
+.mealWeekDay { font-size: 0.8rem; font-weight: 700; color: rgba(255,255,255,0.5); margin-bottom: 0.6rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.mealRow { display: flex; gap: 0.75rem; font-size: 0.8rem; color: rgba(255,255,255,0.75); padding: 0.25rem 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.mealRow:last-child { border-bottom: none; }
+.mealRowLabel { min-width: 70px; color: rgba(255,255,255,0.35); font-size: 0.75rem; flex-shrink: 0; }

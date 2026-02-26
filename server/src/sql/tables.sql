@@ -1,4 +1,8 @@
 DROP TABLE IF EXISTS admin_logs CASCADE;
+DROP TABLE IF EXISTS nutrition_adjustments CASCADE;
+DROP TABLE IF EXISTS nutrition_plans CASCADE;
+DROP TABLE IF EXISTS weight_logs CASCADE;
+DROP TABLE IF EXISTS exercise_prs CASCADE;
 DROP TABLE IF EXISTS meal_logs CASCADE;
 DROP TABLE IF EXISTS plans CASCADE;
 DROP TABLE IF EXISTS profiles CASCADE;
@@ -35,7 +39,6 @@ CREATE TABLE users (
     reset_otp_attempts INT DEFAULT 0,
     has_completed_onboarding BOOLEAN DEFAULT FALSE
 );
-
 CREATE INDEX idx_users_email ON users(email);
 
 CREATE TABLE profiles (
@@ -60,18 +63,20 @@ CREATE TABLE profiles (
 );
 
 CREATE TABLE plans (
-    id SERIAL PRIMARY KEY,
-    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    workout_plan JSONB NOT NULL,
-    meal_plan JSONB NOT NULL,
-    habits JSONB,
-    generated_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW(),
-    completed_at TIMESTAMP,
-    is_active BOOLEAN DEFAULT TRUE,
-    duration_weeks INT DEFAULT 4,
-    goals TEXT,
-    metadata JSONB
+    id              SERIAL PRIMARY KEY,
+    user_id         INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    workout_plan    JSONB NOT NULL,
+    meal_plan       JSONB NOT NULL,
+    habits          JSONB,
+    generated_at    TIMESTAMP DEFAULT NOW(),
+    updated_at      TIMESTAMP DEFAULT NOW(),
+    completed_at    TIMESTAMP,
+    is_active       BOOLEAN DEFAULT TRUE,
+    duration_weeks  INT DEFAULT 4,
+    goals           TEXT,
+    metadata        JSONB,
+    mesocycle_week  INT DEFAULT 1,
+    started_at      DATE DEFAULT CURRENT_DATE
 );
 CREATE UNIQUE INDEX unique_active_plan_per_user ON plans(user_id) WHERE is_active = TRUE;
 
@@ -138,10 +143,25 @@ CREATE TABLE workout_logs (
     perceived_exertion INT CHECK (perceived_exertion BETWEEN 1 AND 10),
     fatigue_level INT CHECK (fatigue_level BETWEEN 1 AND 10),
     notes TEXT,
+    all_sets_completed BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
 CREATE INDEX idx_workout_logs_user_date ON workout_logs(user_id, workout_date DESC);
+
+CREATE TABLE exercise_prs (
+    id            SERIAL PRIMARY KEY,
+    user_id       INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    exercise_name VARCHAR(100) NOT NULL,
+    best_1rm      DECIMAL(6,2),
+    best_weight   DECIMAL(6,2),
+    best_reps     INT,
+    achieved_at   DATE NOT NULL DEFAULT CURRENT_DATE,
+    created_at    TIMESTAMP DEFAULT NOW(),
+    updated_at    TIMESTAMP DEFAULT NOW(),
+    UNIQUE(user_id, exercise_name)
+);
+CREATE INDEX idx_exercise_prs_user ON exercise_prs(user_id, achieved_at DESC);
 
 CREATE TABLE progress_logs (
     id SERIAL PRIMARY KEY,
@@ -160,6 +180,42 @@ CREATE TABLE progress_logs (
     UNIQUE(user_id, log_date)
 );
 CREATE INDEX idx_progress_logs_user_date ON progress_logs(user_id, log_date DESC);
+
+CREATE TABLE weight_logs (
+    id          SERIAL PRIMARY KEY,
+    user_id     INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    weight_kg   DECIMAL(5,2) NOT NULL CHECK (weight_kg > 0),
+    logged_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    notes       TEXT,
+    created_at  TIMESTAMP DEFAULT NOW(),
+    UNIQUE(user_id, logged_date)
+);
+CREATE INDEX idx_weight_logs_user_date ON weight_logs(user_id, logged_date DESC);
+
+CREATE TABLE nutrition_plans (
+    id                      SERIAL PRIMARY KEY,
+    user_id                 INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    calorie_target          INT NOT NULL CHECK (calorie_target > 0),
+    original_calorie_target INT,
+    protein_g               INT,
+    carbs_g                 INT,
+    fats_g                  INT,
+    water_target_liters     DECIMAL(3,1) DEFAULT 2.5,
+    is_active               BOOLEAN DEFAULT TRUE,
+    created_at              TIMESTAMP DEFAULT NOW(),
+    updated_at              TIMESTAMP DEFAULT NOW()
+);
+CREATE UNIQUE INDEX unique_active_nutrition_per_user ON nutrition_plans(user_id) WHERE is_active = TRUE;
+
+CREATE TABLE nutrition_adjustments (
+    id               SERIAL PRIMARY KEY,
+    user_id          INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    previous_target  INT,
+    new_target       INT,
+    reason           VARCHAR(100),
+    adjusted_at      TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX idx_nutrition_adjustments_user ON nutrition_adjustments(user_id, adjusted_at DESC);
 
 CREATE TABLE user_achievements (
     id SERIAL PRIMARY KEY,
@@ -223,12 +279,14 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trg_users_updated_at           BEFORE UPDATE ON users           FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-CREATE TRIGGER trg_profiles_updated_at        BEFORE UPDATE ON profiles        FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-CREATE TRIGGER trg_plans_updated_at           BEFORE UPDATE ON plans           FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-CREATE TRIGGER trg_meal_logs_updated_at       BEFORE UPDATE ON meal_logs       FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-CREATE TRIGGER trg_exercises_updated_at       BEFORE UPDATE ON exercises       FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-CREATE TRIGGER trg_workout_logs_updated_at    BEFORE UPDATE ON workout_logs    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-CREATE TRIGGER trg_progress_logs_updated_at   BEFORE UPDATE ON progress_logs   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-CREATE TRIGGER trg_user_streaks_updated_at    BEFORE UPDATE ON user_streaks    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-CREATE TRIGGER trg_user_preferences_updated_at BEFORE UPDATE ON user_preferences FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER trg_users_updated_at              BEFORE UPDATE ON users              FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER trg_profiles_updated_at           BEFORE UPDATE ON profiles           FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER trg_plans_updated_at              BEFORE UPDATE ON plans              FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER trg_meal_logs_updated_at          BEFORE UPDATE ON meal_logs          FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER trg_exercises_updated_at          BEFORE UPDATE ON exercises          FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER trg_workout_logs_updated_at       BEFORE UPDATE ON workout_logs       FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER trg_progress_logs_updated_at      BEFORE UPDATE ON progress_logs      FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER trg_exercise_prs_updated_at       BEFORE UPDATE ON exercise_prs       FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER trg_nutrition_plans_updated_at    BEFORE UPDATE ON nutrition_plans    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER trg_user_streaks_updated_at       BEFORE UPDATE ON user_streaks       FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER trg_user_preferences_updated_at   BEFORE UPDATE ON user_preferences   FOR EACH ROW EXECUTE FUNCTION set_updated_at();

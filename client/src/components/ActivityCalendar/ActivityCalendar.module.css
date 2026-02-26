@@ -1,18 +1,22 @@
-/* ActivityCalendar.module.css */
+/* ═══════════════════════════════════════════════════════════════
+   FITMITRA — ACTIVITY CALENDAR
+   Aesthetic: Cyberpunk Forge · matches Workout.module.css
+   ═══════════════════════════════════════════════════════════════ */
 
 .wrap {
   background: transparent;
-  padding: 0.25rem 0.25rem 0.5rem;
+  padding: 0.25rem 0.25rem 0.75rem;
+  font-family: 'Space Mono', 'Courier New', monospace;
 }
 
-/* ── Header ── */
+/* ── HEADER ───────────────────────────────────────────────────── */
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
+  gap: 0.875rem;
+  margin-bottom: 1.25rem;
 }
 
 .navRow {
@@ -22,132 +26,186 @@
 }
 
 .monthTitle {
-  font-size: 1rem;
-  font-weight: 700;
-  min-width: 160px;
+  font-family: 'Bebas Neue', 'Impact', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  min-width: 200px;
   text-align: center;
-  color: var(--text-1);
-  transition: color 0.35s;
+  color: var(--text-1, #F5F7FF);
+  text-shadow: 0 0 20px rgba(255, 77, 0, 0.25);
 }
 
 .navBtn {
-  background: var(--border);
-  border: 1px solid var(--border-hi);
-  color: var(--text-2);
-  border-radius: 8px;
-  width: 30px;
-  height: 30px;
+  background: rgba(255, 77, 0, 0.06);
+  border: 1px solid rgba(255, 77, 0, 0.2);
+  color: var(--text-2, #8A95AD);
+  border-radius: 0.5rem;
+  width: 34px;
+  height: 34px;
   font-size: 1.1rem;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s, color 0.15s, border-color 0.35s;
+  transition: all 0.2s;
   line-height: 1;
+  position: relative;
+  overflow: hidden;
+}
+.navBtn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,77,0,0.12), transparent);
+  opacity: 0;
+  transition: opacity 0.2s;
 }
 .navBtn:hover:not(:disabled) {
-  background: var(--border-hi);
-  color: var(--text-1);
+  border-color: rgba(255, 77, 0, 0.6);
+  color: #FF4D00;
+  text-shadow: 0 0 10px rgba(255, 77, 0, 0.7);
+  box-shadow: 0 0 14px rgba(255, 77, 0, 0.15);
 }
+.navBtn:hover:not(:disabled)::before { opacity: 1; }
 
+/* ── LEGEND ───────────────────────────────────────────────────── */
 .legend {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 1rem;
   flex-wrap: wrap;
 }
 
 .legendItem {
   display: flex;
   align-items: center;
-  gap: 0.3rem;
-  font-size: 0.7rem;
-  color: var(--text-3);
-  transition: color 0.35s;
+  gap: 0.375rem;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-3, #3D4558);
 }
 
 .legendDot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   flex-shrink: 0;
+  box-shadow: 0 0 6px currentColor;
 }
 
-/* ── Day name row ── */
+/* ── DAY HEADERS ──────────────────────────────────────────────── */
 .dayHeaders {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 4px;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .dayHeader {
   text-align: center;
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: var(--text-3);
-  padding: 4px 0;
-  transition: color 0.35s;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-3, #3D4558);
+  padding: 5px 0;
+  position: relative;
+}
+/* Subtle bottom tick */
+.dayHeader::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 3px; height: 1px;
+  background: rgba(255, 77, 0, 0.3);
 }
 
-/* ── Grid ── */
+/* ── GRID ─────────────────────────────────────────────────────── */
 .grid {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
 }
 
 .weekRow {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
+  gap: 5px;
 }
 
-/* ── Cell ── */
+/* ── CELLS ────────────────────────────────────────────────────── */
 .cell {
   border: 1px solid transparent;
-  border-radius: 10px;
-  padding: 6px 5px 5px;
-  min-height: 64px;
+  border-radius: 0.625rem;
+  padding: 7px 5px 6px;
+  min-height: 68px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  transition: transform 0.12s, opacity 0.12s;
   cursor: default;
   position: relative;
   overflow: hidden;
+  transition: transform 0.2s cubic-bezier(0.22,1,0.36,1),
+              box-shadow 0.2s ease,
+              opacity 0.2s;
+}
+
+/* Corner notch decoration on active cells */
+.cell:not(.cellMuted):not(.cellEmpty)::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 0; height: 0;
+  border-style: solid;
+  border-width: 0 8px 8px 0;
+  border-color: transparent rgba(255,255,255,0.04) transparent transparent;
 }
 
 .cell:not(.cellMuted):hover {
-  transform: scale(1.03);
+  transform: scale(1.06) translateY(-2px);
   z-index: 2;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
 }
 
 .cellEmpty {
-  min-height: 64px;
-  border-radius: 10px;
+  min-height: 68px;
+  border-radius: 0.625rem;
   background: transparent;
 }
 
 .cellMuted {
-  opacity: 0.3;
+  opacity: 0.22;
+  filter: grayscale(0.5);
 }
 
-/* Today: orange ring */
+/* ── TODAY RING ───────────────────────────────────────────────── */
 .cellToday {
-  outline: 2px solid #FF5C1A;
-  outline-offset: 1px;
+  outline: 2px solid #FF4D00;
+  outline-offset: 2px;
+  box-shadow: 0 0 14px rgba(255,77,0,0.35), inset 0 0 10px rgba(255,77,0,0.05);
+  animation: todayPulse 2.5s ease-in-out infinite;
+}
+@keyframes todayPulse {
+  0%, 100% { outline-color: #FF4D00; box-shadow: 0 0 12px rgba(255,77,0,0.3), inset 0 0 8px rgba(255,77,0,0.04); }
+  50%       { outline-color: #FF9500; box-shadow: 0 0 22px rgba(255,77,0,0.5), inset 0 0 14px rgba(255,77,0,0.07); }
 }
 
-/* ── Day number ── */
+/* ── DAY NUMBER ───────────────────────────────────────────────── */
 .dayNum {
-  font-size: 0.78rem;
-  font-weight: 600;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.7rem;
+  font-weight: 700;
   line-height: 1;
-  color: var(--text-2);
-  transition: color 0.35s;
+  color: var(--text-2, #8A95AD);
+  letter-spacing: 0.04em;
 }
 
 .todayBadge {
@@ -157,37 +215,57 @@
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: #FF5C1A;
+  background: linear-gradient(135deg, #FF4D00, #FF9500);
   color: #fff;
-  font-size: 0.75rem;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.65rem;
   font-weight: 700;
+  box-shadow: 0 0 12px rgba(255,77,0,0.6), 0 0 24px rgba(255,77,0,0.25);
+  text-shadow: none;
+  animation: badgePop 0.4s cubic-bezier(0.22,1,0.36,1);
+}
+@keyframes badgePop {
+  from { transform: scale(0.7); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
 }
 
-/* ── Workout label ── */
+/* ── WORKOUT LABEL ────────────────────────────────────────────── */
 .workoutLabel {
-  font-size: 0.58rem;
-  line-height: 1.3;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.52rem;
+  line-height: 1.4;
   text-align: center;
-  opacity: 0.85;
-  color: var(--text-3);
+  letter-spacing: 0.04em;
+  color: var(--text-3, #3D4558);
   word-break: break-word;
   max-width: 100%;
-  transition: color 0.35s;
+  opacity: 0.9;
 }
 
-/* ── Status dot ── */
+/* ── STATUS DOT ───────────────────────────────────────────────── */
 .statusDot {
   width: 5px;
   height: 5px;
   border-radius: 50%;
   margin-top: auto;
   flex-shrink: 0;
+  box-shadow: 0 0 6px currentColor;
 }
 
-/* ── Responsive: tighten cells on small screens ── */
-@media (max-width: 480px) {
-  .cell { min-height: 52px; padding: 4px 3px; border-radius: 8px; }
-  .cellEmpty { min-height: 52px; }
-  .workoutLabel { font-size: 0.52rem; }
-  .dayNum { font-size: 0.72rem; }
+/* ── RESPONSIVE ───────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .cell        { min-height: 54px; padding: 5px 3px; border-radius: 0.5rem; }
+  .cellEmpty   { min-height: 54px; }
+  .workoutLabel{ font-size: 0.46rem; }
+  .dayNum      { font-size: 0.62rem; }
+  .monthTitle  { font-size: 1.2rem; min-width: 160px; }
+  .legend      { gap: 0.625rem; }
+  .legendItem  { font-size: 0.55rem; }
+}
+
+@media (max-width: 380px) {
+  .cell        { min-height: 44px; padding: 4px 2px; }
+  .cellEmpty   { min-height: 44px; }
+  .workoutLabel{ display: none; }
+  .todayBadge  { width: 18px; height: 18px; font-size: 0.58rem; }
 }

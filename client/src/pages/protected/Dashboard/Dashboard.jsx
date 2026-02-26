@@ -35,13 +35,13 @@ const NAV_TABS = [
 ];
 
 const PROGRESSION_LABELS = {
-  reps_increase:  { label: "📈 +1 Rep",     color: "#10b981" },
-  weight_increase:{ label: "🏋️ +2.5kg",     color: "#f59e0b" },
-  set_increase:   { label: "➕ +1 Set",     color: "#6366f1" },
-  deload:         { label: "🔄 Deload",     color: "#64748b" },
-  maintain:       { label: "✓ Maintain",   color: "#94a3b8" },
-  maintain_hard:  { label: "💪 Hold",       color: "#f97316" },
-  at_ceiling:     { label: "🏆 Peak",       color: "#eab308" },
+  reps_increase:  { label: "📈 +1 Rep",   color: "#10b981" },
+  weight_increase:{ label: "🏋️ +2.5kg",   color: "#f59e0b" },
+  set_increase:   { label: "➕ +1 Set",   color: "#6366f1" },
+  deload:         { label: "🔄 Deload",   color: "#64748b" },
+  maintain:       { label: "✓ Maintain", color: "#94a3b8" },
+  maintain_hard:  { label: "💪 Hold",     color: "#f97316" },
+  at_ceiling:     { label: "🏆 Peak",     color: "#eab308" },
 };
 
 // ─── Utility ──────────────────────────────────────────────────────────────────
@@ -58,7 +58,7 @@ function useCountUp(target, duration = 1200) {
     const step = (ts) => {
       if (!start) start = ts;
       const p = Math.min((ts - start) / duration, 1);
-      const ease = 1 - Math.pow(1 - p, 3); // ease-out-cubic
+      const ease = 1 - Math.pow(1 - p, 3);
       setVal(Math.round(from + ease * (target - from)));
       if (p < 1) requestAnimationFrame(step);
     };
@@ -214,6 +214,28 @@ function VolumeSpark({ delta }) {
   );
 }
 
+// ─── Exercise reps/duration display ───────────────────────────────────────────
+// Handles both rep-based and duration-based exercises (e.g. Mountain Climbers = 30s)
+
+function ExerciseReps({ ex }) {
+  const repsPart = ex.reps != null
+    ? ` × ${ex.reps} reps`
+    : ex.duration_min != null
+      ? ` × ${ex.duration_min} min`
+      : ex.duration_sec != null
+        ? ` × ${ex.duration_sec}s`
+        : ex.duration != null
+          ? ` × ${ex.duration}`
+          : "";
+
+  return (
+    <div className={styles.exerciseReps}>
+      {ex.sets} sets{repsPart}
+      {ex.weight_kg > 0 && ` · ${ex.weight_kg}kg`}
+    </div>
+  );
+}
+
 // ─── Main Dashboard ────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
@@ -254,11 +276,11 @@ export default function Dashboard() {
           getDashboardMeals(),
           getDashboardHealth(),
           getDashboardWeekly(),
-          getDashboardInsights(),        // now returns data-driven insights from v2 engine
+          getDashboardInsights(),
           getDashboardStreak(),
-          apiFetch("/workouts/prs"),     // NEW: personal records
-          apiFetch("/workouts/volume"),  // NEW: volume + weekly delta
-          apiFetch("/workouts/dashboard?days=30"), // NEW: full progress dashboard
+          apiFetch("/workouts/prs"),
+          apiFetch("/workouts/volume"),
+          apiFetch("/workouts/dashboard?days=30"),
         ]);
         if (cancelled) return;
 
@@ -326,9 +348,6 @@ export default function Dashboard() {
 
   const hasAnyHealth  = health && (health.bp || health.sleep || health.heartRate || health.recovery);
   const hasWeeklyData = weekly && Array.isArray(weekly.calories) && weekly.calories.some(Boolean);
-
-  // top volume gainer this week
-  const topGainer = volumeDelta.find(v => v.delta_pct > 0);
 
   const QUICK_ACTIONS = [
     { icon: "⚖️", label: "Log Weight",  action: () => navigate("/progress") },
@@ -399,19 +418,16 @@ export default function Dashboard() {
                     🔥 {streak} Day Streak
                   </span>
                 )}
-                {/* Deload week badge */}
                 {workout?.is_deload_week && (
                   <span className={`${styles.badge} ${styles.badgeSlate}`}>
                     🔄 Deload Week
                   </span>
                 )}
-                {/* Mesocycle week badge */}
                 {workout?.mesocycle_week && !workout?.is_deload_week && (
                   <span className={`${styles.badge} ${styles.badgeBlue}`}>
                     📅 Week {workout.mesocycle_week} of 4
                   </span>
                 )}
-                {/* Rotation tier badge */}
                 {workout?.rotation_tier && (
                   <span className={`${styles.badge} ${styles.badgePurple}`}>
                     Tier {workout.rotation_tier}
@@ -437,7 +453,6 @@ export default function Dashboard() {
                     {weight.change > 0 ? "+" : ""}{weight.change} kg this week
                   </span>
                 )}
-                {/* Total volume this month */}
                 {dashboard?.total_volume_kg > 0 && (
                   <div className={styles.weightSubStat}>
                     <span className={styles.weightSubLabel}>Monthly volume</span>
@@ -512,10 +527,8 @@ export default function Dashboard() {
                         <div className={`${styles.exerciseName}${ex.done ? " " + styles.nameDone : ""}`}>
                           {ex.name}
                         </div>
-                        <div className={styles.exerciseReps}>
-                          {ex.sets} sets × {ex.reps} reps
-                          {ex.weight_kg > 0 && ` · ${ex.weight_kg}kg`}
-                        </div>
+                        {/* FIX: handle duration-based exercises (reps may be null) */}
+                        <ExerciseReps ex={ex} />
                         {ex.progression_note && !ex.done && (
                           <ProgressionChip note={ex.progression_note} />
                         )}
@@ -653,7 +666,7 @@ export default function Dashboard() {
           </Section>
         </div>
 
-        {/* ── Performance Snapshot (NEW v2) ── */}
+        {/* ── Performance Snapshot (v2) ── */}
         {!loading && (prs.length > 0 || volumeDelta.length > 0) && (
           <Section delay={50}>
             <div className={`${styles.card} ${styles.accent}`}>
@@ -663,7 +676,6 @@ export default function Dashboard() {
               </div>
 
               <div className={styles.perfGrid}>
-                {/* Top PRs */}
                 {prs.slice(0, 3).map(pr => (
                   <div key={pr.exercise_name} className={styles.prCard}>
                     <span className={styles.prIcon}>🏅</span>
@@ -678,7 +690,6 @@ export default function Dashboard() {
                   </div>
                 ))}
 
-                {/* Top volume gainers */}
                 {volumeDelta.filter(v => v.delta_pct !== null).slice(0, 2).map(v => (
                   <div key={v.exercise_name} className={styles.volCard}>
                     <span className={styles.volIcon}>📈</span>
@@ -692,7 +703,6 @@ export default function Dashboard() {
                 ))}
               </div>
 
-              {/* Strength improvement */}
               {dashboard?.strength_improvements?.length > 0 && (
                 <div className={styles.strengthBar}>
                   <span className={styles.strengthBarLabel}>💪 Strength gains (30d):</span>
@@ -775,9 +785,9 @@ export default function Dashboard() {
             ) : (
               <div className={styles.insightList}>
                 {insights.map((ins, i) => {
-                  const icon    = ins.icon ?? "💡";
-                  const text    = ins.message ?? ins.text ?? "";
-                  const color   = ins.color ?? "#FF5C1A";
+                  const icon  = ins.icon ?? "💡";
+                  const text  = ins.message ?? ins.text ?? "";
+                  const color = ins.color ?? "#FF5C1A";
                   return (
                     <div key={i} className={styles.insightRow}
                       style={{ background: `${color}0D`, border: `1px solid ${color}30` }}
@@ -804,7 +814,7 @@ export default function Dashboard() {
                   {[
                     { label: "Consistency",       value: weekly.consistency,      sub: weekly.consistencySub, color: "#FF5C1A", valid: !!weekly.consistency },
                     { label: "Calorie Adherence", value: weekly.calorieAdherence, sub: "avg this week",       color: "#B8F000", valid: !!weekly.calorieAdherence && weekly.calorieAdherence !== "—" },
-                    { label: "Weight Lost",       value: weekly.weightLost,       sub: "this week",           color: "#00C8E0", valid: !!weekly.weightLost       && weekly.weightLost       !== "—" },  
+                    { label: "Weight Lost",       value: weekly.weightLost,       sub: "this week",           color: "#00C8E0", valid: !!weekly.weightLost       && weekly.weightLost       !== "—" },
                     { label: "Volume",            value: dashboard?.total_volume_kg ? `${Math.round(dashboard.total_volume_kg / 1000)}t` : null, sub: "this month", color: "#a855f7", valid: !!dashboard?.total_volume_kg },
                   ].filter(s => s.valid).map(s => (
                     <div key={s.label} className={styles.weekStat}>

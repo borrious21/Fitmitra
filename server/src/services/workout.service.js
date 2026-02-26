@@ -23,6 +23,17 @@ const FOCUS_KCAL_ESTIMATES = {
   'Legs (Strength + Short Cardio)': 400,
 };
 
+// Day-slot patterns shared between getWorkoutForDate (Shape A) and Plans.jsx
+// Sun=0, Mon=1 … Sat=6. Always rest on Sun(0), Sat(6) when possible.
+const DAY_PATTERNS = {
+  1: [1],
+  2: [1, 4],
+  3: [1, 3, 5],
+  4: [1, 2, 4, 5],
+  5: [1, 2, 3, 4, 5],
+  6: [1, 2, 3, 4, 5, 6],
+};
+
 class WorkoutService {
 
   static async getTodayWorkout(userId) {
@@ -89,10 +100,10 @@ class WorkoutService {
       if (!rows.length) return null;
 
       const currentWeek  = rows[0].mesocycle_week || 1;
-      const nextWeek     = currentWeek >= 4 ? 1 : currentWeek + 1; // week 5 → back to 1 (new block)
+      const nextWeek     = currentWeek >= 4 ? 1 : currentWeek + 1;
       const isNewBlock   = nextWeek === 1;
 
-      const profile       = await ProfileModel.findByUserId(numericUserId);
+      const profile        = await ProfileModel.findByUserId(numericUserId);
       const progressionMap = isNewBlock
         ? await this._buildProgressionMapFromHistory(numericUserId)
         : (rows[0].workout_plan?.progression_targets || {});
@@ -157,7 +168,7 @@ class WorkoutService {
       const plan         = rows[0].workout_plan;
       const planId       = rows[0].id;
       const week         = rows[0].mesocycle_week || 1;
-      const isNextDeload = (week % 4) === 3; // next week (week+1) will be 4 → deload
+      const isNextDeload = (week % 4) === 3;
 
       const profile = await ProfileModel.findByUserId(numericUserId);
       const goal    = profile?.goal || 'maintain_fitness';
@@ -165,8 +176,8 @@ class WorkoutService {
 
       const nextTargets = computeProgression(logData, goal, diff, isNextDeload);
 
-      const existing   = plan.progression_targets || {};
-      const updated    = { ...existing, [exerciseName]: nextTargets };
+      const existing = plan.progression_targets || {};
+      const updated  = { ...existing, [exerciseName]: nextTargets };
 
       await pool.query(
         `UPDATE plans
@@ -182,12 +193,14 @@ class WorkoutService {
     }
   }
 
+  // ── CORE METHOD (handles both plan generator shapes) ────────────────────────
   static async getWorkoutForDate(userId, date = new Date()) {
     try {
       const numericUserId = Number(userId);
       if (!numericUserId || isNaN(numericUserId)) throw new Error('Invalid userId');
 
-      const dayKey = getTodayKey(new Date(date));
+      const dayKey  = getTodayKey(new Date(date));  // e.g. "thursday"
+      const dayIdx  = new Date(date).getDay();       // 0=Sun … 6=Sat
       const dateStr = date instanceof Date ? toLocalDateStr(date) : date;
 
       const { rows: planRows } = await pool.query(
@@ -197,20 +210,16 @@ class WorkoutService {
       );
       if (!planRows.length || !planRows[0].workout_plan) return null;
 
-      const plan           = planRows[0].workout_plan;
-      const mesocycleWeek  = planRows[0].mesocycle_week || 1;
+      const rawPlan       = planRows[0].workout_plan;
+      const mesocycleWeek = planRows[0].mesocycle_week || 1;
 
-      let weeklyPlan = plan.weekly_plan;
-      if (typeof weeklyPlan === 'string') {
-        try { weeklyPlan = JSON.parse(weeklyPlan); } catch { weeklyPlan = {}; }
-      }
-      if (!weeklyPlan || typeof weeklyPlan !== 'object') weeklyPlan = {};
+      // ── Detect which generator produced this plan ──────────────────────
+      // Shape A = plan.generator.js  → Array of week objects
+      // Shape B = workout.generator.js → Object with weekly_plan key
+      const isShapeA = Array.isArray(rawPlan);
+      const isShapeB = !isShapeA && rawPlan && typeof rawPlan === 'object' && rawPlan.weekly_plan;
 
-      let dailyExercises = plan.daily_exercises ?? {};
-      if (typeof dailyExercises === 'string') {
-        try { dailyExercises = JSON.parse(dailyExercises); } catch { dailyExercises = {}; }
-      }
-
+      // ── Fetch today's already-logged exercises ─────────────────────────
       const { rows: logRows } = await pool.query(
         `SELECT exercise_name, sets_completed, reps_completed, weight_used,
                 duration_minutes, perceived_exertion, fatigue_level, notes,
@@ -234,57 +243,173 @@ class WorkoutService {
         logged_at:          row.created_at,
       }));
 
-      const todayMuscleGroups = weeklyPlan[dayKey] ?? [];
-      const isRestDay         = this._isRestDay(todayMuscleGroups);
+      // ══════════════════════════════════════════════════════════════════════
+      // SHAPE A — plan.generator.js / PlanService
+      // workout_plan is: [ { week, focus, is_deload, workouts: [ { split, variation, exercises[], muscle_groups[], estimated_kcal_burned } ] } ]
+      // ══════════════════════════════════════════════════════════════════════
+      if (isShapeA) {
+        const weekEntry = rawPlan.find(w => w.week === mesocycleWeek) ?? rawPlan[0];
+        if (!weekEntry) return null;
 
-      let exercises;
-      if (exerciseLogs.length > 0) {
-        exercises = exerciseLogs.map(log => ({
-          name:               log.exercise_name,
-          sets:               log.sets_completed ?? '—',
-          reps:               log.reps_completed ?? '—',
-          weight_kg:          log.weight_used ?? 0,
-          all_sets_completed: log.all_sets_completed,
-          done:               true,
-        }));
-      } else if (!isRestDay && dailyExercises[dayKey]?.length) {
-        exercises = dailyExercises[dayKey].map(ex => ({
-          name:             ex.name,
-          sets:             ex.sets,
-          reps:             ex.reps,
-          weight_kg:        ex.weight_kg || 0,
-          rest_seconds:     ex.rest_seconds,
-          estimated_kcal:   ex.estimated_kcal,
-          progression_note: ex.progression_note,
-          is_deload:        ex.is_deload,
-          tier:             ex.tier,
-          done:             false,
-        }));
-      } else {
-        exercises = isRestDay ? [] : this._buildExerciseList(todayMuscleGroups, plan.workout_details, []);
+        const { workouts = [], is_deload = false } = weekEntry;
+
+        // Map workouts to day slots using the same pattern as Plans.jsx
+        const count   = Math.min(workouts.length, 6);
+        const slots   = DAY_PATTERNS[count] ?? DAY_PATTERNS[5];
+        const slotIdx = slots.indexOf(dayIdx);
+
+        const isRestDay    = slotIdx === -1;
+        const todayWorkout = isRestDay ? null : (workouts[slotIdx] ?? null);
+
+        // Build exercise list
+        let exercises;
+        if (exerciseLogs.length > 0) {
+          // User already logged today — show logged data
+          exercises = exerciseLogs.map(log => ({
+            name:               log.exercise_name,
+            sets:               log.sets_completed ?? '—',
+            reps:               log.reps_completed ?? '—',
+            weight_kg:          log.weight_used ?? 0,
+            all_sets_completed: log.all_sets_completed,
+            done:               true,
+          }));
+        } else if (!isRestDay && todayWorkout) {
+          // Show planned exercises for today's split
+          exercises = (todayWorkout.exercises ?? []).map(ex => ({
+            name:             ex.name,
+            sets:             ex.sets,
+            reps:             ex.reps,
+            weight_kg:        ex.weight_kg ?? 0,
+            rest_seconds:     ex.rest_seconds ?? null,
+            estimated_kcal:   ex.est_kcal ?? ex.estimated_kcal ?? 0,
+            progression_note: ex.progression_note ?? null,
+            is_deload:        ex.deload ?? is_deload,
+            tier:             ex.tier ?? null,
+            isCardio:         ex.isCardio ?? false,
+            duration:         ex.duration_min
+              ? `${ex.duration_min} min`
+              : ex.duration_sec
+                ? `${ex.duration_sec}s`
+                : null,
+            done:             false,
+          }));
+        } else {
+          exercises = [];
+        }
+
+        const muscleGroups  = todayWorkout?.muscle_groups ?? [];
+        const estimatedKcal = todayWorkout?.estimated_kcal_burned
+          ?? exercises.reduce((s, e) => s + (e.estimated_kcal || 0), 0);
+
+        return {
+          name:           isRestDay ? 'Rest & Recovery' : (todayWorkout?.split ?? 'Workout'),
+          isRestDay,
+          day:            dayKey,
+          date:           dateStr,
+          mesocycle_week: mesocycleWeek,
+          is_deload_week: is_deload,
+          rotation_tier:  todayWorkout?.variation ?? 'A',
+          duration:       '45–60 min',
+          difficulty:     is_deload ? 'Deload' : 'Intermediate',
+          muscle_groups:  muscleGroups,
+          exercises,
+          completed:      exerciseLogs.length > 0,
+          exercise_logs:  exerciseLogs,
+          estimated_kcal: estimatedKcal,
+          meta:           weekEntry,
+          guidelines:     {},
+          safety_notes:   [],
+        };
       }
 
-      const estimatedSessionKcal = this._estimateSessionKcal(todayMuscleGroups, exercises);
+      // ══════════════════════════════════════════════════════════════════════
+      // SHAPE B — workout.generator.js / WorkoutService._generateAndStoreMesocycle
+      // workout_plan is: { weekly_plan: { monday: [...] }, daily_exercises: { monday: [...] }, meta: {} }
+      // ══════════════════════════════════════════════════════════════════════
+      if (isShapeB) {
+        const plan = rawPlan;
 
+        let weeklyPlan     = plan.weekly_plan     ?? {};
+        let dailyExercises = plan.daily_exercises ?? {};
+
+        if (typeof weeklyPlan     === 'string') { try { weeklyPlan     = JSON.parse(weeklyPlan);     } catch { weeklyPlan     = {}; } }
+        if (typeof dailyExercises === 'string') { try { dailyExercises = JSON.parse(dailyExercises); } catch { dailyExercises = {}; } }
+
+        const todayMuscleGroups = weeklyPlan[dayKey] ?? [];
+        const isRestDay         = this._isRestDay(todayMuscleGroups);
+
+        let exercises;
+        if (exerciseLogs.length > 0) {
+          exercises = exerciseLogs.map(log => ({
+            name:               log.exercise_name,
+            sets:               log.sets_completed ?? '—',
+            reps:               log.reps_completed ?? '—',
+            weight_kg:          log.weight_used ?? 0,
+            all_sets_completed: log.all_sets_completed,
+            done:               true,
+          }));
+        } else if (!isRestDay && dailyExercises[dayKey]?.length) {
+          exercises = dailyExercises[dayKey].map(ex => ({
+            name:             ex.name,
+            sets:             ex.sets,
+            reps:             ex.reps,
+            weight_kg:        ex.weight_kg || 0,
+            rest_seconds:     ex.rest_seconds,
+            estimated_kcal:   ex.estimated_kcal,
+            progression_note: ex.progression_note,
+            is_deload:        ex.is_deload,
+            tier:             ex.tier,
+            done:             false,
+          }));
+        } else {
+          exercises = isRestDay ? [] : this._buildExerciseList(todayMuscleGroups, plan.workout_details, []);
+        }
+
+        const estimatedSessionKcal = this._estimateSessionKcal(todayMuscleGroups, exercises);
+
+        return {
+          name:           this._buildWorkoutName(todayMuscleGroups),
+          isRestDay,
+          day:            dayKey,
+          date:           dateStr,
+          mesocycle_week: mesocycleWeek,
+          is_deload_week: plan.meta?.is_deload_week || false,
+          rotation_tier:  plan.meta?.rotation_tier  || 'A',
+          duration:       plan.workout_details?.cardio_guidance?.duration ?? '45–60 min',
+          difficulty:     this._mapIntensityLabel(plan.meta?.intensity),
+          muscle_groups:  todayMuscleGroups,
+          exercises,
+          completed:      exerciseLogs.length > 0,
+          exercise_logs:  exerciseLogs,
+          estimated_kcal: estimatedSessionKcal,
+          meta:           plan.meta       || {},
+          guidelines:     plan.guidelines || {},
+          safety_notes:   plan.safety_notes || [],
+        };
+      }
+
+      // ── Unknown shape — return rest day rather than crashing ──────────
+      console.warn('WorkoutService:getWorkoutForDate — unrecognised workout_plan shape', typeof rawPlan);
       return {
-        name:                   this._buildWorkoutName(todayMuscleGroups),
-        isRestDay,
-        day:                    dayKey,
-        date:                   dateStr,
-        mesocycle_week:         mesocycleWeek,
-        is_deload_week:         plan.meta?.is_deload_week || false,
-        rotation_tier:          plan.meta?.rotation_tier || 'A',
-        duration:               plan.workout_details?.cardio_guidance?.duration ?? '45–60 min',
-        difficulty:             this._mapIntensityLabel(plan.meta?.intensity),
-        muscle_groups:          todayMuscleGroups,
-        exercises,
-        completed:              exerciseLogs.length > 0,
-        exercise_logs:          exerciseLogs,
-        estimated_kcal:         estimatedSessionKcal,
-        meta:                   plan.meta || {},
-        guidelines:             plan.guidelines || {},
-        safety_notes:           plan.safety_notes || [],
+        name:           'Rest & Recovery',
+        isRestDay:      true,
+        day:            dayKey,
+        date:           dateStr,
+        mesocycle_week: mesocycleWeek,
+        is_deload_week: false,
+        rotation_tier:  'A',
+        duration:       '—',
+        difficulty:     '—',
+        muscle_groups:  [],
+        exercises:      [],
+        completed:      false,
+        exercise_logs:  [],
+        estimated_kcal: 0,
+        meta:           {},
+        guidelines:     {},
+        safety_notes:   [],
       };
+
     } catch (err) {
       console.error('WorkoutService:getWorkoutForDate', err);
       throw err;
@@ -392,7 +517,6 @@ class WorkoutService {
         }
       }
 
-      // 7. PR broken recently?
       const { rows: recentPRs } = await pool.query(
         `SELECT exercise_name, best_1rm, achieved_at FROM exercise_prs
          WHERE user_id = $1 AND achieved_at >= CURRENT_DATE - INTERVAL '7 days'
@@ -460,18 +584,18 @@ class WorkoutService {
       );
 
       return {
-        period_days:          days,
-        workouts_completed:   Number(stats.total_workout_days || 0),
-        total_exercises:      Number(stats.total_exercises || 0),
-        total_volume_kg:      parseFloat(stats.total_volume_kg || 0),
-        total_minutes:        Number(stats.total_minutes || 0),
-        avg_rpe:              parseFloat((stats.avg_exertion || 0).toFixed(1)),
-        current_streak:       streak,
-        volume_by_exercise:   volumeStats,
-        weekly_volume_delta:  weeklyDelta,
-        personal_records:     prs,
+        period_days:           days,
+        workouts_completed:    Number(stats.total_workout_days || 0),
+        total_exercises:       Number(stats.total_exercises || 0),
+        total_volume_kg:       parseFloat(stats.total_volume_kg || 0),
+        total_minutes:         Number(stats.total_minutes || 0),
+        avg_rpe:               parseFloat((stats.avg_exertion || 0).toFixed(1)),
+        current_streak:        streak,
+        volume_by_exercise:    volumeStats,
+        weekly_volume_delta:   weeklyDelta,
+        personal_records:      prs,
         strength_improvements: strengthImprovements,
-        workout_heatmap:      heatmapRows,
+        workout_heatmap:       heatmapRows,
       };
     } catch (err) {
       console.error('WorkoutService:getProgressDashboard', err);
@@ -485,10 +609,9 @@ class WorkoutService {
       const profile       = await ProfileModel.findByUserId(numericUserId);
       if (!profile) return null;
 
-      const goal             = profile.goal;
-      const originalTarget   = profile.calorie_target || 2000;
+      const goal           = profile.goal;
+      const originalTarget = profile.calorie_target || 2000;
 
-      // Get weight logs for last 2 weeks
       const { rows: weightRows } = await pool.query(
         `SELECT logged_date::text AS date, weight_kg
          FROM weight_logs
@@ -506,26 +629,21 @@ class WorkoutService {
         [numericUserId]
       );
 
-      const daysLogged    = Number(completionRows[0]?.days_logged || 0);
-      const daysCompleted = Number(completionRows[0]?.days_completed || 0);
+      const daysLogged     = Number(completionRows[0]?.days_logged   || 0);
+      const daysCompleted  = Number(completionRows[0]?.days_completed || 0);
       const completionRate = daysLogged > 0 ? daysCompleted / daysLogged : 0;
 
-      let adjustment     = 0;
-      let reason         = 'no_change';
-      let flagForReview  = false;
+      let adjustment    = 0;
+      let reason        = 'no_change';
+      let flagForReview = false;
 
       if (goal === 'weight_loss' && weightRows.length >= 2) {
-        const newest = weightRows[0].weight_kg;
-        const oldest = weightRows[weightRows.length - 1].weight_kg;
-        const weeklyDelta = (newest - oldest) / 2; 
+        const newest     = weightRows[0].weight_kg;
+        const oldest     = weightRows[weightRows.length - 1].weight_kg;
+        const weeklyDelta = (newest - oldest) / 2;
 
-        if (weeklyDelta >= 0) {
-          adjustment = -125; 
-          reason     = 'weight_not_dropping';
-        } else if (weeklyDelta < -1.5) {
-          adjustment = +100; 
-          reason     = 'weight_dropping_too_fast';
-        }
+        if (weeklyDelta >= 0)   { adjustment = -125; reason = 'weight_not_dropping'; }
+        else if (weeklyDelta < -1.5) { adjustment = +100; reason = 'weight_dropping_too_fast'; }
       }
 
       if (goal === 'muscle_gain' && completionRate < 0.6) {
@@ -540,15 +658,12 @@ class WorkoutService {
       );
       if (!nutritionRows.length) return null;
 
-      const currentTarget  = nutritionRows[0].calorie_target;
-      const originalBase   = nutritionRows[0].original_calorie_target || originalTarget;
-      const maxDeviation   = 300;
+      const currentTarget = nutritionRows[0].calorie_target;
+      const originalBase  = nutritionRows[0].original_calorie_target || originalTarget;
+      const maxDeviation  = 300;
 
-      const proposed = currentTarget + adjustment;
-      const capped   = Math.min(
-        Math.max(proposed, originalBase - maxDeviation),
-        originalBase + maxDeviation
-      );
+      const proposed        = currentTarget + adjustment;
+      const capped          = Math.min(Math.max(proposed, originalBase - maxDeviation), originalBase + maxDeviation);
       const actualAdjustment = capped - currentTarget;
 
       if (actualAdjustment !== 0 && !flagForReview) {
@@ -556,7 +671,6 @@ class WorkoutService {
           `UPDATE nutrition_plans SET calorie_target = $1, updated_at = NOW() WHERE id = $2`,
           [capped, nutritionRows[0].id]
         );
-
         await pool.query(
           `INSERT INTO nutrition_adjustments (user_id, previous_target, new_target, reason, adjusted_at)
            VALUES ($1, $2, $3, $4, NOW())`,
@@ -578,7 +692,7 @@ class WorkoutService {
     }
   }
 
-  // ── Standard service methods (preserved + upgraded) ─────────────────────────
+  // ── Standard service methods ─────────────────────────────────────────────────
 
   static async getWorkoutHistory(userId, options = {}) {
     try {
@@ -632,7 +746,7 @@ class WorkoutService {
         [numericUserId, days]
       );
       const { rows: statsRows } = await pool.query(
-        `SELECT COALESCE(SUM(duration_minutes), 0)                                       AS total_minutes,
+        `SELECT COALESCE(SUM(duration_minutes), 0)                                          AS total_minutes,
                 COALESCE(SUM(sets_completed * reps_completed * COALESCE(weight_used,0)), 0) AS total_volume_kg
          FROM workout_logs
          WHERE user_id = $1 AND workout_date >= CURRENT_DATE - ($2 || ' days')::interval`,
@@ -661,12 +775,27 @@ class WorkoutService {
       );
       if (!rows.length) return null;
       const plan = rows[0].workout_plan;
+
+      // Handle both shapes for weekly plan response
+      if (Array.isArray(plan)) {
+        // Shape A — return a summary suitable for the weekly view
+        return {
+          weekly_plan:         {},
+          meta:                { mesocycle_week: rows[0].mesocycle_week },
+          guidelines:          {},
+          safety_notes:        [],
+          workout_details:     {},
+          progression_targets: plan.progression_targets || {},
+          schedule:            plan,   // expose the full schedule for Shape A consumers
+        };
+      }
+
       return {
-        weekly_plan:     plan.weekly_plan || {},
-        meta:            { ...plan.meta, mesocycle_week: rows[0].mesocycle_week },
-        guidelines:      plan.guidelines || {},
-        safety_notes:    plan.safety_notes || [],
-        workout_details: plan.workout_details || {},
+        weekly_plan:         plan.weekly_plan || {},
+        meta:                { ...plan.meta, mesocycle_week: rows[0].mesocycle_week },
+        guidelines:          plan.guidelines || {},
+        safety_notes:        plan.safety_notes || [],
+        workout_details:     plan.workout_details || {},
         progression_targets: plan.progression_targets || {},
       };
     } catch (err) {
@@ -701,7 +830,6 @@ class WorkoutService {
       );
       await client.query('COMMIT');
 
-      // Async side effects
       setImmediate(async () => {
         await Promise.allSettled([
           WorkoutModel.updateStreak(numericUserId, dateStr),
@@ -846,7 +974,9 @@ class WorkoutService {
       );
       const daysOfWeek = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
       const summary    = {};
-      daysOfWeek.forEach(day => { summary[day] = { completed: false, exercises_logged: 0, duration: 0, volume_kg: 0 }; });
+      daysOfWeek.forEach(day => {
+        summary[day] = { completed: false, exercises_logged: 0, duration: 0, volume_kg: 0 };
+      });
       rows.forEach(row => {
         const [year, month, day] = row.date.split('-').map(Number);
         const date     = new Date(year, month - 1, day);
@@ -869,6 +999,7 @@ class WorkoutService {
     }
   }
 
+  // ── Private helpers ──────────────────────────────────────────────────────────
 
   static _isRestDay(muscleGroups) {
     if (!muscleGroups?.length) return true;
@@ -877,10 +1008,8 @@ class WorkoutService {
 
   static _estimateSessionKcal(muscleGroups, exercises) {
     if (!muscleGroups?.length || this._isRestDay(muscleGroups)) return 0;
-
     const sumFromExercises = exercises.reduce((sum, ex) => sum + (ex.estimated_kcal || 0), 0);
     if (sumFromExercises > 0) return sumFromExercises;
-
     return muscleGroups.reduce((sum, focus) => sum + (FOCUS_KCAL_ESTIMATES[focus] || 200), 0);
   }
 
@@ -916,27 +1045,45 @@ class WorkoutService {
   static _buildWorkoutName(muscleGroups) {
     if (!muscleGroups?.length || this._isRestDay(muscleGroups)) return 'Rest & Recovery';
     const NAME_MAP = {
-      'Cardio (Moderate)':             'HIIT Cardio',    'Cardio (Moderate 40 min)': 'Endurance Cardio',
-      'Cardio (30 min)':               'Cardio Circuit', 'Cardio (Intervals 30–40 min)': 'Interval Training',
-      'Moderate Cardio':               'Moderate Cardio','Moderate Cardio (30–40 min)': 'Moderate Cardio',
+      'Cardio (Moderate)':             'HIIT Cardio',
+      'Cardio (Moderate 40 min)':      'Endurance Cardio',
+      'Cardio (30 min)':               'Cardio Circuit',
+      'Cardio (Intervals 30–40 min)':  'Interval Training',
+      'Moderate Cardio':               'Moderate Cardio',
+      'Moderate Cardio (30–40 min)':   'Moderate Cardio',
       'Low-Intensity Cardio (30 min)': 'Low-Intensity Cardio',
-      'Full Body Strength':            'Full Body Strength', 'Full Body (Light)': 'Full Body (Light)',
-      'Full Body':                     'Full Body',      'Upper Body': 'Upper Body',
-      'Upper Body (Light)':            'Upper Body (Light)', 'Upper Body (Accessory)': 'Upper Body Accessory',
-      'Lower Body':                    'Lower Body',     'Lower Body Strength': 'Lower Body Strength',
-      'Legs':                          'Leg Day',        'Legs (Light)': 'Legs (Light)',
-      'Legs (Light Strength)':         'Legs (Light)',   'Legs (Strength + Short Cardio)': 'Legs + Cardio',
-      'Chest':                         'Chest Day',      'Back': 'Back Day',
-      'Shoulders':                     'Shoulder Day',   'Biceps': 'Biceps',
-      'Triceps':                       'Triceps',        'Core': 'Core Work',
+      'Full Body Strength':            'Full Body Strength',
+      'Full Body (Light)':             'Full Body (Light)',
+      'Full Body':                     'Full Body',
+      'Upper Body':                    'Upper Body',
+      'Upper Body (Light)':            'Upper Body (Light)',
+      'Upper Body (Accessory)':        'Upper Body Accessory',
+      'Lower Body':                    'Lower Body',
+      'Lower Body Strength':           'Lower Body Strength',
+      'Legs':                          'Leg Day',
+      'Legs (Light)':                  'Legs (Light)',
+      'Legs (Light Strength)':         'Legs (Light)',
+      'Legs (Strength + Short Cardio)':'Legs + Cardio',
+      'Chest':                         'Chest Day',
+      'Back':                          'Back Day',
+      'Shoulders':                     'Shoulder Day',
+      'Biceps':                        'Biceps',
+      'Triceps':                       'Triceps',
+      'Core':                          'Core Work',
     };
-    const named  = muscleGroups.map(g => NAME_MAP[g.trim()] ?? g.trim());
+    const named   = muscleGroups.map(g => NAME_MAP[g.trim()] ?? g.trim());
     const deduped = named.filter((n, i) => i === 0 || n !== named[i - 1]);
     return deduped.join(' + ');
   }
 
   static _mapIntensityLabel(intensity) {
-    const map = { 'low': 'Beginner', 'low-to-moderate': 'Easy', 'moderate': 'Intermediate', 'moderate-to-high': 'Advanced', 'high': 'Elite' };
+    const map = {
+      'low':              'Beginner',
+      'low-to-moderate':  'Easy',
+      'moderate':         'Intermediate',
+      'moderate-to-high': 'Advanced',
+      'high':             'Elite',
+    };
     return map[intensity] ?? 'Intermediate';
   }
 }
