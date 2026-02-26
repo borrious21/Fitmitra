@@ -914,3 +914,164 @@
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: #0A0C0F; }
 ::-webkit-scrollbar-thumb { background: rgba(255,92,26,0.3); border-radius: 2px; }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Profile.module.css — v2 ADDITIONS
+   Paste these at the END of your existing Profile.module.css
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* ── v2: purple hero badge ────────────────────────────────────────────────── */
+.badgePurple {
+  background: rgba(168,85,247,0.12);
+  border:     1px solid rgba(168,85,247,0.3);
+  color:      #c084fc;
+}
+
+/* ── v2: XP Bar ───────────────────────────────────────────────────────────── */
+.xpBar {
+  background: rgba(255,255,255,0.03);
+  border:     1px solid rgba(255,255,255,0.07);
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  margin-bottom: 0.75rem;
+}
+.xpBarTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.45rem;
+}
+.xpLevelLabel { font-weight: 700; font-size: 0.9rem; }
+.xpPoints     { font-size: 0.8rem; color: #FF5C1A; font-weight: 600; }
+.xpTrack {
+  height: 7px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 99px;
+  overflow: hidden;
+  margin-bottom: 0.35rem;
+}
+.xpFill {
+  height: 100%;
+  background: linear-gradient(90deg, #FF5C1A, #f59e0b);
+  border-radius: 99px;
+  transition: width 1.4s cubic-bezier(.4,0,.2,1);
+}
+.xpBarBottom {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  opacity: 0.45;
+}
+
+/* ── v2: Gamification Panel ───────────────────────────────────────────────── */
+.gamPanel {
+  background: var(--card-bg, rgba(255,255,255,0.03));
+  border:     1px solid rgba(255,255,255,0.07);
+  border-radius: 16px;
+  padding: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+.gamTitle {
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  opacity: 0.55;
+  margin-bottom: 0.75rem;
+}
+.gamStatsGrid {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 0.75rem;
+}
+.gamStatItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 72px;
+  padding: 0.55rem 0.7rem;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 10px;
+}
+.gamStatIcon  { font-size: 1.15rem; margin-bottom: 0.15rem; }
+.gamStatVal   { font-size: 1rem; font-weight: 800; }
+.gamStatLabel { font-size: 0.68rem; opacity: 0.55; margin-top: 0.1rem; }
+
+.gamBadges      { margin-top: 0.85rem; }
+.gamBadgesTitle { font-size: 0.75rem; font-weight: 700; opacity: 0.55; margin-bottom: 0.4rem; }
+.gamBadgesList  { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.gamBadge {
+  font-size: 0.72rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 99px;
+  background: rgba(255,92,26,0.1);
+  border:     1px solid rgba(255,92,26,0.25);
+  color: #FF8A3D;
+  font-weight: 600;
+}
+
+/* ── v2: Active Plan Card ─────────────────────────────────────────────────── */
+.activePlanCard {
+  background: rgba(16,185,129,0.06);
+  border:     1px solid rgba(16,185,129,0.18);
+  border-radius: 14px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 0.75rem;
+}
+.activePlanHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.4rem;
+}
+.activePlanTitle {
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.65;
+}
+.activePlanBtn {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.65rem;
+  background: rgba(16,185,129,0.12);
+  border:     1px solid rgba(16,185,129,0.3);
+  border-radius: 7px;
+  color: #34d399;
+  cursor: pointer;
+}
+.activePlanMeta {
+  display: flex;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  opacity: 0.8;
+  margin-bottom: 0.65rem;
+}
+.activePlanMacros {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.activePlanMacroChip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.3rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid;
+  background: rgba(255,255,255,0.02);
+  min-width: 56px;
+}
+.activePlanMacroVal   { font-size: 0.88rem; font-weight: 700; }
+.activePlanMacroLabel { font-size: 0.66rem; opacity: 0.55; margin-top: 0.05rem; }
+
+/* ── v2: Input hint ───────────────────────────────────────────────────────── */
+.inputHint {
+  display: block;
+  font-size: 0.72rem;
+  opacity: 0.5;
+  margin-top: 0.25rem;
+  line-height: 1.4;
+}

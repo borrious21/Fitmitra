@@ -2,6 +2,9 @@
 
 import pool from '../config/db.config.js';
 
+// Utility: safely convert any Postgres numeric/string to a JS number with fixed decimals
+const toNum = (val, decimals = 1) => parseFloat(parseFloat(val || 0).toFixed(decimals));
+
 class WorkoutModel {
 
 
@@ -116,12 +119,12 @@ class WorkoutModel {
     );
     return rows.map(r => ({
       ...r,
-      sessions:         Number(r.sessions),
-      total_sets:       Number(r.total_sets),
-      total_reps:       Number(r.total_reps),
-      total_volume_kg:  parseFloat(r.total_volume_kg || 0),
-      max_weight:       parseFloat(r.max_weight || 0),
-      avg_rpe:          parseFloat((r.avg_rpe || 0).toFixed(1)),
+      sessions:        Number(r.sessions),
+      total_sets:      Number(r.total_sets),
+      total_reps:      Number(r.total_reps),
+      total_volume_kg: toNum(r.total_volume_kg, 2),
+      max_weight:      toNum(r.max_weight, 2),
+      avg_rpe:         toNum(r.avg_rpe, 1),
     }));
   }
 

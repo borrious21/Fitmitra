@@ -1,13 +1,38 @@
 // src/pages/Plans/Plans.jsx
+// v3 — Upgraded with:
+//   • Gamification: XP bar + level badge + streak display
+//   • Warmup / Cooldown blocks shown per workout
+//   • Per-day nutrition targets panel (protein, kcal, carbs, fat)
+//   • Hydration + electrolyte wellness card per week
+//   • Recovery protocol drawer per week
+//   • Missed workout recovery suggestion chip
+//   • Progression phase badge (Foundation / Volume / Intensity / Deload)
+//   • Macro summary card in plan meta
+//   • Adaptive difficulty signal banner
+
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../../../../services/apiClient";
 import styles from "./Plans.module.css";
 
-const DAY_NAMES = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+const DAY_NAMES = ["SUN","MON","TUE","WED","THU","FRI","SAT"];
 const DAY_KEYS  = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"];
 const todayIdx  = new Date().getDay();
 
+const PHASE_META = {
+  1: { label: "Foundation",  color: "#3b82f6", icon: "🧱" },
+  2: { label: "Volume",      color: "#10b981", icon: "📈" },
+  3: { label: "Intensity",   color: "#f59e0b", icon: "⚡" },
+  4: { label: "Deload",      color: "#6366f1", icon: "🔄" },
+};
+
+const LEVEL_LABELS = {
+  1: "🌱 Rookie",   2: "🏃 Mover",     3: "💪 Grinder",
+  4: "🔥 Crusher",  5: "⚡ Athlete",   6: "🥈 Contender",
+  7: "🥇 Champion", 8: "🏆 Elite",     9: "💎 Legend", 10: "🚀 GOAT",
+};
+
+// ─── Scroll fade-in ────────────────────────────────────────────────────────────
 function Section({ children, delay = 0 }) {
   const ref = useRef();
   const [vis, setVis] = useState(false);
@@ -29,26 +54,9 @@ function Section({ children, delay = 0 }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SHAPE NORMALIZERS
-//
-// SHAPE A — plan.generator.js (PlanService):
-//   Array: [ { week, focus, is_deload, workouts: [ { split, variation, exercises[], muscle_groups[], estimated_kcal_burned } ] } ]
-//   plans.workout_plan = Shape A array
-//   plans.meal_plan    = Array: [ { week, meals: [ { day, breakfast, lunch, dinner, snack } ] } ]
-//   plans.metadata     = profile_snapshot: { fitnessLevel, dietType, duration, goals, ... }
-//
-// SHAPE B — workout.generator.js (WorkoutService):
-//   Object: { weekly_plan: { monday: [...] }, daily_exercises: { monday: [...] }, meta: {} }
-// ─────────────────────────────────────────────────────────────────────────────
-
-function isShapeA(wp) {
-  return Array.isArray(wp);
-}
-
-function isShapeB(wp) {
-  return wp && typeof wp === "object" && !Array.isArray(wp) && wp.weekly_plan;
-}
+// ─── Shape normalizers (unchanged from v2) ────────────────────────────────────
+function isShapeA(wp) { return Array.isArray(wp); }
+function isShapeB(wp) { return wp && typeof wp === "object" && !Array.isArray(wp) && wp.weekly_plan; }
 
 function shapeBToA(wp, durationWeeks = 4) {
   const weeklyPlan = wp.weekly_plan ?? {};
@@ -60,38 +68,24 @@ function shapeBToA(wp, durationWeeks = 4) {
     const muscleGroups = weeklyPlan[dayKey] ?? [];
     const isRest = !muscleGroups.length || muscleGroups.every(g => /^rest/i.test(g));
     if (isRest) return null;
-
     const exercises = (dailyEx[dayKey] ?? []).map(ex => ({
-      name:             ex.name,
-      sets:             ex.sets,
-      reps:             ex.reps,
-      weight_kg:        ex.weight_kg ?? 0,
-      est_kcal:         ex.estimated_kcal ?? ex.est_kcal ?? 0,
-      muscles:          ex.muscles ?? muscleGroups.filter(g => !/^rest/i.test(g)),
+      name: ex.name, sets: ex.sets, reps: ex.reps, weight_kg: ex.weight_kg ?? 0,
+      est_kcal: ex.estimated_kcal ?? ex.est_kcal ?? 0,
+      muscles: ex.muscles ?? muscleGroups.filter(g => !/^rest/i.test(g)),
       progression_note: ex.progression_note ?? null,
-      duration_sec:     ex.duration_sec ?? null,
-      duration_min:     ex.duration_min ?? null,
-      deload:           ex.is_deload ?? isDeload,
-      tier:             ex.tier ?? meta.rotation_tier ?? "A",
+      duration_sec: ex.duration_sec ?? null, duration_min: ex.duration_min ?? null,
+      deload: ex.is_deload ?? isDeload, tier: ex.tier ?? meta.rotation_tier ?? "A",
     }));
-
     const splitName = muscleGroups.filter(g => !/^rest/i.test(g)).join(" + ");
-    const kcal = exercises.reduce((s, e) => s + (e.est_kcal || 0), 0);
-
     return {
-      split:                 splitName,
-      variation:             splitName,
-      muscle_groups:         muscleGroups.filter(g => !/^rest/i.test(g)),
-      exercises,
-      estimated_kcal_burned: kcal,
+      split: splitName, variation: splitName,
+      muscle_groups: muscleGroups.filter(g => !/^rest/i.test(g)),
+      exercises, estimated_kcal_burned: exercises.reduce((s, e) => s + (e.est_kcal || 0), 0),
     };
   }).filter(Boolean);
 
   return Array.from({ length: durationWeeks }, (_, i) => ({
-    week:      i + 1,
-    focus:     wp.focus ?? meta.focus ?? "",
-    is_deload: i === 3,
-    workouts,
+    week: i + 1, focus: wp.focus ?? meta.focus ?? "", is_deload: i === 3, workouts,
   }));
 }
 
@@ -103,22 +97,13 @@ function normalizeWorkoutPlan(raw, durationWeeks = 4) {
 }
 
 function normalizeMealPlan(raw) {
-  if (Array.isArray(raw)) return raw;
-  return [];
+  return Array.isArray(raw) ? raw : [];
 }
 
-// Spread workouts across week days (Sun=0 … Sat=6)
 function assignWorkoutsToDays(workouts = []) {
-  const PATTERNS = {
-    1: [1],
-    2: [1, 4],
-    3: [1, 3, 5],
-    4: [1, 2, 4, 5],
-    5: [1, 2, 3, 4, 5],
-    6: [1, 2, 3, 4, 5, 6],
-  };
-  const count    = Math.min(workouts.length, 6);
-  const slots    = PATTERNS[count] ?? PATTERNS[5];
+  const PATTERNS = { 1:[1], 2:[1,4], 3:[1,3,5], 4:[1,2,4,5], 5:[1,2,3,4,5], 6:[1,2,3,4,5,6] };
+  const count = Math.min(workouts.length, 6);
+  const slots = PATTERNS[count] ?? PATTERNS[5];
   const assigned = {};
   workouts.forEach((w, i) => { assigned[slots[i]] = w; });
   return assigned;
@@ -128,32 +113,220 @@ function fmt(str = "") {
   return String(str).replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
 }
 
-// ─── Resolve metadata for display ─────────────────────────────────────────────
-// Shape A: plans.metadata = profile_snapshot from PlanService.generateAndSave
-//   { fitnessLevel: "very_active", dietType: "non_veg", duration: 4, goals: "weight_loss" }
-//   NOTE: fitnessLevel IS the activity_level (mapped from profile.activity_level)
-//
-// Shape B: plans.workout_plan.meta = workout generator meta
-//   { intensity: "moderate-to-high", activity_level: "very_active", ... }
-
 function resolveMetadata(plan) {
   const shapeB_meta = plan?.workout_plan?.meta ?? {};
-
-  // Shape B — meta is inside the workout_plan object
   if (shapeB_meta.activity_level || shapeB_meta.intensity) {
-    return {
-      intensity:      shapeB_meta.intensity      ?? null,
-      activity_level: shapeB_meta.activity_level ?? null,
-    };
+    return { intensity: shapeB_meta.intensity ?? null, activity_level: shapeB_meta.activity_level ?? null };
   }
-
-  // Shape A — meta is in plans.metadata (= profile_snapshot)
-  // fitnessLevel field holds the activity_level value e.g. "very_active"
   const snapshot = plan?.metadata ?? {};
-  return {
-    intensity:      null,                            // not stored for Shape A
-    activity_level: snapshot.fitnessLevel ?? null,   // e.g. "very_active"
-  };
+  return { intensity: null, activity_level: snapshot.fitnessLevel ?? null };
+}
+
+// ─── XP Progress Bar ──────────────────────────────────────────────────────────
+function XPBar({ xp = 0, level = {}, streak = {} }) {
+  const pct = level.progress_pct ?? 0;
+  const label = LEVEL_LABELS[level.current] ?? `Level ${level.current}`;
+  return (
+    <div className={styles.xpBar}>
+      <div className={styles.xpMeta}>
+        <span className={styles.xpLevel}>{label}</span>
+        <div className={styles.xpRight}>
+          {streak.current > 0 && (
+            <span className={styles.xpStreak}>🔥 {streak.current} day streak</span>
+          )}
+          <span className={styles.xpPoints}>{xp.toLocaleString()} XP</span>
+        </div>
+      </div>
+      <div className={styles.xpTrack}>
+        <div className={styles.xpFill} style={{ width: `${pct}%` }} />
+      </div>
+      <div className={styles.xpFooter}>
+        <span>{pct}% to level {(level.current ?? 1) + 1}</span>
+        {level.xp_to_next > 0 && <span>{level.xp_to_next} XP to go</span>}
+      </div>
+    </div>
+  );
+}
+
+// ─── Badge List ────────────────────────────────────────────────────────────────
+function BadgeList({ badges = [] }) {
+  if (!badges.length) return null;
+  return (
+    <div className={styles.badgeList}>
+      {badges.map(b => (
+        <span key={b.id} className={styles.badge}>{b.label}</span>
+      ))}
+    </div>
+  );
+}
+
+// ─── Phase Badge ──────────────────────────────────────────────────────────────
+function PhaseBadge({ blockWeek }) {
+  const p = PHASE_META[blockWeek] ?? PHASE_META[1];
+  return (
+    <span className={styles.phaseBadge} style={{ color: p.color, borderColor: `${p.color}44`, background: `${p.color}12` }}>
+      {p.icon} {p.label}
+    </span>
+  );
+}
+
+// ─── Warmup / Cooldown Block ──────────────────────────────────────────────────
+function WarmupBlock({ items = [], type }) {
+  if (!items.length) return null;
+  const isWarmup = type === "warmup";
+  return (
+    <div className={isWarmup ? styles.warmupBlock : styles.cooldownBlock}>
+      <div className={styles.warmupTitle}>{isWarmup ? "🔥 Warm-Up" : "🧊 Cool-Down"}</div>
+      <div className={styles.warmupItems}>
+        {items.map((item, i) => (
+          <span key={i} className={styles.warmupItem}>
+            {item.name}
+            {item.duration_min && ` · ${item.duration_min} min`}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Nutrition Targets Panel ──────────────────────────────────────────────────
+function NutritionTargets({ targets }) {
+  if (!targets?.kcal && !targets?.protein_g) return null;
+  return (
+    <div className={styles.nutTargets}>
+      <div className={styles.nutTargetsTitle}>🎯 Today's Nutrition Targets</div>
+      <div className={styles.nutTargetsGrid}>
+        {[
+          { label: "Calories",  val: targets.kcal      ? `${targets.kcal} kcal`   : null, color: "#f59e0b" },
+          { label: "Protein",   val: targets.protein_g ? `${targets.protein_g}g`  : null, color: "#ef4444" },
+          { label: "Carbs",     val: targets.carbs_g   ? `${targets.carbs_g}g`    : null, color: "#3b82f6" },
+          { label: "Fats",      val: targets.fat_g     ? `${targets.fat_g}g`      : null, color: "#10b981" },
+          { label: "Water",     val: targets.hydration_L ? `${targets.hydration_L}L` : null, color: "#06b6d4" },
+        ].filter(t => t.val).map(t => (
+          <div key={t.label} className={styles.nutTargetChip} style={{ borderColor: `${t.color}44`, color: t.color }}>
+            <span className={styles.nutTargetVal}>{t.val}</span>
+            <span className={styles.nutTargetLabel}>{t.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Wellness Card ────────────────────────────────────────────────────────────
+function WellnessCard({ wellness }) {
+  if (!wellness) return null;
+  return (
+    <div className={styles.wellnessCard}>
+      <div className={styles.wellnessTitle}>💧 Daily Wellness</div>
+      <div className={styles.wellnessRow}>
+        <span className={styles.wellnessItem}>💧 {wellness.water_L}L water daily</span>
+        {wellness.caffeine_advice && (
+          <span className={styles.wellnessItem}>☕ {wellness.caffeine_advice}</span>
+        )}
+      </div>
+      {wellness.electrolyte_sources?.length > 0 && (
+        <div className={styles.electroRow}>
+          <span className={styles.electroLabel}>⚡ Electrolytes:</span>
+          {wellness.electrolyte_sources.map(e => (
+            <span key={e} className={styles.electroChip}>{e}</span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Recovery Protocol ────────────────────────────────────────────────────────
+function RecoveryProtocol({ protocol, isDeload }) {
+  const [open, setOpen] = useState(false);
+  if (!protocol) return null;
+  return (
+    <div className={styles.recoveryBlock}>
+      <button className={styles.recoveryToggle} onClick={() => setOpen(o => !o)}>
+        {isDeload ? "🔄 Deload Recovery Protocol" : "🛌 Recovery Protocol"} {open ? "▲" : "▼"}
+      </button>
+      {open && (
+        <div className={styles.recoveryContent}>
+          <div className={styles.recoveryRow}>
+            <span>😴 Sleep target:</span>
+            <strong>{protocol.sleep_hours_target}h</strong>
+          </div>
+          <div className={styles.recoveryRow}>
+            <span>🚶 Rest days:</span>
+            <strong>{protocol.rest_day_activity}</strong>
+          </div>
+          {protocol.sleep_tips?.length > 0 && (
+            <div className={styles.recoveryTips}>
+              {protocol.sleep_tips.map(tip => (
+                <span key={tip} className={styles.recoveryTip}>• {tip}</span>
+              ))}
+            </div>
+          )}
+          {protocol.recovery_tools?.length > 0 && (
+            <div className={styles.recoveryTools}>
+              {protocol.recovery_tools.map(tool => (
+                <span key={tool} className={styles.recoveryTool}>{tool}</span>
+              ))}
+            </div>
+          )}
+          {protocol.protein_timing && (
+            <div className={styles.recoveryProteinNote}>🥩 {protocol.protein_timing}</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Missed Workout Recovery Chip ─────────────────────────────────────────────
+function MissedRecoveryChip({ suggestion, onLog }) {
+  if (!suggestion) return null;
+  return (
+    <div className={styles.missedChip}>
+      <span className={styles.missedIcon}>⚠️</span>
+      <span className={styles.missedText}>Missed? Try: <em>{suggestion}</em></span>
+      {onLog && <button className={styles.missedBtn} onClick={onLog}>Log Makeup</button>}
+    </div>
+  );
+}
+
+// ─── Macro Summary Card ───────────────────────────────────────────────────────
+function MacroSummaryCard({ macros }) {
+  if (!macros) return null;
+  return (
+    <div className={styles.macroSummary}>
+      <div className={styles.macroSummaryTitle}>📊 Weekly Macro Targets</div>
+      <div className={styles.macroSummaryGrid}>
+        {[
+          { label: "Daily kcal",  val: macros.dailyKcal,     unit: "kcal", color: "#f59e0b" },
+          { label: "Protein",     val: macros.proteinTarget,  unit: "g",   color: "#ef4444" },
+          { label: "Carbs",       val: macros.carbsTarget,    unit: "g",   color: "#3b82f6" },
+          { label: "Fats",        val: macros.fatTarget,      unit: "g",   color: "#10b981" },
+        ].filter(m => m.val != null).map(m => (
+          <div key={m.label} className={styles.macroSummaryItem}>
+            <span className={styles.macroSummaryVal} style={{ color: m.color }}>{m.val}{m.unit}</span>
+            <span className={styles.macroSummaryLabel}>{m.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Adaptive Difficulty Banner ───────────────────────────────────────────────
+function AdaptiveBanner({ signal }) {
+  if (!signal || signal.signal === "maintain") return null;
+  const isIncrease = signal.signal === "increase";
+  return (
+    <div className={styles.adaptiveBanner} style={{
+      background: isIncrease ? "#10b98118" : "#ef444418",
+      borderColor: isIncrease ? "#10b98144" : "#ef444444",
+    }}>
+      <span>{isIncrease ? "🚀" : "😮‍💨"}</span>
+      <span className={styles.adaptiveText}>{signal.message}</span>
+    </div>
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -162,14 +335,18 @@ function resolveMetadata(plan) {
 
 export default function Plans() {
   const navigate = useNavigate();
-  const [plan,       setPlan]       = useState(null);
-  const [loading,    setLoading]    = useState(true);
-  const [generating, setGenerating] = useState(false);
-  const [alert,      setAlert]      = useState(null);
-  const [activeWeek, setActiveWeek] = useState(1);
-  const [activeDay,  setActiveDay]  = useState(null);
+  const [plan,          setPlan]          = useState(null);
+  const [loading,       setLoading]       = useState(true);
+  const [generating,    setGenerating]    = useState(false);
+  const [alert,         setAlert]         = useState(null);
+  const [activeWeek,    setActiveWeek]    = useState(1);
+  const [activeDay,     setActiveDay]     = useState(null);
+  const [gamification,  setGamification]  = useState(null);
+  const [adaptSignal,   setAdaptSignal]   = useState(null);
+  const [missedSplit,   setMissedSplit]   = useState(null);
+  const [missedInfo,    setMissedInfo]    = useState(null);
 
-  useEffect(() => { fetchPlan(); }, []);
+  useEffect(() => { fetchPlan(); fetchGamification(); }, []);
 
   const fetchPlan = async () => {
     setLoading(true);
@@ -185,14 +362,39 @@ export default function Plans() {
     }
   };
 
+  const fetchGamification = async () => {
+    try {
+      const res = await apiFetch("/plans/gamification");
+      setGamification(res?.data ?? res ?? null);
+    } catch { /* graceful fail */ }
+  };
+
+  const fetchAdaptiveSignal = async (recentLogs) => {
+    try {
+      const res = await apiFetch("/plans/adaptive-difficulty", {
+        method: "POST", body: JSON.stringify({ recent_logs: recentLogs }),
+      });
+      setAdaptSignal(res?.data ?? res ?? null);
+    } catch { /* graceful fail */ }
+  };
+
+  const fetchMissedRecovery = async (split) => {
+    try {
+      const res = await apiFetch("/plans/missed-workout", {
+        method: "POST", body: JSON.stringify({ split }),
+      });
+      setMissedInfo(res?.data ?? res ?? null);
+    } catch { /* graceful fail */ }
+  };
+
   const generatePlan = async () => {
     setGenerating(true);
     try {
       await apiFetch("/plans/generate", { method: "POST" });
       showAlert("success", "New plan generated! 🎯");
       await fetchPlan();
-      setActiveWeek(1);
-      setActiveDay(null);
+      await fetchGamification();
+      setActiveWeek(1); setActiveDay(null);
     } catch (err) {
       showAlert("error", err?.message ?? "Failed to generate plan. Make sure your profile is complete.");
     } finally {
@@ -205,7 +407,7 @@ export default function Plans() {
     setTimeout(() => setAlert(null), 5000);
   };
 
-  // ── Normalize ────────────────────────────────────────────────────────────
+  // ── Normalize ──────────────────────────────────────────────────────────────
   const totalWeeks  = plan?.duration_weeks ?? 4;
   const workoutPlan = normalizeWorkoutPlan(plan?.workout_plan, totalWeeks);
   const mealPlan    = normalizeMealPlan(plan?.meal_plan);
@@ -221,10 +423,16 @@ export default function Plans() {
     ? (weekMeals?.meals ?? []).find(m => m.day === activeDay) ?? (weekMeals?.meals?.[0] ?? null)
     : null;
 
-  // ── Metadata ─────────────────────────────────────────────────────────────
   const meta          = resolveMetadata(plan);
   const metaIntensity = meta.intensity;
   const metaActivity  = meta.activity_level;
+
+  // Plan summary macros (from generator v2 summary)
+  const planSummary = plan?.plan_data?.summary ?? null;
+  const weekMacros  = weekData ? (plan?.plan_data?.workout ?? []).find(w => w.week === activeWeek)?.nutrition_targets ?? null : null;
+  const wellnessData   = null; // populated from plan_data if backend exposes it
+  const recoveryData   = null; // same
+  const blockWeek   = weekData?.block_week ?? (((activeWeek - 1) % 4) + 1);
 
   if (loading) return (
     <div className={styles.wrapper}>
@@ -260,6 +468,21 @@ export default function Plans() {
             {alert.type === "success" ? "✅" : "❌"} {alert.msg}
           </div>
         )}
+
+        {/* GAMIFICATION BAR */}
+        {gamification && (
+          <Section delay={0}>
+            <XPBar
+              xp={gamification.xp}
+              level={gamification.level}
+              streak={gamification.streak}
+            />
+            <BadgeList badges={gamification.badges ?? []} />
+          </Section>
+        )}
+
+        {/* ADAPTIVE DIFFICULTY BANNER */}
+        <AdaptiveBanner signal={adaptSignal} />
 
         {/* HEADER */}
         <Section delay={0}>
@@ -297,25 +520,14 @@ export default function Plans() {
               <div className={styles.metaGrid}>
                 {[
                   { icon: "🎯", label: "Goal",      val: fmt(plan.goals ?? "—") },
-                  {
-                    icon: "⚡", label: "Intensity",
-                    // Show "Deload" during deload week; otherwise show intensity (Shape B only)
-                    // or fall back to activity level label for Shape A
-                    val: weekData?.is_deload
-                      ? "Deload"
-                      : metaIntensity
-                        ? fmt(metaIntensity)
-                        : metaActivity
-                          ? fmt(metaActivity)
-                          : "—"
+                  { icon: "⚡", label: "Intensity",
+                    val: weekData?.is_deload ? "Deload"
+                      : metaIntensity ? fmt(metaIntensity)
+                      : metaActivity  ? fmt(metaActivity)
+                      : "—"
                   },
                   { icon: "📅", label: "Duration",   val: `${totalWeeks} weeks` },
-                  {
-                    icon: "🏃", label: "Activity",
-                    // Shape A: fitnessLevel = "very_active" → "Very Active"
-                    // Shape B: activity_level = "very_active" → "Very Active"
-                    val: fmt(metaActivity ?? "—")
-                  },
+                  { icon: "🏃", label: "Activity",   val: fmt(metaActivity ?? "—") },
                 ].map(m => (
                   <div key={m.label} className={styles.metaCard}>
                     <span className={styles.metaIcon}>{m.icon}</span>
@@ -324,6 +536,10 @@ export default function Plans() {
                   </div>
                 ))}
               </div>
+              {/* Macro summary from plan summary */}
+              {planSummary?.macro_targets && (
+                <MacroSummaryCard macros={planSummary.macro_targets} />
+              )}
             </Section>
 
             {/* WEEK SELECTOR */}
@@ -331,25 +547,44 @@ export default function Plans() {
               <div className={styles.weekSelector}>
                 {Array.from({ length: totalWeeks }, (_, i) => i + 1).map(w => {
                   const wd = workoutPlan.find(x => x.week === w);
+                  const bw = ((w - 1) % 4) + 1;
+                  const p  = PHASE_META[bw];
                   return (
                     <button
                       key={w}
                       className={[
                         styles.weekTab,
-                        activeWeek === w   ? styles.weekTabActive  : "",
-                        wd?.is_deload      ? styles.weekTabDeload  : "",
+                        activeWeek === w  ? styles.weekTabActive : "",
+                        wd?.is_deload     ? styles.weekTabDeload : "",
                       ].join(" ")}
+                      style={activeWeek === w ? { borderColor: p.color, color: p.color } : {}}
                       onClick={() => { setActiveWeek(w); setActiveDay(null); }}
                     >
-                      W{w}{wd?.is_deload ? " 🔄" : ""}
+                      W{w} {p.icon}
                     </button>
                   );
                 })}
               </div>
-              {weekData?.focus && (
-                <p className={styles.weekFocus}>📌 {weekData.focus}</p>
+              {weekData && (
+                <div className={styles.weekFocusRow}>
+                  {weekData.focus && <p className={styles.weekFocus}>📌 {weekData.focus}</p>}
+                  <PhaseBadge blockWeek={blockWeek} />
+                </div>
               )}
             </Section>
+
+            {/* WEEKLY WELLNESS + RECOVERY */}
+            {weekData && (
+              <Section delay={90}>
+                <div className={styles.wellnessRecoveryRow}>
+                  <WellnessCard wellness={plan?.daily_wellness ?? weekData?.daily_wellness ?? null} />
+                  <RecoveryProtocol
+                    protocol={plan?.recovery_protocol ?? weekData?.recovery_protocol ?? null}
+                    isDeload={weekData.is_deload}
+                  />
+                </div>
+              </Section>
+            )}
 
             {/* WEEKLY SPLIT — 7-day grid */}
             <Section delay={100}>
@@ -369,7 +604,15 @@ export default function Plans() {
                         isRest   ? styles.restDay   : "",
                         isActive ? styles.activeDay : "",
                       ].join(" ")}
-                      onClick={() => !isRest && setActiveDay(isActive ? null : idx)}
+                      onClick={() => {
+                        if (!isRest) {
+                          const nextActive = isActive ? null : idx;
+                          setActiveDay(nextActive);
+                          if (nextActive !== null && workout?.split && !isActive) {
+                            fetchMissedRecovery(workout.split);
+                          }
+                        }
+                      }}
                       style={{ cursor: isRest ? "default" : "pointer" }}
                     >
                       <span className={styles.weekDayLabel}>{day}</span>
@@ -418,6 +661,14 @@ export default function Plans() {
                     <button className={styles.closePanelBtn} onClick={() => setActiveDay(null)}>✕</button>
                   </div>
 
+                  {/* MISSED WORKOUT RECOVERY */}
+                  {missedInfo && (
+                    <MissedRecoveryChip suggestion={missedInfo.recovery_suggestion} />
+                  )}
+
+                  {/* WARM-UP */}
+                  <WarmupBlock items={activeDayWorkout.warmup ?? []} type="warmup" />
+
                   {/* EXERCISES */}
                   <div className={styles.exerciseList}>
                     {(activeDayWorkout.exercises ?? []).length === 0 ? (
@@ -455,7 +706,17 @@ export default function Plans() {
                     )}
                   </div>
 
-                  {/* MEALS FOR THIS DAY */}
+                  {/* COOL-DOWN */}
+                  <WarmupBlock items={activeDayWorkout.cooldown ?? []} type="cooldown" />
+
+                  {/* RECOVERY REMINDER (Legs only) */}
+                  {activeDayWorkout.recovery_reminder && (
+                    <div className={styles.recoveryReminder}>
+                      ⚠️ {activeDayWorkout.recovery_reminder}
+                    </div>
+                  )}
+
+                  {/* MEALS + NUTRITION TARGETS FOR THIS DAY */}
                   {activeDayMeal && (
                     <div className={styles.mealPanel}>
                       <h3 className={styles.mealPanelTitle}>🍽️ Today's Meals</h3>
@@ -472,6 +733,8 @@ export default function Plans() {
                           </div>
                         ))}
                       </div>
+                      {/* Per-day nutrition targets from meal_plan */}
+                      <NutritionTargets targets={activeDayMeal.daily_targets ?? null} />
                     </div>
                   )}
                 </div>
@@ -490,6 +753,12 @@ export default function Plans() {
                       <div className={styles.mealRow}><span className={styles.mealRowLabel}>Lunch</span><span>{meal.lunch}</span></div>
                       <div className={styles.mealRow}><span className={styles.mealRowLabel}>Dinner</span><span>{meal.dinner}</span></div>
                       <div className={styles.mealRow}><span className={styles.mealRowLabel}>Snack</span><span>{meal.snack}</span></div>
+                      {meal.daily_targets?.protein_g && (
+                        <div className={styles.mealTargetRow}>
+                          <span className={styles.mealTargetChip}>🎯 {meal.daily_targets.kcal} kcal</span>
+                          <span className={styles.mealTargetChip}>🥩 {meal.daily_targets.protein_g}g protein</span>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

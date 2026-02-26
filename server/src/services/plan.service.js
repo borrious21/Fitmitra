@@ -2,10 +2,14 @@
 
 import PlanModel from "../models/plan.model.js";
 import ProfileModel from "../models/profile.model.js";
-import { generatePlan as runPlanGenerator } from "./plan.generator.js"; // ✅ FIXED: was ../domain/plan.generator.js
+import { generatePlan as runPlanGenerator } from "./plan.generator.js";
+
+// ── CALORIE ADJUSTMENT ───────────────────────────────────────
 
 export function computeCalorieAdjustment({ weightTrend, targetKcal, goal }) {
-  if (!weightTrend || weightTrend.length < 2) return { adjustment: 0, reason: "Not enough data yet." };
+  if (!weightTrend || weightTrend.length < 2) {
+    return { adjustment: 0, reason: "Not enough data yet." };
+  }
 
   const latest = weightTrend[weightTrend.length - 1].weight_kg;
   const prev   = weightTrend[weightTrend.length - 2].weight_kg;
@@ -26,6 +30,8 @@ export function computeCalorieAdjustment({ weightTrend, targetKcal, goal }) {
   return { adjustment: 0, reason: "Maintenance — no calorie change needed." };
 }
 
+// ── INSIGHTS ─────────────────────────────────────────────────
+
 export function generateInsights({ thisWeekLogs = [], lastWeekLogs = [], totalWorkoutsThisWeek = 0 }) {
   const insights = [];
   const completedThisWeek = thisWeekLogs.filter((l) => l.completed).length;
@@ -35,9 +41,9 @@ export function generateInsights({ thisWeekLogs = [], lastWeekLogs = [], totalWo
     const completedLastWeek = lastWeekLogs.filter((l) => l.completed).length;
     if (completedLastWeek > 0) {
       const improvePct = Math.round(((completedThisWeek - completedLastWeek) / completedLastWeek) * 100);
-      if (improvePct > 0) insights.push(`Your consistency improved ${improvePct}% from last week. Keep it up!`);
-      else if (improvePct < 0) insights.push(`Consistency dipped ${Math.abs(improvePct)}% vs. last week — try scheduling sessions in advance.`);
-      else insights.push("Same consistency as last week — solid baseline.");
+      if (improvePct > 0)       insights.push(`Your consistency improved ${improvePct}% from last week. Keep it up!`);
+      else if (improvePct < 0)  insights.push(`Consistency dipped ${Math.abs(improvePct)}% vs. last week — try scheduling sessions in advance.`);
+      else                      insights.push("Same consistency as last week — solid baseline.");
     }
   }
 
@@ -53,14 +59,66 @@ export function generateInsights({ thisWeekLogs = [], lastWeekLogs = [], totalWo
   return insights;
 }
 
+// ── PROGRESSION RECOMMENDATION ───────────────────────────────
+
 export function recommendProgression({ log, currentExercise }) {
   const { sets_completed, reps_completed, perceived_effort } = log;
-  const allSetsCompleted = sets_completed >= currentExercise.sets && reps_completed >= currentExercise.reps;
-  if (!allSetsCompleted) return { action: "maintain", message: "Complete all sets/reps before progressing." };
-  if (perceived_effort === "easy") return { action: "increase_weight", weight_increase_kg: 2.5, message: "+2.5 kg next session — it felt easy." };
-  if (perceived_effort === "medium") return { action: "increase_reps", reps_increase: 1, message: "+1 rep per set next session." };
+  const allSetsCompleted =
+    sets_completed >= currentExercise.sets && reps_completed >= currentExercise.reps;
+
+  if (!allSetsCompleted) {
+    return { action: "maintain", message: "Complete all sets/reps before progressing." };
+  }
+  if (perceived_effort === "easy") {
+    return { action: "increase_weight", weight_increase_kg: 2.5, message: "+2.5 kg next session — it felt easy." };
+  }
+  if (perceived_effort === "medium") {
+    return { action: "increase_reps", reps_increase: 1, message: "+1 rep per set next session." };
+  }
   return { action: "add_set", message: "Add 1 extra set next session to build volume." };
 }
+
+// ── PROGRESS METRICS ─────────────────────────────────────────
+
+export function computeProgressMetrics({ weightLogs = [], strengthLogs = [], measurements = [] }) {
+  const metrics = {};
+
+  // Weight trend
+  if (weightLogs.length >= 2) {
+    const first = weightLogs[0].weight_kg;
+    const last  = weightLogs[weightLogs.length - 1].weight_kg;
+    metrics.weight_change_kg = parseFloat((last - first).toFixed(1));
+    metrics.weight_trend     = last < first ? "losing" : last > first ? "gaining" : "stable";
+    metrics.current_weight_kg = last;
+  }
+
+  // Strength PRs: max weight lifted per exercise
+  if (strengthLogs.length > 0) {
+    const bests = {};
+    for (const log of strengthLogs) {
+      if (!bests[log.exercise_name] || log.weight_kg > bests[log.exercise_name]) {
+        bests[log.exercise_name] = log.weight_kg;
+      }
+    }
+    metrics.strength_prs = bests;
+  }
+
+  // Body measurements (waist, chest, etc.)
+  if (measurements.length >= 2) {
+    const first = measurements[0];
+    const last  = measurements[measurements.length - 1];
+    metrics.measurement_changes = {};
+    for (const key of Object.keys(last)) {
+      if (typeof last[key] === "number" && typeof first[key] === "number") {
+        metrics.measurement_changes[key] = parseFloat((last[key] - first[key]).toFixed(1));
+      }
+    }
+  }
+
+  return metrics;
+}
+
+// ── PLAN SERVICE ─────────────────────────────────────────────
 
 const PlanService = {
   async generateAndSave(userId) {
@@ -78,9 +136,12 @@ const PlanService = {
       goals:             profile.goal,
       habits:            profile.custom_habits ?? [],
       medicalConditions: profile.medical_conditions ?? [],
+      // ✅ NEW: pass body weight so generator can compute personalised macros
+      bodyWeightKg:      profile.weight_kg ?? 70,
+      targetKcal:        profile.target_kcal ?? null,
     };
 
-    const generated = runPlanGenerator(input); // sync function, no await
+    const generated = runPlanGenerator(input); // sync
 
     if (!generated?.schedule || !Array.isArray(generated.schedule)) {
       const err = new Error("Plan generation failed. Invalid generator output.");
@@ -96,20 +157,22 @@ const PlanService = {
     }));
 
     const mealPlan = generated.schedule.map((week) => ({
-      week:  week.week,
-      meals: week.meals,
+      week:      week.week,
+      meals:     week.meals,
+      nutrition_targets: week.nutrition_targets,
     }));
 
-    // ✅ FIXED: deactivate BEFORE insert to avoid unique_active_plan_per_user constraint error
+    // Deactivate BEFORE insert to avoid unique_active_plan_per_user constraint
     await PlanModel.deactivateAllPlans(userId);
 
     const saved = await PlanModel.create({
       user_id: userId,
       profile_snapshot: input,
       plan_data: {
-        workout: workoutPlan,
-        meals:   mealPlan,
-        habits:  input.habits,
+        workout:  workoutPlan,
+        meals:    mealPlan,
+        habits:   input.habits,
+        summary:  generated.summary,
       },
     });
 

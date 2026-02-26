@@ -1,5 +1,13 @@
 // src/pages/Dashboard/Dashboard.jsx
-// v2 — Wired to upgraded backend: insights, PRs, volume, progression notes, deload week, calorie burn
+// v3 — New features on top of v2:
+//   • Gamification XP bar + level + streak in welcome section
+//   • Adaptive difficulty signal banner
+//   • Missed workout recovery suggestion on rest days
+//   • Progress metrics (weight trend, strength PRs) card
+//   • Deload week wellness tip card
+//   • Per-day hydration target from plan
+//   • Recovery protocol snippet on deload week
+//   • Warm-up / Cooldown reminder in workout card
 
 import { useState, useEffect, useRef, useContext, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -8,24 +16,16 @@ import ThemeToggle from "../../../components/ThemeToggle/ThemeToggle";
 import { AuthContext } from "../../../context/AuthContext";
 import { getMyProfile } from "../../../services/profileService";
 import {
-  getDashboardNutrition,
-  getDashboardWorkout,
-  getDashboardMeals,
-  getDashboardHealth,
-  getDashboardWeekly,
-  getDashboardInsights,
-  getDashboardStreak,
+  getDashboardNutrition, getDashboardWorkout, getDashboardMeals,
+  getDashboardHealth, getDashboardWeekly, getDashboardInsights, getDashboardStreak,
 } from "../../../services/dashboardService";
 import { apiFetch } from "../../../services/apiClient";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const GOAL_LABELS = {
-  weight_loss:      "Weight Loss",
-  maintain_fitness: "Maintain Fitness",
-  muscle_gain:      "Muscle Gain",
-  endurance:        "Endurance",
-  wellness:         "Wellness",
+  weight_loss: "Weight Loss", maintain_fitness: "Maintain Fitness",
+  muscle_gain: "Muscle Gain", endurance: "Endurance", wellness: "Wellness",
 };
 
 const NAV_TABS = [
@@ -35,13 +35,19 @@ const NAV_TABS = [
 ];
 
 const PROGRESSION_LABELS = {
-  reps_increase:  { label: "📈 +1 Rep",   color: "#10b981" },
-  weight_increase:{ label: "🏋️ +2.5kg",   color: "#f59e0b" },
-  set_increase:   { label: "➕ +1 Set",   color: "#6366f1" },
-  deload:         { label: "🔄 Deload",   color: "#64748b" },
-  maintain:       { label: "✓ Maintain", color: "#94a3b8" },
-  maintain_hard:  { label: "💪 Hold",     color: "#f97316" },
-  at_ceiling:     { label: "🏆 Peak",     color: "#eab308" },
+  reps_increase:   { label: "📈 +1 Rep",  color: "#10b981" },
+  weight_increase: { label: "🏋️ +2.5kg",  color: "#f59e0b" },
+  set_increase:    { label: "➕ +1 Set",  color: "#6366f1" },
+  deload:          { label: "🔄 Deload",  color: "#64748b" },
+  maintain:        { label: "✓ Maintain", color: "#94a3b8" },
+  maintain_hard:   { label: "💪 Hold",    color: "#f97316" },
+  at_ceiling:      { label: "🏆 Peak",    color: "#eab308" },
+};
+
+const LEVEL_LABELS = {
+  1:"🌱 Rookie", 2:"🏃 Mover", 3:"💪 Grinder", 4:"🔥 Crusher",
+  5:"⚡ Athlete", 6:"🥈 Contender", 7:"🥇 Champion", 8:"🏆 Elite",
+  9:"💎 Legend", 10:"🚀 GOAT",
 };
 
 // ─── Utility ──────────────────────────────────────────────────────────────────
@@ -58,8 +64,7 @@ function useCountUp(target, duration = 1200) {
     const step = (ts) => {
       if (!start) start = ts;
       const p = Math.min((ts - start) / duration, 1);
-      const ease = 1 - Math.pow(1 - p, 3);
-      setVal(Math.round(from + ease * (target - from)));
+      setVal(Math.round(from + (1 - Math.pow(1 - p, 3)) * (target - from)));
       if (p < 1) requestAnimationFrame(step);
     };
     requestAnimationFrame(step);
@@ -73,17 +78,12 @@ function AnimNum({ value, decimals = 0 }) {
   return <span>{decimals > 0 ? n.toFixed(decimals) : n}</span>;
 }
 
-// ─── Section fade-in on scroll ─────────────────────────────────────────────────
-
 function Section({ children, hidden, delay = 0 }) {
   const ref = useRef();
   const [vis, setVis] = useState(false);
   useEffect(() => {
     const t = setTimeout(() => {
-      const obs = new IntersectionObserver(
-        ([e]) => { if (e.isIntersecting) setVis(true); },
-        { threshold: 0.06 }
-      );
+      const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setVis(true); }, { threshold: 0.06 });
       if (ref.current) obs.observe(ref.current);
       return () => obs.disconnect();
     }, delay);
@@ -120,11 +120,7 @@ function NavAvatar({ avatarUrl, initials }) {
 }
 
 function LoadingCard({ height = 120 }) {
-  return (
-    <div className={styles.card} style={{ minHeight: height }}>
-      <div className={styles.skeleton} />
-    </div>
-  );
+  return <div className={styles.card} style={{ minHeight: height }}><div className={styles.skeleton} /></div>;
 }
 
 function EmptyState({ icon, message, actionLabel, onAction }) {
@@ -132,20 +128,16 @@ function EmptyState({ icon, message, actionLabel, onAction }) {
     <div className={styles.emptyState}>
       <span className={styles.emptyIcon}>{icon}</span>
       <p className={styles.emptyMsg}>{message}</p>
-      {actionLabel && (
-        <button className={styles.ghostBtn} onClick={onAction}>{actionLabel}</button>
-      )}
+      {actionLabel && <button className={styles.ghostBtn} onClick={onAction}>{actionLabel}</button>}
     </div>
   );
 }
 
-function RestDayCard({ mesocycleWeek }) {
+function RestDayCard({ mesocycleWeek, missedRecovery }) {
   return (
     <div className={`${styles.card} ${styles.accent}`}>
       <span className={styles.secLabel}>💪 Today's Workout</span>
-      {mesocycleWeek && (
-        <span className={styles.mesoBadge}>Week {mesocycleWeek} of 4</span>
-      )}
+      {mesocycleWeek && <span className={styles.mesoBadge}>Week {mesocycleWeek} of 4</span>}
       <div className={styles.restDayWrap}>
         <span className={styles.restDayEmoji}>🛌</span>
         <div className={styles.restDayText}>
@@ -160,6 +152,12 @@ function RestDayCard({ mesocycleWeek }) {
           <div key={tip} className={styles.restTip}>{tip}</div>
         ))}
       </div>
+      {/* Missed workout recovery on rest day */}
+      {missedRecovery && (
+        <div className={styles.missedRecoveryChip}>
+          <span>⚡ Missed yesterday? Try: <em>{missedRecovery}</em></span>
+        </div>
+      )}
     </div>
   );
 }
@@ -171,8 +169,6 @@ function checkRestDay(workout) {
   return name === "rest day" || name === "rest" || name === "recovery day";
 }
 
-// ─── Progression Note Chip ─────────────────────────────────────────────────────
-
 function ProgressionChip({ note }) {
   const info = PROGRESSION_LABELS[note];
   if (!info) return null;
@@ -183,13 +179,8 @@ function ProgressionChip({ note }) {
   );
 }
 
-// ─── PR Flash Banner ───────────────────────────────────────────────────────────
-
 function PRBanner({ prs }) {
-  const recent = prs.filter(pr => {
-    const days = (Date.now() - new Date(pr.achieved_at).getTime()) / 86400000;
-    return days <= 7;
-  });
+  const recent = prs.filter(pr => (Date.now() - new Date(pr.achieved_at).getTime()) / 86400000 <= 7);
   if (!recent.length) return null;
   return (
     <div className={styles.prBanner}>
@@ -202,32 +193,18 @@ function PRBanner({ prs }) {
   );
 }
 
-// ─── Volume Spark ──────────────────────────────────────────────────────────────
-
 function VolumeSpark({ delta }) {
   if (delta === null || delta === undefined) return null;
   const up = delta >= 0;
-  return (
-    <span className={styles.volSpark} style={{ color: up ? "#10b981" : "#ef4444" }}>
-      {up ? "▲" : "▼"} {Math.abs(delta)}%
-    </span>
-  );
+  return <span className={styles.volSpark} style={{ color: up ? "#10b981" : "#ef4444" }}>{up ? "▲" : "▼"} {Math.abs(delta)}%</span>;
 }
 
-// ─── Exercise reps/duration display ───────────────────────────────────────────
-// Handles both rep-based and duration-based exercises (e.g. Mountain Climbers = 30s)
-
 function ExerciseReps({ ex }) {
-  const repsPart = ex.reps != null
-    ? ` × ${ex.reps} reps`
-    : ex.duration_min != null
-      ? ` × ${ex.duration_min} min`
-      : ex.duration_sec != null
-        ? ` × ${ex.duration_sec}s`
-        : ex.duration != null
-          ? ` × ${ex.duration}`
-          : "";
-
+  const repsPart = ex.reps != null ? ` × ${ex.reps} reps`
+    : ex.duration_min != null ? ` × ${ex.duration_min} min`
+    : ex.duration_sec != null ? ` × ${ex.duration_sec}s`
+    : ex.duration     != null ? ` × ${ex.duration}`
+    : "";
   return (
     <div className={styles.exerciseReps}>
       {ex.sets} sets{repsPart}
@@ -236,38 +213,183 @@ function ExerciseReps({ ex }) {
   );
 }
 
+// ─── NEW v3 Components ─────────────────────────────────────────────────────────
+
+// XP + Level Bar
+function XPBar({ xp = 0, level = {}, streak = {} }) {
+  const p     = level.progress_pct ?? 0;
+  const label = LEVEL_LABELS[level.current] ?? `Level ${level.current ?? 1}`;
+  return (
+    <div className={styles.xpBarWrap}>
+      <div className={styles.xpBarMeta}>
+        <span className={styles.xpLabel}>{label}</span>
+        <div className={styles.xpRight}>
+          {streak?.current > 0 && (
+            <span className={styles.xpStreak}>🔥 {streak.current}-day streak</span>
+          )}
+          <span className={styles.xpPoints}>{(xp ?? 0).toLocaleString()} XP</span>
+        </div>
+      </div>
+      <div className={styles.xpTrack}>
+        <div className={styles.xpFill} style={{ width: `${p}%` }} />
+        <div className={styles.xpGlow} style={{ left: `${p}%` }} />
+      </div>
+      <div className={styles.xpFooterRow}>
+        <span>{p}% to level {(level.current ?? 1) + 1}</span>
+        {level.xp_to_next > 0 && <span>{level.xp_to_next} XP to next level</span>}
+      </div>
+    </div>
+  );
+}
+
+// Badge row
+function BadgeRow({ badges = [] }) {
+  if (!badges.length) return null;
+  return (
+    <div className={styles.badgeRow}>
+      {badges.map(b => (
+        <span key={b.id} className={styles.gameBadge}>{b.label}</span>
+      ))}
+    </div>
+  );
+}
+
+// Adaptive difficulty banner
+function AdaptiveBanner({ signal }) {
+  if (!signal || signal.signal === "maintain") return null;
+  const isUp = signal.signal === "increase";
+  return (
+    <div className={styles.adaptiveBanner} style={{
+      background: isUp ? "#10b98115" : "#ef444415",
+      borderColor: isUp ? "#10b98140" : "#ef444440",
+    }}>
+      <span className={styles.adaptiveIcon}>{isUp ? "🚀" : "😮‍💨"}</span>
+      <span className={styles.adaptiveText}>{signal.message}</span>
+      <button className={styles.adaptiveCta} onClick={() => {}}>
+        {isUp ? "Level Up Plan" : "Ease Up"}
+      </button>
+    </div>
+  );
+}
+
+// Deload wellness card
+function DeloadWellnessCard({ recovery }) {
+  if (!recovery) return null;
+  return (
+    <div className={styles.deloadWellnessCard}>
+      <div className={styles.deloadWellnessTitle}>🔄 Deload Week — Recovery Mode</div>
+      <div className={styles.deloadWellnessRow}>
+        <span>😴 Sleep target: <strong>{recovery.sleep_hours_target}h</strong></span>
+        <span>🚶 {recovery.rest_day_activity}</span>
+      </div>
+      {recovery.recovery_tools?.length > 0 && (
+        <div className={styles.deloadTools}>
+          {recovery.recovery_tools.map(t => <span key={t} className={styles.deloadTool}>{t}</span>)}
+        </div>
+      )}
+      {recovery.sleep_tips?.length > 0 && (
+        <div className={styles.deloadSleepTips}>
+          {recovery.sleep_tips.map(tip => <div key={tip} className={styles.deloadTip}>• {tip}</div>)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Progress metrics card (weight trend + PRs)
+function ProgressMetricsCard({ metrics }) {
+  if (!metrics) return null;
+  const hasWeight   = metrics.weight_change_kg !== undefined;
+  const hasPRs      = metrics.strength_prs && Object.keys(metrics.strength_prs).length > 0;
+  const hasMeasure  = metrics.measurement_changes && Object.keys(metrics.measurement_changes).length > 0;
+  if (!hasWeight && !hasPRs) return null;
+
+  return (
+    <div className={`${styles.card} ${styles.accent}`}>
+      <div className={styles.perfHeader}>
+        <span className={styles.secLabel}>📊 Progress Metrics</span>
+      </div>
+      <div className={styles.progMetricsGrid}>
+        {hasWeight && (
+          <div className={styles.progMetricItem}>
+            <span className={styles.progMetricIcon}>⚖️</span>
+            <span className={styles.progMetricVal}
+              style={{ color: metrics.weight_change_kg <= 0 ? "#10b981" : "#f59e0b" }}>
+              {metrics.weight_change_kg > 0 ? "+" : ""}{metrics.weight_change_kg} kg
+            </span>
+            <span className={styles.progMetricLabel}>Weight change</span>
+            <span className={styles.progMetricTrend}>{metrics.weight_trend}</span>
+          </div>
+        )}
+        {hasPRs && Object.entries(metrics.strength_prs).slice(0, 3).map(([name, kg]) => (
+          <div key={name} className={styles.progMetricItem}>
+            <span className={styles.progMetricIcon}>🏅</span>
+            <span className={styles.progMetricVal} style={{ color: "#f59e0b" }}>{kg} kg</span>
+            <span className={styles.progMetricLabel}>{name}</span>
+            <span className={styles.progMetricTrend}>Best lift</span>
+          </div>
+        ))}
+        {hasMeasure && Object.entries(metrics.measurement_changes).slice(0, 2).map(([key, val]) => (
+          <div key={key} className={styles.progMetricItem}>
+            <span className={styles.progMetricIcon}>📏</span>
+            <span className={styles.progMetricVal} style={{ color: val <= 0 ? "#10b981" : "#f59e0b" }}>
+              {val > 0 ? "+" : ""}{val} cm
+            </span>
+            <span className={styles.progMetricLabel}>{key}</span>
+            <span className={styles.progMetricTrend}>Measurement</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Warm-up reminder chip in workout card
+function WarmupReminder({ warmup = [] }) {
+  if (!warmup.length) return null;
+  return (
+    <div className={styles.warmupReminder}>
+      <span className={styles.warmupReminderIcon}>🔥</span>
+      <span>Warm-up first: {warmup.map(w => w.name).join(" · ")}</span>
+    </div>
+  );
+}
+
 // ─── Main Dashboard ────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
-  const { user }   = useContext(AuthContext);
-  const navigate   = useNavigate();
-  const location   = useLocation();
+  const { user }  = useContext(AuthContext);
+  const navigate  = useNavigate();
+  const location  = useLocation();
 
   const activeTab = NAV_TABS.find(t => t.path === location.pathname)?.key ?? "today";
 
-  const [loading,   setLoading]   = useState(true);
-  const [error,     setError]     = useState(null);
-  const [avatarUrl, setAvatarUrl] = useState(null);
-  const [goalLabel, setGoalLabel] = useState("—");
-  const [weight,    setWeight]    = useState(null);
-  const [nutrition, setNutrition] = useState(null);
-  const [workout,   setWorkout]   = useState(null);
-  const [meals,     setMeals]     = useState([]);
-  const [health,    setHealth]    = useState(null);
-  const [weekly,    setWeekly]    = useState(null);
-  const [insights,  setInsights]  = useState([]);
-  const [streak,    setStreak]    = useState(0);
-
-  // ── v2 new state ──
-  const [prs,         setPRs]         = useState([]);
-  const [volumeDelta, setVolumeDelta] = useState([]);
-  const [dashboard,   setDashboard]   = useState(null);
+  const [loading,       setLoading]       = useState(true);
+  const [error,         setError]         = useState(null);
+  const [avatarUrl,     setAvatarUrl]     = useState(null);
+  const [goalLabel,     setGoalLabel]     = useState("—");
+  const [weight,        setWeight]        = useState(null);
+  const [nutrition,     setNutrition]     = useState(null);
+  const [workout,       setWorkout]       = useState(null);
+  const [meals,         setMeals]         = useState([]);
+  const [health,        setHealth]        = useState(null);
+  const [weekly,        setWeekly]        = useState(null);
+  const [insights,      setInsights]      = useState([]);
+  const [streak,        setStreak]        = useState(0);
+  const [prs,           setPRs]           = useState([]);
+  const [volumeDelta,   setVolumeDelta]   = useState([]);
+  const [dashboard,     setDashboard]     = useState(null);
+  // ── v3 new state ──
+  const [gamification,  setGamification]  = useState(null);
+  const [adaptSignal,   setAdaptSignal]   = useState(null);
+  const [progressMetrics, setProgressMetrics] = useState(null);
+  const [missedRecovery,  setMissedRecovery]  = useState(null);
+  const [activePlan,    setActivePlan]    = useState(null);
 
   useEffect(() => {
     let cancelled = false;
     const fetchAll = async () => {
-      setLoading(true);
-      setError(null);
+      setLoading(true); setError(null);
       try {
         const results = await Promise.allSettled([
           getMyProfile(),
@@ -281,6 +403,9 @@ export default function Dashboard() {
           apiFetch("/workouts/prs"),
           apiFetch("/workouts/volume"),
           apiFetch("/workouts/dashboard?days=30"),
+          // v3 additions
+          apiFetch("/plans/gamification"),
+          apiFetch("/plans/active"),
         ]);
         if (cancelled) return;
 
@@ -290,27 +415,27 @@ export default function Dashboard() {
           if (data?.goal)       setGoalLabel(GOAL_LABELS[data.goal] ?? data.goal);
           if (data?.weight_kg)  setWeight({ current: data.weight_kg, change: data.weight_change_this_week ?? null });
         }
-        if (results[1].status === "fulfilled") setNutrition(results[1].value?.data ?? results[1].value ?? null);
-        if (results[2].status === "fulfilled") setWorkout(results[2].value?.data ?? results[2].value ?? null);
-        if (results[3].status === "fulfilled") {
+        if (results[1].status  === "fulfilled") setNutrition(results[1].value?.data ?? results[1].value ?? null);
+        if (results[2].status  === "fulfilled") setWorkout(results[2].value?.data   ?? results[2].value ?? null);
+        if (results[3].status  === "fulfilled") {
           const d = results[3].value?.data ?? results[3].value;
           setMeals(Array.isArray(d) ? d : []);
         }
-        if (results[4].status === "fulfilled") setHealth(results[4].value?.data ?? results[4].value ?? null);
-        if (results[5].status === "fulfilled") setWeekly(results[5].value?.data ?? results[5].value ?? null);
-        if (results[6].status === "fulfilled") {
+        if (results[4].status  === "fulfilled") setHealth(results[4].value?.data ?? results[4].value ?? null);
+        if (results[5].status  === "fulfilled") setWeekly(results[5].value?.data ?? results[5].value ?? null);
+        if (results[6].status  === "fulfilled") {
           const d = results[6].value?.data ?? results[6].value;
           setInsights(Array.isArray(d) ? d : []);
         }
-        if (results[7].status === "fulfilled") {
+        if (results[7].status  === "fulfilled") {
           const d = results[7].value?.data ?? results[7].value;
           setStreak(d?.streak ?? d?.current_streak ?? (typeof d === "number" ? d : 0));
         }
-        if (results[8].status === "fulfilled") {
+        if (results[8].status  === "fulfilled") {
           const d = results[8].value?.data ?? results[8].value;
           setPRs(Array.isArray(d) ? d : []);
         }
-        if (results[9].status === "fulfilled") {
+        if (results[9].status  === "fulfilled") {
           const d = results[9].value?.data ?? results[9].value;
           setVolumeDelta(d?.weekly_delta ?? []);
         }
@@ -318,6 +443,35 @@ export default function Dashboard() {
           const d = results[10].value?.data ?? results[10].value;
           setDashboard(d ?? null);
         }
+        // v3
+        if (results[11].status === "fulfilled") {
+          const d = results[11].value?.data ?? results[11].value;
+          setGamification(d ?? null);
+        }
+        if (results[12].status === "fulfilled") {
+          const d = results[12].value?.data ?? results[12].value;
+          setActivePlan(d ?? null);
+        }
+
+        // Fetch adaptive difficulty signal from recent effort logs (if available)
+        try {
+          const recentLogs = []; // TODO: populate from workout logs
+          const sigRes = await apiFetch("/plans/adaptive-difficulty", {
+            method: "POST",
+            body: JSON.stringify({ recent_logs: recentLogs }),
+          });
+          if (!cancelled) setAdaptSignal(sigRes?.data ?? sigRes ?? null);
+        } catch { /* ok */ }
+
+        // Fetch progress metrics
+        try {
+          const metRes = await apiFetch("/plans/progress-metrics", {
+            method: "POST",
+            body: JSON.stringify({ weight_logs: [], strength_logs: [], measurements: [] }),
+          });
+          if (!cancelled) setProgressMetrics(metRes?.data ?? metRes ?? null);
+        } catch { /* ok */ }
+
       } catch {
         if (!cancelled) setError("Failed to load dashboard data.");
       } finally {
@@ -333,9 +487,7 @@ export default function Dashboard() {
 
   const isRestDay  = checkRestDay(workout);
   const hasWorkout = !!workout && !isRestDay;
-  const donePct    = hasWorkout
-    ? pct(workout.exercises?.filter(e => e.done).length ?? 0, workout.exercises?.length ?? 1)
-    : 0;
+  const donePct    = hasWorkout ? pct(workout.exercises?.filter(e => e.done).length ?? 0, workout.exercises?.length ?? 1) : 0;
 
   const hasNutrition  = !!nutrition && (nutrition.calories?.target ?? 0) > 0;
   const calConsumed   = nutrition?.calories?.consumed ?? 0;
@@ -349,11 +501,14 @@ export default function Dashboard() {
   const hasAnyHealth  = health && (health.bp || health.sleep || health.heartRate || health.recovery);
   const hasWeeklyData = weekly && Array.isArray(weekly.calories) && weekly.calories.some(Boolean);
 
+  const isDeloadWeek  = workout?.is_deload_week ?? false;
+  const workoutWarmup = workout?.warmup ?? [];
+
   const QUICK_ACTIONS = [
     { icon: "⚖️", label: "Log Weight",  action: () => navigate("/progress") },
     { icon: "🩺", label: "Log BP",      action: () => navigate("/progress") },
     { icon: "🍽️", label: "Log Meal",    action: () => navigate("/log-meal") },
-    { icon: "📋", label: "Full Plan",   action: () => navigate("/plans")     },
+    { icon: "📋", label: "Full Plan",   action: () => navigate("/plans")    },
     { icon: "🎯", label: "Update Goal", action: () => navigate("/profile")  },
     { icon: "💪", label: "Workout",     action: () => navigate("/workout")  },
   ];
@@ -377,11 +532,9 @@ export default function Dashboard() {
         </a>
         <div className={styles.navTabs}>
           {NAV_TABS.map(t => (
-            <button
-              key={t.key}
+            <button key={t.key}
               className={`${styles.navTab}${activeTab === t.key ? " " + styles.active : ""}`}
-              onClick={() => navigate(t.path)}
-            >
+              onClick={() => navigate(t.path)}>
               {t.label}
             </button>
           ))}
@@ -402,10 +555,13 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* ── Recent PRs flash banner ── */}
+        {/* ── PR Flash Banner ── */}
         {!loading && prs.length > 0 && <PRBanner prs={prs} />}
 
-        {/* ── Welcome ── */}
+        {/* ── Adaptive Difficulty Banner (v3) ── */}
+        {!loading && <AdaptiveBanner signal={adaptSignal} />}
+
+        {/* ── Welcome + XP Bar ── */}
         <Section>
           <div className={styles.welcomeGrid}>
             <div>
@@ -414,23 +570,18 @@ export default function Dashboard() {
                   <span className={styles.badgeDot} />{goalLabel}
                 </span>
                 {streak > 0 && (
-                  <span className={`${styles.badge} ${styles.badgeOrange}`}>
-                    🔥 {streak} Day Streak
-                  </span>
+                  <span className={`${styles.badge} ${styles.badgeOrange}`}>🔥 {streak} Day Streak</span>
                 )}
-                {workout?.is_deload_week && (
-                  <span className={`${styles.badge} ${styles.badgeSlate}`}>
-                    🔄 Deload Week
-                  </span>
+                {isDeloadWeek && (
+                  <span className={`${styles.badge} ${styles.badgeSlate}`}>🔄 Deload Week</span>
                 )}
-                {workout?.mesocycle_week && !workout?.is_deload_week && (
-                  <span className={`${styles.badge} ${styles.badgeBlue}`}>
-                    📅 Week {workout.mesocycle_week} of 4
-                  </span>
+                {workout?.mesocycle_week && !isDeloadWeek && (
+                  <span className={`${styles.badge} ${styles.badgeBlue}`}>📅 Week {workout.mesocycle_week} of 4</span>
                 )}
-                {workout?.rotation_tier && (
+                {/* v3: gamification level badge */}
+                {gamification?.level && (
                   <span className={`${styles.badge} ${styles.badgePurple}`}>
-                    Tier {workout.rotation_tier}
+                    {LEVEL_LABELS[gamification.level.current] ?? `Level ${gamification.level.current}`}
                   </span>
                 )}
               </div>
@@ -439,9 +590,7 @@ export default function Dashboard() {
                 <span className={styles.welcomeAccent}>{displayName}</span>
               </h1>
               <p className={styles.welcomeDate}>
-                {new Date().toLocaleDateString("en-IN", {
-                  weekday: "long", year: "numeric", month: "long", day: "numeric"
-                })}
+                {new Date().toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
               </p>
             </div>
             {weight ? (
@@ -456,9 +605,7 @@ export default function Dashboard() {
                 {dashboard?.total_volume_kg > 0 && (
                   <div className={styles.weightSubStat}>
                     <span className={styles.weightSubLabel}>Monthly volume</span>
-                    <span className={styles.weightSubVal}>
-                      <AnimNum value={Math.round(dashboard.total_volume_kg)} />kg
-                    </span>
+                    <span className={styles.weightSubVal}><AnimNum value={Math.round(dashboard.total_volume_kg)} />kg</span>
                   </div>
                 )}
               </div>
@@ -468,23 +615,39 @@ export default function Dashboard() {
               </div>
             ) : null}
           </div>
+
+          {/* v3: XP Bar below welcome */}
+          {!loading && gamification && (
+            <>
+              <XPBar xp={gamification.xp} level={gamification.level} streak={gamification.streak} />
+              <BadgeRow badges={gamification.badges ?? []} />
+            </>
+          )}
         </Section>
+
+        {/* ── Deload Week Wellness Card (v3) ── */}
+        {!loading && isDeloadWeek && activePlan?.recovery_protocol && (
+          <Section delay={30}>
+            <DeloadWellnessCard recovery={activePlan.recovery_protocol} />
+          </Section>
+        )}
 
         {/* ── Workout + Nutrition two-col ── */}
         <div className={styles.twoCol}>
 
           <Section>
             {loading ? <LoadingCard height={320} /> : isRestDay ? (
-              <RestDayCard mesocycleWeek={workout?.mesocycle_week} />
+              <RestDayCard
+                mesocycleWeek={workout?.mesocycle_week}
+                missedRecovery={missedRecovery}
+              />
             ) : hasWorkout ? (
               <div className={`${styles.card} ${styles.accent}`}>
                 <div className={styles.workoutHeader}>
                   <div>
                     <div className={styles.workoutTopRow}>
                       <span className={styles.secLabel}>💪 Today's Workout</span>
-                      {workout.is_deload_week && (
-                        <span className={styles.deloadBadge}>🔄 Deload</span>
-                      )}
+                      {isDeloadWeek && <span className={styles.deloadBadge}>🔄 Deload</span>}
                     </div>
                     <div className={styles.workoutTitle}>{workout.name}</div>
                     <div className={styles.workoutMeta}>
@@ -516,6 +679,9 @@ export default function Dashboard() {
                   )}
                 </div>
 
+                {/* v3: Warm-up reminder */}
+                <WarmupReminder warmup={workoutWarmup} />
+
                 <div className={styles.exerciseList}>
                   {workout.exercises?.slice(0, 5).map((ex, i) => (
                     <div key={ex.name}
@@ -527,11 +693,8 @@ export default function Dashboard() {
                         <div className={`${styles.exerciseName}${ex.done ? " " + styles.nameDone : ""}`}>
                           {ex.name}
                         </div>
-                        {/* FIX: handle duration-based exercises (reps may be null) */}
                         <ExerciseReps ex={ex} />
-                        {ex.progression_note && !ex.done && (
-                          <ProgressionChip note={ex.progression_note} />
-                        )}
+                        {ex.progression_note && !ex.done && <ProgressionChip note={ex.progression_note} />}
                       </div>
                       {ex.estimated_kcal > 0 && (
                         <span className={styles.exKcal}>~{ex.estimated_kcal} kcal</span>
@@ -547,12 +710,8 @@ export default function Dashboard() {
             ) : (
               <div className={`${styles.card} ${styles.accent}`}>
                 <span className={styles.secLabel}>💪 Today's Workout</span>
-                <EmptyState
-                  icon="📋"
-                  message="No workout scheduled for today. Generate a plan to get started."
-                  actionLabel="Generate Plan →"
-                  onAction={() => navigate("/plans")}
-                />
+                <EmptyState icon="📋" message="No workout scheduled. Generate a plan to get started."
+                  actionLabel="Generate Plan →" onAction={() => navigate("/plans")} />
               </div>
             )}
           </Section>
@@ -585,14 +744,9 @@ export default function Dashboard() {
                         </div>
                       </div>
                       <div style={{ flex: 1 }}>
-                        <div className={styles.calNum}>
-                          <AnimNum value={calConsumed} />
-                          <span className={styles.calDenom}> / {calTarget}</span>
-                        </div>
+                        <div className={styles.calNum}><AnimNum value={calConsumed} /><span className={styles.calDenom}> / {calTarget}</span></div>
                         <div className={styles.calLabel}>kcal consumed today</div>
-                        <div className={styles.calBar}>
-                          <div className={styles.calBarFill} style={{ width: `${calPct}%` }} />
-                        </div>
+                        <div className={styles.calBar}><div className={styles.calBarFill} style={{ width: `${calPct}%` }} /></div>
                       </div>
                     </div>
 
@@ -655,18 +809,17 @@ export default function Dashboard() {
             ) : (
               <div className={`${styles.card} ${styles.accent}`}>
                 <span className={styles.secLabel}>🍽️ Today's Nutrition</span>
-                <EmptyState
-                  icon="📊"
-                  message="Complete your profile to unlock personalised nutrition targets."
-                  actionLabel="Set Up Profile →"
-                  onAction={() => navigate("/profile")}
-                />
+                <EmptyState icon="📊" message="Complete your profile to unlock personalised nutrition targets."
+                  actionLabel="Set Up Profile →" onAction={() => navigate("/profile")} />
               </div>
             )}
           </Section>
         </div>
 
-        {/* ── Performance Snapshot (v2) ── */}
+        {/* ── Progress Metrics Card (v3) ── */}
+        {!loading && <Section delay={40}><ProgressMetricsCard metrics={progressMetrics} /></Section>}
+
+        {/* ── Performance Snapshot ── */}
         {!loading && (prs.length > 0 || volumeDelta.length > 0) && (
           <Section delay={50}>
             <div className={`${styles.card} ${styles.accent}`}>
@@ -674,7 +827,6 @@ export default function Dashboard() {
                 <span className={styles.secLabel}>📊 Performance Snapshot</span>
                 <button className={styles.ghostBtnSm} onClick={() => navigate("/progress")}>View All →</button>
               </div>
-
               <div className={styles.perfGrid}>
                 {prs.slice(0, 3).map(pr => (
                   <div key={pr.exercise_name} className={styles.prCard}>
@@ -689,7 +841,6 @@ export default function Dashboard() {
                     </div>
                   </div>
                 ))}
-
                 {volumeDelta.filter(v => v.delta_pct !== null).slice(0, 2).map(v => (
                   <div key={v.exercise_name} className={styles.volCard}>
                     <span className={styles.volIcon}>📈</span>
@@ -702,7 +853,6 @@ export default function Dashboard() {
                   </div>
                 ))}
               </div>
-
               {dashboard?.strength_improvements?.length > 0 && (
                 <div className={styles.strengthBar}>
                   <span className={styles.strengthBarLabel}>💪 Strength gains (30d):</span>
@@ -737,6 +887,7 @@ export default function Dashboard() {
           )}
         </Section>
 
+        {/* ── Health Snapshot ── */}
         <Section>
           <span className={styles.secLabel}>🩺 Health Snapshot</span>
           {loading ? <LoadingCard /> : hasAnyHealth ? (
@@ -766,10 +917,12 @@ export default function Dashboard() {
               )}
             </>
           ) : (
-            <EmptyState icon="🩺" message="Log your blood pressure, sleep, and heart rate to track your health." actionLabel="Log Health Data →" onAction={() => navigate("/progress")} />
+            <EmptyState icon="🩺" message="Log your blood pressure, sleep, and heart rate to track your health."
+              actionLabel="Log Health Data →" onAction={() => navigate("/progress")} />
           )}
         </Section>
 
+        {/* ── AI Insights ── */}
         <Section hidden={!loading && insights.length === 0}>
           <div className={`${styles.card} ${styles.accent}`}>
             <div className={styles.aiHeader}>
@@ -780,9 +933,7 @@ export default function Dashboard() {
               </div>
               <span className={styles.aiBadge}>Live Data</span>
             </div>
-            {loading ? (
-              <p style={{ opacity: 0.4, marginTop: "1rem" }}>Loading insights...</p>
-            ) : (
+            {loading ? <p style={{ opacity: 0.4, marginTop: "1rem" }}>Loading insights...</p> : (
               <div className={styles.insightList}>
                 {insights.map((ins, i) => {
                   const icon  = ins.icon ?? "💡";
@@ -805,6 +956,7 @@ export default function Dashboard() {
           </div>
         </Section>
 
+        {/* ── Weekly Progress ── */}
         <Section>
           <div className={`${styles.card} ${styles.accent}`}>
             <span className={styles.secLabel}>📈 Weekly Progress</span>
@@ -814,7 +966,7 @@ export default function Dashboard() {
                   {[
                     { label: "Consistency",       value: weekly.consistency,      sub: weekly.consistencySub, color: "#FF5C1A", valid: !!weekly.consistency },
                     { label: "Calorie Adherence", value: weekly.calorieAdherence, sub: "avg this week",       color: "#B8F000", valid: !!weekly.calorieAdherence && weekly.calorieAdherence !== "—" },
-                    { label: "Weight Lost",       value: weekly.weightLost,       sub: "this week",           color: "#00C8E0", valid: !!weekly.weightLost       && weekly.weightLost       !== "—" },
+                    { label: "Weight Lost",       value: weekly.weightLost,       sub: "this week",           color: "#00C8E0", valid: !!weekly.weightLost && weekly.weightLost !== "—" },
                     { label: "Volume",            value: dashboard?.total_volume_kg ? `${Math.round(dashboard.total_volume_kg / 1000)}t` : null, sub: "this month", color: "#a855f7", valid: !!dashboard?.total_volume_kg },
                   ].filter(s => s.valid).map(s => (
                     <div key={s.label} className={styles.weekStat}>

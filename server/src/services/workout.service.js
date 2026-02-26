@@ -13,6 +13,9 @@ function toLocalDateStr(date) {
   return `${y}-${m}-${d}`;
 }
 
+// Utility: safely convert any Postgres numeric/string to a JS number with fixed decimals
+const toNum = (val, decimals = 1) => parseFloat(parseFloat(val || 0).toFixed(decimals));
+
 const FOCUS_KCAL_ESTIMATES = {
   'Chest':              220, 'Back':               260, 'Shoulders':          200,
   'Biceps':             150, 'Triceps':            150, 'Legs':               350,
@@ -570,9 +573,9 @@ class WorkoutService {
         .filter(r => r.recent_1rm && r.older_1rm)
         .map(r => ({
           exercise_name:   r.exercise_name,
-          recent_1rm:      parseFloat(r.recent_1rm).toFixed(1),
-          older_1rm:       parseFloat(r.older_1rm).toFixed(1),
-          improvement_pct: parseFloat((((r.recent_1rm - r.older_1rm) / r.older_1rm) * 100).toFixed(1)),
+          recent_1rm:      toNum(r.recent_1rm, 1),
+          older_1rm:       toNum(r.older_1rm, 1),
+          improvement_pct: toNum(((r.recent_1rm - r.older_1rm) / r.older_1rm) * 100, 1),
         }));
 
       const { rows: heatmapRows } = await pool.query(
@@ -587,9 +590,9 @@ class WorkoutService {
         period_days:           days,
         workouts_completed:    Number(stats.total_workout_days || 0),
         total_exercises:       Number(stats.total_exercises || 0),
-        total_volume_kg:       parseFloat(stats.total_volume_kg || 0),
+        total_volume_kg:       toNum(stats.total_volume_kg, 2),
         total_minutes:         Number(stats.total_minutes || 0),
-        avg_rpe:               parseFloat((stats.avg_exertion || 0).toFixed(1)),
+        avg_rpe:               toNum(stats.avg_exertion, 1),   // ← fixed: was (stats.avg_exertion || 0).toFixed(1)
         current_streak:        streak,
         volume_by_exercise:    volumeStats,
         weekly_volume_delta:   weeklyDelta,
@@ -684,7 +687,7 @@ class WorkoutService {
         adjustment:       actualAdjustment,
         reason,
         flag_for_review:  flagForReview,
-        completion_rate:  parseFloat((completionRate * 100).toFixed(1)),
+        completion_rate:  toNum(completionRate * 100, 1),
       };
     } catch (err) {
       console.error('WorkoutService:adaptNutritionTargets', err);
@@ -756,7 +759,7 @@ class WorkoutService {
         period_days:        days,
         workouts_completed: dateRows.length,
         total_minutes:      Number(statsRows[0].total_minutes),
-        total_volume_kg:    parseFloat(statsRows[0].total_volume_kg),
+        total_volume_kg:    toNum(statsRows[0].total_volume_kg, 2),
         current_streak:     await this._getCurrentStreak(numericUserId),
       };
     } catch (err) {
@@ -987,7 +990,7 @@ class WorkoutService {
             completed:        true,
             exercises_logged: Number(row.exercises_logged),
             duration:         Number(row.total_duration) || 0,
-            volume_kg:        parseFloat(row.total_volume_kg || 0),
+            volume_kg:        toNum(row.total_volume_kg, 2),
             date:             row.date,
           };
         }
