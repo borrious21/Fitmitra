@@ -48,7 +48,17 @@ function getMealMeta(meal) {
     return { emoji: "🌙", label: "Dinner" };
   if (t.includes("snack") || meal.emoji === "🥜")
     return { emoji: "🥜", label: "Snack" };
+  // Clock-like time (e.g. "04:59 pm") → treat as snack
+  if (/^\d{1,2}:\d{2}/.test(t))
+    return { emoji: "🥜", label: "Snack" };
   return { emoji: meal.emoji ?? "🍽️", label: meal.time ?? "Meal" };
+}
+
+// ── Strip trailing .00 / .0 from macro/numeric values ──
+function fmtMacro(v) {
+  const n = Number(v);
+  if (!n) return "0";
+  return String(Math.round(n * 10) / 10);
 }
 
 function pct(v, t) { return t ? Math.min(100, Math.round((v / t) * 100)) : 0; }
@@ -320,7 +330,7 @@ function WarmupReminder({ warmup = [] }) {
   );
 }
 
-// ── IMPROVED Meals Card ──
+// ── Meals Card ──
 function MealsCard({ meals, onLogMeal }) {
   const totalCal = meals.reduce((s, m) => s + (Number(m.cal) || 0), 0);
   const totalP   = meals.reduce((s, m) => s + (Number(m.p)   || 0), 0);
@@ -330,7 +340,11 @@ function MealsCard({ meals, onLogMeal }) {
         <span className={styles.secLabel}>Meals Today</span>
         <div className={styles.mealsTotals}>
           {totalCal > 0 && <span className={styles.mealsTotalChip}>{totalCal} kcal total</span>}
-          {totalP   > 0 && <span className={styles.mealsTotalChip} style={{ color: "#FF8A3D", borderColor: "rgba(255,138,61,0.3)" }}>P {totalP}g</span>}
+          {totalP   > 0 && (
+            <span className={styles.mealsTotalChip} style={{ color: "#FF8A3D", borderColor: "rgba(255,138,61,0.3)" }}>
+              P {fmtMacro(totalP)}g
+            </span>
+          )}
         </div>
       </div>
       <div className={styles.mealsStack}>
@@ -347,9 +361,21 @@ function MealsCard({ meals, onLogMeal }) {
                 <div className={styles.mealStackName}>{m.name}</div>
                 {(m.p > 0 || m.c > 0 || m.f > 0) && (
                   <div className={styles.mealStackMacros}>
-                    {m.p > 0 && <span className={styles.mealMacroChip} style={{ color: "#FF5C1A", borderColor: "rgba(255,92,26,0.2)", background: "rgba(255,92,26,0.06)" }}>P {m.p}g</span>}
-                    {m.c > 0 && <span className={styles.mealMacroChip} style={{ color: "#00C8E0", borderColor: "rgba(0,200,224,0.2)", background: "rgba(0,200,224,0.06)" }}>C {m.c}g</span>}
-                    {m.f > 0 && <span className={styles.mealMacroChip} style={{ color: "#B8F000", borderColor: "rgba(184,240,0,0.2)", background: "rgba(184,240,0,0.06)" }}>F {m.f}g</span>}
+                    {m.p > 0 && (
+                      <span className={styles.mealMacroChip} style={{ color: "#FF5C1A", borderColor: "rgba(255,92,26,0.2)", background: "rgba(255,92,26,0.06)" }}>
+                        P {fmtMacro(m.p)}g
+                      </span>
+                    )}
+                    {m.c > 0 && (
+                      <span className={styles.mealMacroChip} style={{ color: "#00C8E0", borderColor: "rgba(0,200,224,0.2)", background: "rgba(0,200,224,0.06)" }}>
+                        C {fmtMacro(m.c)}g
+                      </span>
+                    )}
+                    {m.f > 0 && (
+                      <span className={styles.mealMacroChip} style={{ color: "#B8F000", borderColor: "rgba(184,240,0,0.2)", background: "rgba(184,240,0,0.06)" }}>
+                        F {fmtMacro(m.f)}g
+                      </span>
+                    )}
                   </div>
                 )}
               </div>
@@ -364,12 +390,12 @@ function MealsCard({ meals, onLogMeal }) {
   );
 }
 
-// ── IMPROVED Performance Snapshot with expand ──
+// ── Performance Snapshot with expand ──
 function PerformanceCard({ prs, volumeDelta, dashboard, onViewAll }) {
   const [expanded, setExpanded] = useState(false);
   const filteredVol  = volumeDelta.filter(v => v.delta_pct !== null);
-  const visiblePRs   = expanded ? prs            : prs.slice(0, 3);
-  const visibleVol   = expanded ? filteredVol     : filteredVol.slice(0, 2);
+  const visiblePRs   = expanded ? prs         : prs.slice(0, 3);
+  const visibleVol   = expanded ? filteredVol : filteredVol.slice(0, 2);
   const totalEntries = prs.length + filteredVol.length;
   const hasMore      = prs.length > 3 || filteredVol.length > 2;
 
@@ -409,9 +435,7 @@ function PerformanceCard({ prs, volumeDelta, dashboard, onViewAll }) {
 
       {hasMore && (
         <button className={styles.showMoreBtn} onClick={() => setExpanded(e => !e)}>
-          {expanded
-            ? "▲ Show Less"
-            : `▼ Show All ${totalEntries} Entries`}
+          {expanded ? "▲ Show Less" : `▼ Show All ${totalEntries} Entries`}
         </button>
       )}
 
@@ -489,27 +513,32 @@ export default function Dashboard() {
           if (data?.goal)       setGoalLabel(GOAL_LABELS[data.goal] ?? data.goal);
           if (data?.weight_kg)  setWeight({ current: data.weight_kg, change: data.weight_change_this_week ?? null });
         }
-        if (results[1].status  === "fulfilled") setNutrition(results[1].value?.data ?? results[1].value ?? null);
-        if (results[2].status  === "fulfilled") setWorkout(results[2].value?.data   ?? results[2].value ?? null);
-        if (results[3].status  === "fulfilled") {
+        if (results[1].status === "fulfilled") setNutrition(results[1].value?.data ?? results[1].value ?? null);
+        if (results[2].status === "fulfilled") setWorkout(results[2].value?.data   ?? results[2].value ?? null);
+        if (results[3].status === "fulfilled") {
           const d = results[3].value?.data ?? results[3].value;
           setMeals(Array.isArray(d) ? d : []);
         }
-        if (results[4].status  === "fulfilled") setHealth(results[4].value?.data ?? results[4].value ?? null);
-        if (results[5].status  === "fulfilled") setWeekly(results[5].value?.data ?? results[5].value ?? null);
-        if (results[6].status  === "fulfilled") {
+
+        // Health: backend now returns { sleep, heartRate, bp, bpStatus, ... } directly
+        if (results[4].status === "fulfilled") {
+          setHealth(results[4].value?.data ?? results[4].value ?? null);
+        }
+
+        if (results[5].status === "fulfilled") setWeekly(results[5].value?.data ?? results[5].value ?? null);
+        if (results[6].status === "fulfilled") {
           const d = results[6].value?.data ?? results[6].value;
           setInsights(Array.isArray(d) ? d : []);
         }
-        if (results[7].status  === "fulfilled") {
+        if (results[7].status === "fulfilled") {
           const d = results[7].value?.data ?? results[7].value;
           setStreak(d?.streak ?? d?.current_streak ?? (typeof d === "number" ? d : 0));
         }
-        if (results[8].status  === "fulfilled") {
+        if (results[8].status === "fulfilled") {
           const d = results[8].value?.data ?? results[8].value;
           setPRs(Array.isArray(d) ? d : []);
         }
-        if (results[9].status  === "fulfilled") {
+        if (results[9].status === "fulfilled") {
           const d = results[9].value?.data ?? results[9].value;
           setVolumeDelta(d?.weekly_delta ?? []);
         }
@@ -570,6 +599,9 @@ export default function Dashboard() {
   const hasWeeklyData = weekly && Array.isArray(weekly.calories) && weekly.calories.some(Boolean);
   const isDeloadWeek  = workout?.is_deload_week ?? false;
   const workoutWarmup = workout?.warmup ?? [];
+
+  // BP is genuinely logged only when it's a real "sys/dia" value
+  const bpLogged = !!(health?.bp && health.bp !== "—" && health.bp !== "Not logged");
 
   const QUICK_ACTIONS = [
     { icon: "⚖️", label: "Log Weight",  action: () => navigate("/progress") },
@@ -847,14 +879,14 @@ export default function Dashboard() {
 
         {!loading && <Section delay={40}><ProgressMetricsCard metrics={progressMetrics} /></Section>}
 
-        {/* ── Performance Snapshot — expandable ── */}
+        {/* ── Performance Snapshot ── */}
         {!loading && (prs.length > 0 || volumeDelta.length > 0) && (
           <Section delay={50}>
             <PerformanceCard prs={prs} volumeDelta={volumeDelta} dashboard={dashboard} onViewAll={() => navigate("/progress")} />
           </Section>
         )}
 
-        {/* ── Meals Today — improved ── */}
+        {/* ── Meals Today ── */}
         <Section hidden={!loading && meals.length === 0 && !hasNutrition}>
           {loading ? <LoadingCard /> : meals.length > 0 ? (
             <MealsCard meals={meals} onLogMeal={() => navigate("/log-meal")} />
@@ -873,9 +905,9 @@ export default function Dashboard() {
             <>
               <div className={styles.healthGrid}>
                 {[
-                  { icon: "🫀", label: "Blood Pressure", value: health.bp && health.bp !== "—" ? health.bp : "Not logged", status: health.bpStatus ?? null, color: "#FF5C1A" },
-                  { icon: "😴", label: "Sleep",          value: health.sleep ? `${health.sleep}h` : "Not logged",           status: health.sleepStatus ?? null, color: "#00C8E0" },
-                  { icon: "💓", label: "Heart Rate",     value: health.heartRate ? `${health.heartRate} bpm` : "Not logged", status: health.hrStatus ?? null, color: "#FF4D6D" },
+                  { icon: "🫀", label: "Blood Pressure", value: bpLogged ? health.bp : "Not logged",                        status: health.bpStatus ?? null,       color: "#FF5C1A" },
+                  { icon: "😴", label: "Sleep",          value: health.sleep ? `${health.sleep}h` : "Not logged",            status: health.sleepStatus ?? null,    color: "#00C8E0" },
+                  { icon: "💓", label: "Heart Rate",     value: health.heartRate ? `${health.heartRate} bpm` : "Not logged", status: health.hrStatus ?? null,       color: "#FF4D6D" },
                   { icon: "⚡", label: "Recovery",       value: health.recovery ? `${health.recovery}%` : "Not logged",     status: health.recoveryStatus ?? null, color: "#B8F000" },
                 ].map(h => (
                   <div key={h.label} className={styles.healthCard}>
@@ -888,12 +920,16 @@ export default function Dashboard() {
                   </div>
                 ))}
               </div>
-              {(!health.bp || health.bp === "—" || health.bp === "Not logged") && (
+
+              {!bpLogged && (
                 <div className={styles.bpNudge}>
                   <span>🫀 Blood pressure not logged today.</span>
-                  <button className={styles.bpNudgeBtn} onClick={() => navigate("/progress")}>Log it on Progress →</button>
+                  <button className={styles.bpNudgeBtn} onClick={() => navigate("/progress")}>
+                    Log it on Progress →
+                  </button>
                 </div>
               )}
+
               {health.sleep && health.sleep < 7 && (
                 <div className={styles.alertBanner} style={{ marginTop: "0.75rem" }}>
                   <span className={styles.alertIcon}>⚠️</span>

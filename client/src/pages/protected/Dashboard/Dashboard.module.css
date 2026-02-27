@@ -983,6 +983,40 @@
 .insightIcon  { font-size: 1.125rem; flex-shrink: 0; }
 .insightText  { font-size: 0.8125rem; color: var(--d-t2); line-height: 1.6; flex: 1; word-break: break-word; min-width: 0; }
 
+.bpNudge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.875rem;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 92, 26, 0.06);
+  border: 1px solid rgba(255, 92, 26, 0.2);
+  border-radius: var(--r-lg);
+  font-size: 0.82rem;
+  color: var(--d-t2);
+  flex-wrap: wrap;
+}
+.bpNudgeBtn {
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--orange);
+  background: rgba(255, 92, 26, 0.1);
+  border: 1px solid rgba(255, 92, 26, 0.3);
+  padding: 0.3rem 0.75rem;
+  border-radius: var(--r-full);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.bpNudgeBtn:hover {
+  background: rgba(255, 92, 26, 0.18);
+}
+
 /* ── WEEKLY PROGRESS ─────────────────────────────────────────── */
 .weekStats {
   display: grid;

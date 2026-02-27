@@ -129,10 +129,19 @@ class DashboardController {
     }
   }
 
+  // ── FIXED: now selects blood_pressure_systolic, blood_pressure_diastolic,
+  //           blood_pressure, and heart_rate from DB instead of hardcoding them ──
   static async getHealth(req, res, next) {
     try {
       const { rows } = await pool.query(
-        `SELECT sleep_hours, energy_level, weight_kg
+        `SELECT
+           sleep_hours,
+           energy_level,
+           weight_kg,
+           heart_rate,
+           blood_pressure_systolic,
+           blood_pressure_diastolic,
+           blood_pressure
          FROM progress_logs
          WHERE user_id = $1
          ORDER BY log_date DESC
@@ -146,16 +155,29 @@ class DashboardController {
 
       const log = rows[0];
 
+      // Build BP string: prefer numeric columns, fall back to string column
+      const bpSys = log.blood_pressure_systolic  != null ? Number(log.blood_pressure_systolic)  : null;
+      const bpDia = log.blood_pressure_diastolic != null ? Number(log.blood_pressure_diastolic) : null;
+      const bp    = bpSys && bpDia
+        ? `${bpSys}/${bpDia}`
+        : (log.blood_pressure ?? null);
+
+      const heartRate = log.heart_rate != null ? Number(log.heart_rate) : null;
+      const sleep     = log.sleep_hours != null ? Number(log.sleep_hours) : null;
+      const recovery  = log.energy_level != null ? Number(log.energy_level) * 10 : null;
+
       return res.json({
         success: true,
         data: {
-          sleep:           Number(log.sleep_hours ?? 0),
-          sleepStatus:     DashboardController._sleepStatus(log.sleep_hours),
-          heartRate:       72,       
-          hrStatus:        "Normal",
-          bp:              "—",      
-          bpStatus:        "—",
-          recovery:        log.energy_level ? log.energy_level * 10 : 0,
+          sleep,
+          sleepStatus:     DashboardController._sleepStatus(sleep),
+          heartRate,
+          hrStatus:        DashboardController._heartRateStatus(heartRate),
+          bp,
+          bpStatus:        DashboardController._bpStatus(bpSys),
+          bpSystolic:      bpSys,
+          bpDiastolic:     bpDia,
+          recovery,
           recoveryStatus:  DashboardController._energyStatus(log.energy_level),
         },
       });
@@ -178,7 +200,6 @@ class DashboardController {
         [userId]
       );
 
-      // Calories per day this week
       const { rows: calRows } = await pool.query(
         `SELECT log_date, COALESCE(SUM(calories_consumed), 0) AS cals
          FROM meal_logs
@@ -297,21 +318,38 @@ class DashboardController {
     }
   }
 
+  // ── helpers ──
+
   static _mealEmoji(type) {
     const map = { breakfast: "🌅", lunch: "☀️", dinner: "🌙", snacks: "🍎" };
     return map[type?.toLowerCase()] ?? "🍽️";
   }
 
   static _sleepStatus(hours) {
-    if (!hours) return "No data";
+    if (!hours) return null;
     if (hours >= 8) return "Excellent";
     if (hours >= 7) return "Good";
     if (hours >= 6) return "Fair";
     return "Low";
   }
 
+  static _heartRateStatus(bpm) {
+    if (!bpm) return null;
+    if (bpm < 60)   return "Low";
+    if (bpm <= 100) return "Normal";
+    return "Elevated";
+  }
+
+  static _bpStatus(systolic) {
+    if (!systolic) return null;
+    if (systolic < 120) return "Normal";
+    if (systolic < 130) return "Elevated";
+    if (systolic < 140) return "Stage 1";
+    return "Stage 2";
+  }
+
   static _energyStatus(level) {
-    if (!level) return "No data";
+    if (!level) return null;
     if (level >= 8) return "High";
     if (level >= 5) return "Moderate";
     return "Low";
