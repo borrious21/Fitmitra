@@ -60,8 +60,7 @@ class PlanModel {
     return rows;
   }
 
-  // ✅ NEW: deactivate ALL plans for a user — call this BEFORE inserting a new plan
-  // to avoid the unique_active_plan_per_user constraint violation
+ 
   static async deactivateAllPlans(userId) {
     await pool.query(
       `UPDATE plans SET is_active = false, updated_at = NOW() WHERE user_id = $1`,
@@ -69,7 +68,6 @@ class PlanModel {
     );
   }
 
-  // Kept for backward compat (used by activatePlan flow)
   static async deactivateOtherPlans(userId, activePlanId) {
     await pool.query(
       `UPDATE plans SET is_active = false, updated_at = NOW() WHERE user_id = $1 AND id <> $2`,
@@ -78,7 +76,6 @@ class PlanModel {
   }
 
   static async activatePlan(planId, userId) {
-    // Deactivate all first, then activate the target
     await pool.query(
       `UPDATE plans SET is_active = false WHERE user_id = $1`,
       [userId]

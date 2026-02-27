@@ -14,6 +14,7 @@ import profileRoutes from "./routes/profile.route.js";
 import workoutRoutes from "./routes/workout.routes.js";
 import dashboardRoutes from "./routes/dashboard.routes.js";
 import planRoutes from "./routes/plan.route.js";
+import mealRoutes from "./routes/meal.route.js"
 
 const app = express();
 
@@ -41,6 +42,9 @@ app.use("/api/dashboard", dashboardRoutes);
 
 // Protected plan routes
 app.use("/api/plans", planRoutes);
+
+// Protected meal routes
+app.use("/api/meals", mealRoutes);
 
 // 404 for any other route
 app.use((req, res, next) => {

@@ -4,9 +4,9 @@ import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../../../../services/apiClient";
 import styles from "./LogMeal.module.css";
 
-const MEAL_TYPES = ["breakfast", "lunch", "dinner", "snacks"];
+const MEAL_TYPES = ["breakfast", "lunch", "dinner", "snack"];
 
-const MEAL_EMOJI = { breakfast: "🌅", lunch: "☀️", dinner: "🌙", snacks: "🍎" };
+const MEAL_EMOJI = { breakfast: "🌅", lunch: "☀️", dinner: "🌙", snack: "🍎" };
 
 const QUICK_MEALS = {
   veg: [
@@ -75,18 +75,17 @@ export default function LogMeal() {
     try {
       await apiFetch("/meals/log", {
         method: "POST",
-        body: JSON.stringify({
-          meal_type:          form.meal_type,
-          meal_name:          form.meal_name.trim(),
-          calories_consumed:  Number(form.calories_consumed),
-          protein_g:          Number(form.protein_g  || 0),
-          carbs_g:            Number(form.carbs_g    || 0),
-          fats_g:             Number(form.fats_g     || 0),
-          notes:              form.notes,
-          source:             "manual",
-          consumed_at:        new Date().toISOString(),
-          log_date:           new Date().toISOString().split("T")[0],
-        }),
+      body: JSON.stringify({
+  mealType:  form.meal_type,           
+  mealName:  form.meal_name.trim(),    
+  calories:  Number(form.calories_consumed),  
+  protein:   Number(form.protein_g  || 0),    
+  carbs:     Number(form.carbs_g    || 0),     
+  fats:      Number(form.fats_g     || 0),     
+  notes:     form.notes,
+  source:    "custom",                 
+  log_date:  new Date().toISOString().split("T")[0],
+}),
       });
       showAlert("success", `${form.meal_name} logged! 🍽️`);
       setForm(EMPTY);
