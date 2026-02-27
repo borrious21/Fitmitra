@@ -1,19 +1,17 @@
 // src/pages/Plans/Plans.jsx
-// v3 — Upgraded with:
-//   • Gamification: XP bar + level badge + streak display
-//   • Warmup / Cooldown blocks shown per workout
-//   • Per-day nutrition targets panel (protein, kcal, carbs, fat)
-//   • Hydration + electrolyte wellness card per week
-//   • Recovery protocol drawer per week
-//   • Missed workout recovery suggestion chip
-//   • Progression phase badge (Foundation / Volume / Intensity / Deload)
-//   • Macro summary card in plan meta
-//   • Adaptive difficulty signal banner
+// v3 — with top nav tabs matching Dashboard
 
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { apiFetch } from "../../../../services/apiClient";
+import ThemeToggle from "../../../../components/ThemeToggle/ThemeToggle";
 import styles from "./Plans.module.css";
+
+const NAV_TABS = [
+  { key: "today",    label: "today",    path: "/dashboard" },
+  { key: "progress", label: "progress", path: "/progress"  },
+  { key: "plans",    label: "plans",    path: "/plans"      },
+];
 
 const DAY_NAMES = ["SUN","MON","TUE","WED","THU","FRI","SAT"];
 const DAY_KEYS  = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"];
@@ -32,7 +30,6 @@ const LEVEL_LABELS = {
   7: "🥇 Champion", 8: "🏆 Elite",     9: "💎 Legend", 10: "🚀 GOAT",
 };
 
-// ─── Scroll fade-in ────────────────────────────────────────────────────────────
 function Section({ children, delay = 0 }) {
   const ref = useRef();
   const [vis, setVis] = useState(false);
@@ -54,7 +51,6 @@ function Section({ children, delay = 0 }) {
   );
 }
 
-// ─── Shape normalizers (unchanged from v2) ────────────────────────────────────
 function isShapeA(wp) { return Array.isArray(wp); }
 function isShapeB(wp) { return wp && typeof wp === "object" && !Array.isArray(wp) && wp.weekly_plan; }
 
@@ -122,7 +118,6 @@ function resolveMetadata(plan) {
   return { intensity: null, activity_level: snapshot.fitnessLevel ?? null };
 }
 
-// ─── XP Progress Bar ──────────────────────────────────────────────────────────
 function XPBar({ xp = 0, level = {}, streak = {} }) {
   const pct = level.progress_pct ?? 0;
   const label = LEVEL_LABELS[level.current] ?? `Level ${level.current}`;
@@ -148,7 +143,6 @@ function XPBar({ xp = 0, level = {}, streak = {} }) {
   );
 }
 
-// ─── Badge List ────────────────────────────────────────────────────────────────
 function BadgeList({ badges = [] }) {
   if (!badges.length) return null;
   return (
@@ -160,7 +154,6 @@ function BadgeList({ badges = [] }) {
   );
 }
 
-// ─── Phase Badge ──────────────────────────────────────────────────────────────
 function PhaseBadge({ blockWeek }) {
   const p = PHASE_META[blockWeek] ?? PHASE_META[1];
   return (
@@ -170,7 +163,6 @@ function PhaseBadge({ blockWeek }) {
   );
 }
 
-// ─── Warmup / Cooldown Block ──────────────────────────────────────────────────
 function WarmupBlock({ items = [], type }) {
   if (!items.length) return null;
   const isWarmup = type === "warmup";
@@ -189,7 +181,6 @@ function WarmupBlock({ items = [], type }) {
   );
 }
 
-// ─── Nutrition Targets Panel ──────────────────────────────────────────────────
 function NutritionTargets({ targets }) {
   if (!targets?.kcal && !targets?.protein_g) return null;
   return (
@@ -213,7 +204,6 @@ function NutritionTargets({ targets }) {
   );
 }
 
-// ─── Wellness Card ────────────────────────────────────────────────────────────
 function WellnessCard({ wellness }) {
   if (!wellness) return null;
   return (
@@ -237,7 +227,6 @@ function WellnessCard({ wellness }) {
   );
 }
 
-// ─── Recovery Protocol ────────────────────────────────────────────────────────
 function RecoveryProtocol({ protocol, isDeload }) {
   const [open, setOpen] = useState(false);
   if (!protocol) return null;
@@ -279,7 +268,6 @@ function RecoveryProtocol({ protocol, isDeload }) {
   );
 }
 
-// ─── Missed Workout Recovery Chip ─────────────────────────────────────────────
 function MissedRecoveryChip({ suggestion, onLog }) {
   if (!suggestion) return null;
   return (
@@ -291,7 +279,6 @@ function MissedRecoveryChip({ suggestion, onLog }) {
   );
 }
 
-// ─── Macro Summary Card ───────────────────────────────────────────────────────
 function MacroSummaryCard({ macros }) {
   if (!macros) return null;
   return (
@@ -314,7 +301,6 @@ function MacroSummaryCard({ macros }) {
   );
 }
 
-// ─── Adaptive Difficulty Banner ───────────────────────────────────────────────
 function AdaptiveBanner({ signal }) {
   if (!signal || signal.signal === "maintain") return null;
   const isIncrease = signal.signal === "increase";
@@ -329,12 +315,11 @@ function AdaptiveBanner({ signal }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MAIN COMPONENT
-// ─────────────────────────────────────────────────────────────────────────────
-
 export default function Plans() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const activeTab = NAV_TABS.find(t => t.path === location.pathname)?.key ?? "plans";
+
   const [plan,          setPlan]          = useState(null);
   const [loading,       setLoading]       = useState(true);
   const [generating,    setGenerating]    = useState(false);
@@ -343,7 +328,6 @@ export default function Plans() {
   const [activeDay,     setActiveDay]     = useState(null);
   const [gamification,  setGamification]  = useState(null);
   const [adaptSignal,   setAdaptSignal]   = useState(null);
-  const [missedSplit,   setMissedSplit]   = useState(null);
   const [missedInfo,    setMissedInfo]    = useState(null);
 
   useEffect(() => { fetchPlan(); fetchGamification(); }, []);
@@ -366,16 +350,7 @@ export default function Plans() {
     try {
       const res = await apiFetch("/plans/gamification");
       setGamification(res?.data ?? res ?? null);
-    } catch { /* graceful fail */ }
-  };
-
-  const fetchAdaptiveSignal = async (recentLogs) => {
-    try {
-      const res = await apiFetch("/plans/adaptive-difficulty", {
-        method: "POST", body: JSON.stringify({ recent_logs: recentLogs }),
-      });
-      setAdaptSignal(res?.data ?? res ?? null);
-    } catch { /* graceful fail */ }
+    } catch { }
   };
 
   const fetchMissedRecovery = async (split) => {
@@ -384,7 +359,7 @@ export default function Plans() {
         method: "POST", body: JSON.stringify({ split }),
       });
       setMissedInfo(res?.data ?? res ?? null);
-    } catch { /* graceful fail */ }
+    } catch { }
   };
 
   const generatePlan = async () => {
@@ -407,7 +382,6 @@ export default function Plans() {
     setTimeout(() => setAlert(null), 5000);
   };
 
-  // ── Normalize ──────────────────────────────────────────────────────────────
   const totalWeeks  = plan?.duration_weeks ?? 4;
   const workoutPlan = normalizeWorkoutPlan(plan?.workout_plan, totalWeeks);
   const mealPlan    = normalizeMealPlan(plan?.meal_plan);
@@ -426,13 +400,8 @@ export default function Plans() {
   const meta          = resolveMetadata(plan);
   const metaIntensity = meta.intensity;
   const metaActivity  = meta.activity_level;
-
-  // Plan summary macros (from generator v2 summary)
-  const planSummary = plan?.plan_data?.summary ?? null;
-  const weekMacros  = weekData ? (plan?.plan_data?.workout ?? []).find(w => w.week === activeWeek)?.nutrition_targets ?? null : null;
-  const wellnessData   = null; // populated from plan_data if backend exposes it
-  const recoveryData   = null; // same
-  const blockWeek   = weekData?.block_week ?? (((activeWeek - 1) % 4) + 1);
+  const planSummary   = plan?.plan_data?.summary ?? null;
+  const blockWeek     = weekData?.block_week ?? (((activeWeek - 1) % 4) + 1);
 
   if (loading) return (
     <div className={styles.wrapper}>
@@ -459,7 +428,26 @@ export default function Plans() {
           </span>
           <span className={styles.navLogoWord}>FIT<span>MITRA</span></span>
         </a>
-        <button className={styles.backBtn} onClick={() => navigate(-1)}>← Dashboard</button>
+
+        {/* ── Same tab nav as Dashboard ── */}
+        <div className={styles.navTabs}>
+          {NAV_TABS.map(t => (
+            <button
+              key={t.key}
+              className={`${styles.navTab}${activeTab === t.key ? " " + styles.navTabActive : ""}`}
+              onClick={() => navigate(t.path)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        <div className={styles.navRight}>
+          <ThemeToggle />
+          <a href="/profile" className={styles.navAvatarLink} title="Profile">
+            <div className={styles.navAvatar}>P</div>
+          </a>
+        </div>
       </nav>
 
       <main className={styles.main}>
@@ -472,16 +460,11 @@ export default function Plans() {
         {/* GAMIFICATION BAR */}
         {gamification && (
           <Section delay={0}>
-            <XPBar
-              xp={gamification.xp}
-              level={gamification.level}
-              streak={gamification.streak}
-            />
+            <XPBar xp={gamification.xp} level={gamification.level} streak={gamification.streak} />
             <BadgeList badges={gamification.badges ?? []} />
           </Section>
         )}
 
-        {/* ADAPTIVE DIFFICULTY BANNER */}
         <AdaptiveBanner signal={adaptSignal} />
 
         {/* HEADER */}
@@ -501,7 +484,6 @@ export default function Plans() {
           </div>
         </Section>
 
-        {/* NO PLAN */}
         {!plan ? (
           <Section delay={60}>
             <div className={styles.emptyCard}>
@@ -515,7 +497,6 @@ export default function Plans() {
           </Section>
         ) : (
           <>
-            {/* PLAN META */}
             <Section delay={60}>
               <div className={styles.metaGrid}>
                 {[
@@ -536,13 +517,11 @@ export default function Plans() {
                   </div>
                 ))}
               </div>
-              {/* Macro summary from plan summary */}
               {planSummary?.macro_targets && (
                 <MacroSummaryCard macros={planSummary.macro_targets} />
               )}
             </Section>
 
-            {/* WEEK SELECTOR */}
             <Section delay={80}>
               <div className={styles.weekSelector}>
                 {Array.from({ length: totalWeeks }, (_, i) => i + 1).map(w => {
@@ -573,7 +552,6 @@ export default function Plans() {
               )}
             </Section>
 
-            {/* WEEKLY WELLNESS + RECOVERY */}
             {weekData && (
               <Section delay={90}>
                 <div className={styles.wellnessRecoveryRow}>
@@ -586,7 +564,6 @@ export default function Plans() {
               </Section>
             )}
 
-            {/* WEEKLY SPLIT — 7-day grid */}
             <Section delay={100}>
               <h2 className={styles.sectionTitle}>📅 Weekly Split</h2>
               <div className={styles.weekGrid}>
@@ -642,7 +619,6 @@ export default function Plans() {
               </div>
             </Section>
 
-            {/* DAY DETAIL PANEL */}
             {activeDayWorkout && (
               <Section delay={0}>
                 <div className={styles.dayPanel}>
@@ -661,15 +637,12 @@ export default function Plans() {
                     <button className={styles.closePanelBtn} onClick={() => setActiveDay(null)}>✕</button>
                   </div>
 
-                  {/* MISSED WORKOUT RECOVERY */}
                   {missedInfo && (
                     <MissedRecoveryChip suggestion={missedInfo.recovery_suggestion} />
                   )}
 
-                  {/* WARM-UP */}
                   <WarmupBlock items={activeDayWorkout.warmup ?? []} type="warmup" />
 
-                  {/* EXERCISES */}
                   <div className={styles.exerciseList}>
                     {(activeDayWorkout.exercises ?? []).length === 0 ? (
                       <p className={styles.noExercises}>
@@ -706,17 +679,14 @@ export default function Plans() {
                     )}
                   </div>
 
-                  {/* COOL-DOWN */}
                   <WarmupBlock items={activeDayWorkout.cooldown ?? []} type="cooldown" />
 
-                  {/* RECOVERY REMINDER (Legs only) */}
                   {activeDayWorkout.recovery_reminder && (
                     <div className={styles.recoveryReminder}>
                       ⚠️ {activeDayWorkout.recovery_reminder}
                     </div>
                   )}
 
-                  {/* MEALS + NUTRITION TARGETS FOR THIS DAY */}
                   {activeDayMeal && (
                     <div className={styles.mealPanel}>
                       <h3 className={styles.mealPanelTitle}>🍽️ Today's Meals</h3>
@@ -733,7 +703,6 @@ export default function Plans() {
                           </div>
                         ))}
                       </div>
-                      {/* Per-day nutrition targets from meal_plan */}
                       <NutritionTargets targets={activeDayMeal.daily_targets ?? null} />
                     </div>
                   )}
@@ -741,7 +710,6 @@ export default function Plans() {
               </Section>
             )}
 
-            {/* FULL WEEK MEAL PLAN */}
             {!activeDayWorkout && weekMeals?.meals?.length > 0 && (
               <Section delay={160}>
                 <h2 className={styles.sectionTitle}>🍽️ Week {activeWeek} Meals</h2>

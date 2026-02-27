@@ -1,6 +1,4 @@
-
-
-import { useState, useEffect, useRef, useContext, useCallback } from "react";
+import { useState, useEffect, useRef, useContext } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import styles from "./Dashboard.module.css";
 import ThemeToggle from "../../../components/ThemeToggle/ThemeToggle";
@@ -38,6 +36,20 @@ const LEVEL_LABELS = {
   5:"⚡ Athlete", 6:"🥈 Contender", 7:"🥇 Champion", 8:"🏆 Elite",
   9:"💎 Legend", 10:"🚀 GOAT",
 };
+
+// ── Meal time/type → display meta ──
+function getMealMeta(meal) {
+  const t = (meal.time ?? meal.meal_type ?? "").toLowerCase();
+  if (t.includes("breakfast") || t.includes("morning") || meal.emoji === "🌅")
+    return { emoji: "🌅", label: "Breakfast" };
+  if (t.includes("lunch") || t.includes("afternoon") || meal.emoji === "☀️")
+    return { emoji: "☀️", label: "Lunch" };
+  if (t.includes("dinner") || t.includes("evening") || meal.emoji === "🌙")
+    return { emoji: "🌙", label: "Dinner" };
+  if (t.includes("snack") || meal.emoji === "🥜")
+    return { emoji: "🥜", label: "Snack" };
+  return { emoji: meal.emoji ?? "🍽️", label: meal.time ?? "Meal" };
+}
 
 function pct(v, t) { return t ? Math.min(100, Math.round((v / t) * 100)) : 0; }
 
@@ -84,8 +96,6 @@ function Section({ children, hidden, delay = 0 }) {
   );
 }
 
-
-
 function MacroBar({ label, value, target, fillColor }) {
   const p = pct(value, target);
   return (
@@ -129,9 +139,7 @@ function RestDayCard({ mesocycleWeek, missedRecovery }) {
         <span className={styles.restDayEmoji}>🛌</span>
         <div className={styles.restDayText}>
           <div className={styles.restDayTitle}>Rest Day</div>
-          <div className={styles.restDaySub}>
-            Recovery is where gains happen. Stay hydrated, stretch lightly, and let your body rebuild.
-          </div>
+          <div className={styles.restDaySub}>Recovery is where gains happen. Stay hydrated, stretch lightly, and let your body rebuild.</div>
         </div>
       </div>
       <div className={styles.restTips}>
@@ -139,7 +147,6 @@ function RestDayCard({ mesocycleWeek, missedRecovery }) {
           <div key={tip} className={styles.restTip}>{tip}</div>
         ))}
       </div>
-      {/* Missed workout recovery on rest day */}
       {missedRecovery && (
         <div className={styles.missedRecoveryChip}>
           <span>⚡ Missed yesterday? Try: <em>{missedRecovery}</em></span>
@@ -200,9 +207,6 @@ function ExerciseReps({ ex }) {
   );
 }
 
-
-
-
 function XPBar({ xp = 0, level = {}, streak = {} }) {
   const p     = level.progress_pct ?? 0;
   const label = LEVEL_LABELS[level.current] ?? `Level ${level.current ?? 1}`;
@@ -211,9 +215,7 @@ function XPBar({ xp = 0, level = {}, streak = {} }) {
       <div className={styles.xpBarMeta}>
         <span className={styles.xpLabel}>{label}</span>
         <div className={styles.xpRight}>
-          {streak?.current > 0 && (
-            <span className={styles.xpStreak}>🔥 {streak.current}-day streak</span>
-          )}
+          {streak?.current > 0 && <span className={styles.xpStreak}>🔥 {streak.current}-day streak</span>}
           <span className={styles.xpPoints}>{(xp ?? 0).toLocaleString()} XP</span>
         </div>
       </div>
@@ -233,9 +235,7 @@ function BadgeRow({ badges = [] }) {
   if (!badges.length) return null;
   return (
     <div className={styles.badgeRow}>
-      {badges.map(b => (
-        <span key={b.id} className={styles.gameBadge}>{b.label}</span>
-      ))}
+      {badges.map(b => <span key={b.id} className={styles.gameBadge}>{b.label}</span>)}
     </div>
   );
 }
@@ -250,9 +250,7 @@ function AdaptiveBanner({ signal }) {
     }}>
       <span className={styles.adaptiveIcon}>{isUp ? "🚀" : "😮‍💨"}</span>
       <span className={styles.adaptiveText}>{signal.message}</span>
-      <button className={styles.adaptiveCta} onClick={() => {}}>
-        {isUp ? "Level Up Plan" : "Ease Up"}
-      </button>
+      <button className={styles.adaptiveCta}>{isUp ? "Level Up Plan" : "Ease Up"}</button>
     </div>
   );
 }
@@ -282,22 +280,17 @@ function DeloadWellnessCard({ recovery }) {
 
 function ProgressMetricsCard({ metrics }) {
   if (!metrics) return null;
-  const hasWeight   = metrics.weight_change_kg !== undefined;
-  const hasPRs      = metrics.strength_prs && Object.keys(metrics.strength_prs).length > 0;
-  const hasMeasure  = metrics.measurement_changes && Object.keys(metrics.measurement_changes).length > 0;
+  const hasWeight  = metrics.weight_change_kg !== undefined;
+  const hasPRs     = metrics.strength_prs && Object.keys(metrics.strength_prs).length > 0;
   if (!hasWeight && !hasPRs) return null;
-
   return (
     <div className={`${styles.card} ${styles.accent}`}>
-      <div className={styles.perfHeader}>
-        <span className={styles.secLabel}>📊 Progress Metrics</span>
-      </div>
+      <div className={styles.perfHeader}><span className={styles.secLabel}>📊 Progress Metrics</span></div>
       <div className={styles.progMetricsGrid}>
         {hasWeight && (
           <div className={styles.progMetricItem}>
             <span className={styles.progMetricIcon}>⚖️</span>
-            <span className={styles.progMetricVal}
-              style={{ color: metrics.weight_change_kg <= 0 ? "#10b981" : "#f59e0b" }}>
+            <span className={styles.progMetricVal} style={{ color: metrics.weight_change_kg <= 0 ? "#10b981" : "#f59e0b" }}>
               {metrics.weight_change_kg > 0 ? "+" : ""}{metrics.weight_change_kg} kg
             </span>
             <span className={styles.progMetricLabel}>Weight change</span>
@@ -310,16 +303,6 @@ function ProgressMetricsCard({ metrics }) {
             <span className={styles.progMetricVal} style={{ color: "#f59e0b" }}>{kg} kg</span>
             <span className={styles.progMetricLabel}>{name}</span>
             <span className={styles.progMetricTrend}>Best lift</span>
-          </div>
-        ))}
-        {hasMeasure && Object.entries(metrics.measurement_changes).slice(0, 2).map(([key, val]) => (
-          <div key={key} className={styles.progMetricItem}>
-            <span className={styles.progMetricIcon}>📏</span>
-            <span className={styles.progMetricVal} style={{ color: val <= 0 ? "#10b981" : "#f59e0b" }}>
-              {val > 0 ? "+" : ""}{val} cm
-            </span>
-            <span className={styles.progMetricLabel}>{key}</span>
-            <span className={styles.progMetricTrend}>Measurement</span>
           </div>
         ))}
       </div>
@@ -337,6 +320,119 @@ function WarmupReminder({ warmup = [] }) {
   );
 }
 
+// ── IMPROVED Meals Card ──
+function MealsCard({ meals, onLogMeal }) {
+  const totalCal = meals.reduce((s, m) => s + (Number(m.cal) || 0), 0);
+  const totalP   = meals.reduce((s, m) => s + (Number(m.p)   || 0), 0);
+  return (
+    <div className={`${styles.card} ${styles.accent}`}>
+      <div className={styles.mealsSectionHeader}>
+        <span className={styles.secLabel}>Meals Today</span>
+        <div className={styles.mealsTotals}>
+          {totalCal > 0 && <span className={styles.mealsTotalChip}>{totalCal} kcal total</span>}
+          {totalP   > 0 && <span className={styles.mealsTotalChip} style={{ color: "#FF8A3D", borderColor: "rgba(255,138,61,0.3)" }}>P {totalP}g</span>}
+        </div>
+      </div>
+      <div className={styles.mealsStack}>
+        {meals.map((m, idx) => {
+          const meta = getMealMeta(m);
+          return (
+            <div key={m.id ?? idx} className={styles.mealStackRow}>
+              <span className={styles.mealStackEmoji}>{meta.emoji}</span>
+              <div className={styles.mealStackBody}>
+                <div className={styles.mealStackTop}>
+                  <span className={styles.mealStackLabel}>{meta.label}</span>
+                  {m.cal > 0 && <span className={styles.mealStackCal}>{m.cal} kcal</span>}
+                </div>
+                <div className={styles.mealStackName}>{m.name}</div>
+                {(m.p > 0 || m.c > 0 || m.f > 0) && (
+                  <div className={styles.mealStackMacros}>
+                    {m.p > 0 && <span className={styles.mealMacroChip} style={{ color: "#FF5C1A", borderColor: "rgba(255,92,26,0.2)", background: "rgba(255,92,26,0.06)" }}>P {m.p}g</span>}
+                    {m.c > 0 && <span className={styles.mealMacroChip} style={{ color: "#00C8E0", borderColor: "rgba(0,200,224,0.2)", background: "rgba(0,200,224,0.06)" }}>C {m.c}g</span>}
+                    {m.f > 0 && <span className={styles.mealMacroChip} style={{ color: "#B8F000", borderColor: "rgba(184,240,0,0.2)", background: "rgba(184,240,0,0.06)" }}>F {m.f}g</span>}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <button className={styles.ghostBtn} style={{ marginTop: "0.875rem" }} onClick={onLogMeal}>
+        + Log Meal
+      </button>
+    </div>
+  );
+}
+
+// ── IMPROVED Performance Snapshot with expand ──
+function PerformanceCard({ prs, volumeDelta, dashboard, onViewAll }) {
+  const [expanded, setExpanded] = useState(false);
+  const filteredVol  = volumeDelta.filter(v => v.delta_pct !== null);
+  const visiblePRs   = expanded ? prs            : prs.slice(0, 3);
+  const visibleVol   = expanded ? filteredVol     : filteredVol.slice(0, 2);
+  const totalEntries = prs.length + filteredVol.length;
+  const hasMore      = prs.length > 3 || filteredVol.length > 2;
+
+  return (
+    <div className={`${styles.card} ${styles.accent}`}>
+      <div className={styles.perfHeader}>
+        <span className={styles.secLabel}>📊 Performance Snapshot</span>
+        <button className={styles.ghostBtnSm} onClick={onViewAll}>Full Progress →</button>
+      </div>
+
+      <div className={styles.perfGrid}>
+        {visiblePRs.map(pr => (
+          <div key={pr.exercise_name} className={styles.prCard}>
+            <span className={styles.prIcon}>🏅</span>
+            <div className={styles.prExName}>{pr.exercise_name}</div>
+            <div className={styles.prStats}>
+              <span className={styles.prMain}>{pr.best_1rm}kg</span>
+              <span className={styles.prSub}>est. 1RM</span>
+            </div>
+            <div className={styles.prDate}>
+              {new Date(pr.achieved_at).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}
+            </div>
+          </div>
+        ))}
+        {visibleVol.map(v => (
+          <div key={v.exercise_name} className={styles.volCard}>
+            <span className={styles.volIcon}>📈</span>
+            <div className={styles.volExName}>{v.exercise_name}</div>
+            <div className={styles.volStats}>
+              <VolumeSpark delta={v.delta_pct} />
+              <span className={styles.volSub}>vs last week</span>
+            </div>
+            <div className={styles.volVol}>{Math.round(v.this_week_volume)}kg vol.</div>
+          </div>
+        ))}
+      </div>
+
+      {hasMore && (
+        <button className={styles.showMoreBtn} onClick={() => setExpanded(e => !e)}>
+          {expanded
+            ? "▲ Show Less"
+            : `▼ Show All ${totalEntries} Entries`}
+        </button>
+      )}
+
+      {dashboard?.strength_improvements?.length > 0 && (
+        <div className={styles.strengthBar}>
+          <span className={styles.strengthBarLabel}>💪 Strength gains (30d):</span>
+          {(expanded
+            ? dashboard.strength_improvements
+            : dashboard.strength_improvements.slice(0, 3)
+          ).map(s => (
+            <span key={s.exercise_name} className={styles.strengthChip}
+              style={{ color: s.improvement_pct >= 0 ? "#10b981" : "#ef4444" }}>
+              {s.exercise_name} {s.improvement_pct >= 0 ? "+" : ""}{s.improvement_pct}%
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const { user }  = useContext(AuthContext);
   const navigate  = useNavigate();
@@ -344,26 +440,26 @@ export default function Dashboard() {
 
   const activeTab = NAV_TABS.find(t => t.path === location.pathname)?.key ?? "today";
 
-  const [loading,       setLoading]       = useState(true);
-  const [error,         setError]         = useState(null);
-  const [avatarUrl,     setAvatarUrl]     = useState(null);
-  const [goalLabel,     setGoalLabel]     = useState("—");
-  const [weight,        setWeight]        = useState(null);
-  const [nutrition,     setNutrition]     = useState(null);
-  const [workout,       setWorkout]       = useState(null);
-  const [meals,         setMeals]         = useState([]);
-  const [health,        setHealth]        = useState(null);
-  const [weekly,        setWeekly]        = useState(null);
-  const [insights,      setInsights]      = useState([]);
-  const [streak,        setStreak]        = useState(0);
-  const [prs,           setPRs]           = useState([]);
-  const [volumeDelta,   setVolumeDelta]   = useState([]);
-  const [dashboard,     setDashboard]     = useState(null);
-  const [gamification,  setGamification]  = useState(null);
-  const [adaptSignal,   setAdaptSignal]   = useState(null);
+  const [loading,         setLoading]         = useState(true);
+  const [error,           setError]           = useState(null);
+  const [avatarUrl,       setAvatarUrl]       = useState(null);
+  const [goalLabel,       setGoalLabel]       = useState("—");
+  const [weight,          setWeight]          = useState(null);
+  const [nutrition,       setNutrition]       = useState(null);
+  const [workout,         setWorkout]         = useState(null);
+  const [meals,           setMeals]           = useState([]);
+  const [health,          setHealth]          = useState(null);
+  const [weekly,          setWeekly]          = useState(null);
+  const [insights,        setInsights]        = useState([]);
+  const [streak,          setStreak]          = useState(0);
+  const [prs,             setPRs]             = useState([]);
+  const [volumeDelta,     setVolumeDelta]     = useState([]);
+  const [dashboard,       setDashboard]       = useState(null);
+  const [gamification,    setGamification]    = useState(null);
+  const [adaptSignal,     setAdaptSignal]     = useState(null);
   const [progressMetrics, setProgressMetrics] = useState(null);
   const [missedRecovery,  setMissedRecovery]  = useState(null);
-  const [activePlan,    setActivePlan]    = useState(null);
+  const [activePlan,      setActivePlan]      = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -382,7 +478,6 @@ export default function Dashboard() {
           apiFetch("/workouts/prs"),
           apiFetch("/workouts/volume"),
           apiFetch("/workouts/dashboard?days=30"),
-          
           apiFetch("/plans/gamification"),
           apiFetch("/plans/active"),
         ]);
@@ -422,7 +517,6 @@ export default function Dashboard() {
           const d = results[10].value?.data ?? results[10].value;
           setDashboard(d ?? null);
         }
-        
         if (results[11].status === "fulfilled") {
           const d = results[11].value?.data ?? results[11].value;
           setGamification(d ?? null);
@@ -433,18 +527,15 @@ export default function Dashboard() {
         }
 
         try {
-          const recentLogs = []; 
           const sigRes = await apiFetch("/plans/adaptive-difficulty", {
-            method: "POST",
-            body: JSON.stringify({ recent_logs: recentLogs }),
+            method: "POST", body: JSON.stringify({ recent_logs: [] }),
           });
           if (!cancelled) setAdaptSignal(sigRes?.data ?? sigRes ?? null);
         } catch { }
 
         try {
           const metRes = await apiFetch("/plans/progress-metrics", {
-            method: "POST",
-            body: JSON.stringify({ weight_logs: [], strength_logs: [], measurements: [] }),
+            method: "POST", body: JSON.stringify({ weight_logs: [], strength_logs: [], measurements: [] }),
           });
           if (!cancelled) setProgressMetrics(metRes?.data ?? metRes ?? null);
         } catch { }
@@ -460,7 +551,7 @@ export default function Dashboard() {
   }, []);
 
   const displayName = user?.name ?? "User";
-  const initials = displayName.split(" ").map(n => n[0] ?? "").join("").slice(0, 2).toUpperCase();
+  const initials    = displayName.split(" ").map(n => n[0] ?? "").join("").slice(0, 2).toUpperCase();
 
   const isRestDay  = checkRestDay(workout);
   const hasWorkout = !!workout && !isRestDay;
@@ -477,7 +568,6 @@ export default function Dashboard() {
 
   const hasAnyHealth  = health && (health.bp || health.sleep || health.heartRate || health.recovery);
   const hasWeeklyData = weekly && Array.isArray(weekly.calories) && weekly.calories.some(Boolean);
-
   const isDeloadWeek  = workout?.is_deload_week ?? false;
   const workoutWarmup = workout?.warmup ?? [];
 
@@ -492,8 +582,6 @@ export default function Dashboard() {
 
   return (
     <div className={styles.wrapper}>
-
-      {/* ── Nav ── */}
       <nav className={styles.nav}>
         <a className={styles.navLogo} href="#">
           <span className={styles.navLogoIcon}>
@@ -510,7 +598,7 @@ export default function Dashboard() {
         <div className={styles.navTabs}>
           {NAV_TABS.map(t => (
             <button key={t.key}
-              className={`${styles.navTab}${activeTab === t.key ? " " + styles.active : ""}`}
+              className={`${styles.navTab}${activeTab === t.key ? " " + styles.navTabActive : ""}`}
               onClick={() => navigate(t.path)}>
               {t.label}
             </button>
@@ -527,18 +615,14 @@ export default function Dashboard() {
       <main className={styles.main}>
         {error && (
           <div className={styles.alertBanner} style={{ marginBottom: "1rem" }}>
-            <span className={styles.alertIcon}>⚠️</span>
-            <span>{error}</span>
+            <span className={styles.alertIcon}>⚠️</span><span>{error}</span>
           </div>
         )}
 
-        {/* ── PR Flash Banner ── */}
         {!loading && prs.length > 0 && <PRBanner prs={prs} />}
-
-        {/* ── Adaptive Difficulty Banner (v3) ── */}
         {!loading && <AdaptiveBanner signal={adaptSignal} />}
 
-        {/* ── Welcome + XP Bar ── */}
+        {/* ── Welcome + XP ── */}
         <Section>
           <div className={styles.welcomeGrid}>
             <div>
@@ -546,24 +630,18 @@ export default function Dashboard() {
                 <span className={`${styles.badge} ${styles.badgeLime}`}>
                   <span className={styles.badgeDot} />{goalLabel}
                 </span>
-                {streak > 0 && (
-                  <span className={`${styles.badge} ${styles.badgeOrange}`}>🔥 {streak} Day Streak</span>
-                )}
-                {isDeloadWeek && (
-                  <span className={`${styles.badge} ${styles.badgeSlate}`}>🔄 Deload Week</span>
-                )}
+                {streak > 0 && <span className={`${styles.badge} ${styles.badgeOrange}`}>🔥 {streak} Day Streak</span>}
+                {isDeloadWeek && <span className={`${styles.badge} ${styles.badgeSlate}`}>🔄 Deload Week</span>}
                 {workout?.mesocycle_week && !isDeloadWeek && (
                   <span className={`${styles.badge} ${styles.badgeBlue}`}>📅 Week {workout.mesocycle_week} of 4</span>
                 )}
-                {/* v3: gamification level badge */}
                 {gamification?.level && (
                   <span className={`${styles.badge} ${styles.badgePurple}`}>
                     {LEVEL_LABELS[gamification.level.current] ?? `Level ${gamification.level.current}`}
                   </span>
                 )}
               </div>
-              <h1 className={styles.welcomeH}>
-                Welcome Back,<br />
+              <h1 className={styles.welcomeH}>Welcome Back,<br />
                 <span className={styles.welcomeAccent}>{displayName}</span>
               </h1>
               <p className={styles.welcomeDate}>
@@ -575,9 +653,7 @@ export default function Dashboard() {
                 <span className={styles.weightLabel}>Current Weight</span>
                 <div className={styles.weightVal}><AnimNum value={weight.current} /><span>kg</span></div>
                 {weight.change !== null && (
-                  <span className={styles.weightChange}>
-                    {weight.change > 0 ? "+" : ""}{weight.change} kg this week
-                  </span>
+                  <span className={styles.weightChange}>{weight.change > 0 ? "+" : ""}{weight.change} kg this week</span>
                 )}
                 {dashboard?.total_volume_kg > 0 && (
                   <div className={styles.weightSubStat}>
@@ -592,8 +668,6 @@ export default function Dashboard() {
               </div>
             ) : null}
           </div>
-
-          {/* v3: XP Bar below welcome */}
           {!loading && gamification && (
             <>
               <XPBar xp={gamification.xp} level={gamification.level} streak={gamification.streak} />
@@ -602,22 +676,15 @@ export default function Dashboard() {
           )}
         </Section>
 
-        {/* ── Deload Week Wellness Card (v3) ── */}
         {!loading && isDeloadWeek && activePlan?.recovery_protocol && (
-          <Section delay={30}>
-            <DeloadWellnessCard recovery={activePlan.recovery_protocol} />
-          </Section>
+          <Section delay={30}><DeloadWellnessCard recovery={activePlan.recovery_protocol} /></Section>
         )}
 
-        {/* ── Workout + Nutrition two-col ── */}
+        {/* ── Workout + Nutrition ── */}
         <div className={styles.twoCol}>
-
           <Section>
             {loading ? <LoadingCard height={320} /> : isRestDay ? (
-              <RestDayCard
-                mesocycleWeek={workout?.mesocycle_week}
-                missedRecovery={missedRecovery}
-              />
+              <RestDayCard mesocycleWeek={workout?.mesocycle_week} missedRecovery={missedRecovery} />
             ) : hasWorkout ? (
               <div className={`${styles.card} ${styles.accent}`}>
                 <div className={styles.workoutHeader}>
@@ -631,9 +698,7 @@ export default function Dashboard() {
                       <span className={styles.metaPill}>⏱ {workout.duration}</span>
                       <span className={styles.metaPill}>📊 {workout.difficulty}</span>
                       {workout.estimated_kcal > 0 && (
-                        <span className={`${styles.metaPill} ${styles.metaPillFire}`}>
-                          🔥 ~{workout.estimated_kcal} kcal
-                        </span>
+                        <span className={`${styles.metaPill} ${styles.metaPillFire}`}>🔥 ~{workout.estimated_kcal} kcal</span>
                       )}
                     </div>
                   </div>
@@ -655,34 +720,23 @@ export default function Dashboard() {
                     </div>
                   )}
                 </div>
-
-                {/* v3: Warm-up reminder */}
                 <WarmupReminder warmup={workoutWarmup} />
-
                 <div className={styles.exerciseList}>
                   {workout.exercises?.slice(0, 5).map((ex, i) => (
-                    <div key={ex.name}
-                      className={`${styles.exerciseRow} ${ex.done ? styles.exDone : styles.exPending}`}>
+                    <div key={ex.name} className={`${styles.exerciseRow} ${ex.done ? styles.exDone : styles.exPending}`}>
                       <div className={`${styles.exerciseBullet} ${ex.done ? styles.bulletDone : styles.bulletPending}`}>
                         {ex.done ? "✓" : i + 1}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div className={`${styles.exerciseName}${ex.done ? " " + styles.nameDone : ""}`}>
-                          {ex.name}
-                        </div>
+                        <div className={`${styles.exerciseName}${ex.done ? " " + styles.nameDone : ""}`}>{ex.name}</div>
                         <ExerciseReps ex={ex} />
                         {ex.progression_note && !ex.done && <ProgressionChip note={ex.progression_note} />}
                       </div>
-                      {ex.estimated_kcal > 0 && (
-                        <span className={styles.exKcal}>~{ex.estimated_kcal} kcal</span>
-                      )}
+                      {ex.estimated_kcal > 0 && <span className={styles.exKcal}>~{ex.estimated_kcal} kcal</span>}
                     </div>
                   ))}
                 </div>
-
-                <button className={styles.primaryBtn} onClick={() => navigate("/workout")}>
-                  Continue Workout →
-                </button>
+                <button className={styles.primaryBtn} onClick={() => navigate("/workout")}>Continue Workout →</button>
               </div>
             ) : (
               <div className={`${styles.card} ${styles.accent}`}>
@@ -726,13 +780,11 @@ export default function Dashboard() {
                         <div className={styles.calBar}><div className={styles.calBarFill} style={{ width: `${calPct}%` }} /></div>
                       </div>
                     </div>
-
                     <div className={styles.macros}>
                       <MacroBar label="Protein" value={nutrition.protein?.consumed ?? 0} target={nutrition.protein?.target ?? 0} fillColor="linear-gradient(90deg,#FF5C1A,#FF8A3D)" />
                       <MacroBar label="Carbs"   value={nutrition.carbs?.consumed   ?? 0} target={nutrition.carbs?.target   ?? 0} fillColor="linear-gradient(90deg,#00C8E0,#0090FF)" />
                       <MacroBar label="Fats"    value={nutrition.fats?.consumed    ?? 0} target={nutrition.fats?.target    ?? 0} fillColor="linear-gradient(90deg,#B8F000,#80D400)" />
                     </div>
-
                     <div className={styles.waterBox}>
                       <div className={styles.waterHead}>
                         <span className={styles.waterLabel}>💧 Water Intake</span>
@@ -793,74 +845,24 @@ export default function Dashboard() {
           </Section>
         </div>
 
-        {/* ── Progress Metrics Card (v3) ── */}
         {!loading && <Section delay={40}><ProgressMetricsCard metrics={progressMetrics} /></Section>}
 
-        {/* ── Performance Snapshot ── */}
+        {/* ── Performance Snapshot — expandable ── */}
         {!loading && (prs.length > 0 || volumeDelta.length > 0) && (
           <Section delay={50}>
-            <div className={`${styles.card} ${styles.accent}`}>
-              <div className={styles.perfHeader}>
-                <span className={styles.secLabel}>📊 Performance Snapshot</span>
-                <button className={styles.ghostBtnSm} onClick={() => navigate("/progress")}>View All →</button>
-              </div>
-              <div className={styles.perfGrid}>
-                {prs.slice(0, 3).map(pr => (
-                  <div key={pr.exercise_name} className={styles.prCard}>
-                    <span className={styles.prIcon}>🏅</span>
-                    <div className={styles.prExName}>{pr.exercise_name}</div>
-                    <div className={styles.prStats}>
-                      <span className={styles.prMain}>{pr.best_1rm}kg</span>
-                      <span className={styles.prSub}>est. 1RM</span>
-                    </div>
-                    <div className={styles.prDate}>
-                      {new Date(pr.achieved_at).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}
-                    </div>
-                  </div>
-                ))}
-                {volumeDelta.filter(v => v.delta_pct !== null).slice(0, 2).map(v => (
-                  <div key={v.exercise_name} className={styles.volCard}>
-                    <span className={styles.volIcon}>📈</span>
-                    <div className={styles.volExName}>{v.exercise_name}</div>
-                    <div className={styles.volStats}>
-                      <VolumeSpark delta={v.delta_pct} />
-                      <span className={styles.volSub}>vs last week</span>
-                    </div>
-                    <div className={styles.volVol}>{Math.round(v.this_week_volume)}kg vol.</div>
-                  </div>
-                ))}
-              </div>
-              {dashboard?.strength_improvements?.length > 0 && (
-                <div className={styles.strengthBar}>
-                  <span className={styles.strengthBarLabel}>💪 Strength gains (30d):</span>
-                  {dashboard.strength_improvements.slice(0, 3).map(s => (
-                    <span key={s.exercise_name} className={styles.strengthChip}
-                      style={{ color: s.improvement_pct >= 0 ? "#10b981" : "#ef4444" }}>
-                      {s.exercise_name} {s.improvement_pct >= 0 ? "+" : ""}{s.improvement_pct}%
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
+            <PerformanceCard prs={prs} volumeDelta={volumeDelta} dashboard={dashboard} onViewAll={() => navigate("/progress")} />
           </Section>
         )}
 
-        {/* ── Meals ── */}
+        {/* ── Meals Today — improved ── */}
         <Section hidden={!loading && meals.length === 0 && !hasNutrition}>
-          <span className={styles.secLabel}>Meals Today</span>
           {loading ? <LoadingCard /> : meals.length > 0 ? (
-            <div className={styles.mealsGrid}>
-              {meals.map((m, idx) => (
-                <div key={m.time ?? idx} className={styles.mealCell}>
-                  <span className={styles.mealTime}>{m.time}</span>
-                  <span className={styles.mealEmoji}>{m.emoji ?? "🍽️"}</span>
-                  <div className={styles.mealName}>{m.name}</div>
-                  <div className={styles.mealMacro}>{m.cal} kcal · P{m.p}g · C{m.c}g · F{m.f}g</div>
-                </div>
-              ))}
-            </div>
+            <MealsCard meals={meals} onLogMeal={() => navigate("/log-meal")} />
           ) : (
-            <EmptyState icon="🍽️" message="No meals logged today." actionLabel="+ Log your first meal" onAction={() => navigate("/log-meal")} />
+            <div className={`${styles.card} ${styles.accent}`}>
+              <span className={styles.secLabel}>Meals Today</span>
+              <EmptyState icon="🍽️" message="No meals logged today." actionLabel="+ Log your first meal" onAction={() => navigate("/log-meal")} />
+            </div>
           )}
         </Section>
 
@@ -871,10 +873,10 @@ export default function Dashboard() {
             <>
               <div className={styles.healthGrid}>
                 {[
-                  { icon: "🫀", label: "Blood Pressure", value: health.bp        && health.bp        !== "—" ? health.bp                  : "Not logged", status: health.bpStatus       ?? null, color: "#FF5C1A" },
-                  { icon: "😴", label: "Sleep",           value: health.sleep                                  ? `${health.sleep}h`        : "Not logged", status: health.sleepStatus    ?? null, color: "#00C8E0" },
-                  { icon: "💓", label: "Heart Rate",      value: health.heartRate                              ? `${health.heartRate} bpm` : "Not logged", status: health.hrStatus       ?? null, color: "#FF4D6D" },
-                  { icon: "⚡", label: "Recovery",        value: health.recovery                               ? `${health.recovery}%`    : "Not logged", status: health.recoveryStatus ?? null, color: "#B8F000" },
+                  { icon: "🫀", label: "Blood Pressure", value: health.bp && health.bp !== "—" ? health.bp : "Not logged", status: health.bpStatus ?? null, color: "#FF5C1A" },
+                  { icon: "😴", label: "Sleep",          value: health.sleep ? `${health.sleep}h` : "Not logged",           status: health.sleepStatus ?? null, color: "#00C8E0" },
+                  { icon: "💓", label: "Heart Rate",     value: health.heartRate ? `${health.heartRate} bpm` : "Not logged", status: health.hrStatus ?? null, color: "#FF4D6D" },
+                  { icon: "⚡", label: "Recovery",       value: health.recovery ? `${health.recovery}%` : "Not logged",     status: health.recoveryStatus ?? null, color: "#B8F000" },
                 ].map(h => (
                   <div key={h.label} className={styles.healthCard}>
                     <span className={styles.healthIcon}>{h.icon}</span>
@@ -886,8 +888,14 @@ export default function Dashboard() {
                   </div>
                 ))}
               </div>
+              {(!health.bp || health.bp === "—" || health.bp === "Not logged") && (
+                <div className={styles.bpNudge}>
+                  <span>🫀 Blood pressure not logged today.</span>
+                  <button className={styles.bpNudgeBtn} onClick={() => navigate("/progress")}>Log it on Progress →</button>
+                </div>
+              )}
               {health.sleep && health.sleep < 7 && (
-                <div className={styles.alertBanner}>
+                <div className={styles.alertBanner} style={{ marginTop: "0.75rem" }}>
                   <span className={styles.alertIcon}>⚠️</span>
                   <span>Low sleep detected. Consider adjusting today's workout intensity.</span>
                 </div>
@@ -944,7 +952,7 @@ export default function Dashboard() {
                     { label: "Consistency",       value: weekly.consistency,      sub: weekly.consistencySub, color: "#FF5C1A", valid: !!weekly.consistency },
                     { label: "Calorie Adherence", value: weekly.calorieAdherence, sub: "avg this week",       color: "#B8F000", valid: !!weekly.calorieAdherence && weekly.calorieAdherence !== "—" },
                     { label: "Weight Lost",       value: weekly.weightLost,       sub: "this week",           color: "#00C8E0", valid: !!weekly.weightLost && weekly.weightLost !== "—" },
-                    { label: "Volume",            value: dashboard?.total_volume_kg ? `${Math.round(dashboard.total_volume_kg / 1000)}t` : null, sub: "this month", color: "#a855f7", valid: !!dashboard?.total_volume_kg },
+                    { label: "Volume", value: dashboard?.total_volume_kg ? `${Math.round(dashboard.total_volume_kg / 1000)}t` : null, sub: "this month", color: "#a855f7", valid: !!dashboard?.total_volume_kg },
                   ].filter(s => s.valid).map(s => (
                     <div key={s.label} className={styles.weekStat}>
                       <span className={styles.weekStatVal} style={{ color: s.color, filter: `drop-shadow(0 0 10px ${s.color}66)` }}>{s.value}</span>
@@ -1011,7 +1019,6 @@ export default function Dashboard() {
             ))}
           </div>
         </Section>
-
       </main>
     </div>
   );
