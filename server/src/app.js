@@ -15,6 +15,7 @@ import workoutRoutes from "./routes/workout.routes.js";
 import dashboardRoutes from "./routes/dashboard.routes.js";
 import planRoutes from "./routes/plan.route.js";
 import mealRoutes from "./routes/meal.route.js"
+import progressRoutes from "./routes/progress.route.js"
 
 const app = express();
 
@@ -45,6 +46,9 @@ app.use("/api/plans", planRoutes);
 
 // Protected meal routes
 app.use("/api/meals", mealRoutes);
+
+// Progress meal routes
+app.use("/api/progress", progressRoutes);
 
 // 404 for any other route
 app.use((req, res, next) => {

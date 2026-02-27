@@ -34,7 +34,7 @@ export default function Progress() {
   const fetchLogs = async () => {
     setLoading(true);
     try {
-      const res = await apiFetch("/progress");
+      const res = await apiFetch("/progress/log");
       setLogs(Array.isArray(res?.data ?? res) ? (res?.data ?? res) : []);
     } catch {
       setLogs([]);
@@ -65,14 +65,14 @@ export default function Progress() {
       const payload = {
         log_date: new Date().toISOString().split("T")[0],
       };
-      if (form.weight_kg)          payload.weight_kg           = Number(form.weight_kg);
-      if (form.body_fat_percentage) payload.body_fat_percentage = Number(form.body_fat_percentage);
-      if (form.energy_level)       payload.energy_level        = Number(form.energy_level);
-      if (form.sleep_hours)        payload.sleep_hours         = Number(form.sleep_hours);
-      if (form.water_intake_liters) payload.water_intake_liters = Number(form.water_intake_liters);
-      if (form.notes)              payload.notes               = form.notes;
+      if (form.weight_kg)           payload.weight_kg            = Number(form.weight_kg);
+      if (form.body_fat_percentage) payload.body_fat_percentage  = Number(form.body_fat_percentage);
+      if (form.energy_level)        payload.energy_level         = Number(form.energy_level);
+      if (form.sleep_hours)         payload.sleep_hours          = Number(form.sleep_hours);
+      if (form.water_intake_liters) payload.water_intake_liters  = Number(form.water_intake_liters);
+      if (form.notes)               payload.notes                = form.notes;
 
-      await apiFetch("/progress", { method: "POST", body: JSON.stringify(payload) });
+      await apiFetch("/progress/log", { method: "POST", body: JSON.stringify(payload) });
       showAlert("success", "Progress logged! 📈");
       setForm(EMPTY_LOG);
       fetchLogs();
@@ -121,18 +121,17 @@ export default function Progress() {
           <p className={styles.sub}>Log your daily metrics to see trends over time</p>
         </Section>
 
-        {/* LATEST STATS */}
         {latest && (
           <Section delay={60}>
             <h2 className={styles.sectionTitle}>Latest Snapshot</h2>
             <div className={styles.statsGrid}>
               {[
-                { icon: "⚖️", label: "Weight",    val: latest.weight_kg ? `${latest.weight_kg} kg` : "—",
+                { icon: "⚖️", label: "Weight", val: latest.weight_kg ? `${latest.weight_kg} kg` : "—",
                   sub: weightDiff ? `${weightDiff > 0 ? "+" : ""}${weightDiff} kg` : null,
                   color: Number(weightDiff) < 0 ? "#B8F000" : Number(weightDiff) > 0 ? "#FF4D6D" : "#fff" },
-                { icon: "😴", label: "Sleep",     val: latest.sleep_hours ? `${latest.sleep_hours}h` : "—", color: "#00C8E0" },
-                { icon: "⚡", label: "Energy",    val: latest.energy_level ? `${latest.energy_level}/10` : "—", color: "#FF5C1A" },
-                { icon: "💧", label: "Water",     val: latest.water_intake_liters ? `${latest.water_intake_liters}L` : "—", color: "#00C8E0" },
+                { icon: "😴", label: "Sleep",  val: latest.sleep_hours ? `${latest.sleep_hours}h` : "—", color: "#00C8E0" },
+                { icon: "⚡", label: "Energy", val: latest.energy_level ? `${latest.energy_level}/10` : "—", color: "#FF5C1A" },
+                { icon: "💧", label: "Water",  val: latest.water_intake_liters ? `${latest.water_intake_liters}L` : "—", color: "#00C8E0" },
               ].map(s => (
                 <div key={s.label} className={styles.statCard}>
                   <span className={styles.statIcon}>{s.icon}</span>
@@ -148,7 +147,6 @@ export default function Progress() {
         <Section delay={120}>
           <h2 className={styles.sectionTitle}>Log Today</h2>
           <form onSubmit={handleSubmit} className={styles.form}>
-
             <div className={styles.formRow}>
               <div className={styles.formGroup}>
                 <label className={styles.label}>Weight (kg)</label>
@@ -181,7 +179,6 @@ export default function Progress() {
               </div>
             </div>
 
-            {/* ENERGY SLIDER */}
             <div className={styles.formGroup}>
               <label className={styles.label}>Energy Level — {form.energy_level}/10</label>
               <input type="range" min="1" max="10" value={form.energy_level}
@@ -201,7 +198,6 @@ export default function Progress() {
           </form>
         </Section>
 
-        {/* HISTORY */}
         {!loading && logs.length > 0 && (
           <Section delay={180}>
             <h2 className={styles.sectionTitle}>History</h2>
@@ -212,9 +208,9 @@ export default function Progress() {
                     {new Date(log.log_date).toLocaleDateString("en-IN", { weekday: "short", month: "short", day: "numeric" })}
                   </span>
                   <div className={styles.historyStats}>
-                    {log.weight_kg         && <span className={styles.histStat}>⚖️ {log.weight_kg}kg</span>}
-                    {log.sleep_hours       && <span className={styles.histStat}>😴 {log.sleep_hours}h</span>}
-                    {log.energy_level      && <span className={styles.histStat}>⚡ {log.energy_level}/10</span>}
+                    {log.weight_kg           && <span className={styles.histStat}>⚖️ {log.weight_kg}kg</span>}
+                    {log.sleep_hours         && <span className={styles.histStat}>😴 {log.sleep_hours}h</span>}
+                    {log.energy_level        && <span className={styles.histStat}>⚡ {log.energy_level}/10</span>}
                     {log.water_intake_liters && <span className={styles.histStat}>💧 {log.water_intake_liters}L</span>}
                   </div>
                 </div>
