@@ -1080,3 +1080,147 @@
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: var(--d-bg); }
 ::-webkit-scrollbar-thumb { background: rgba(255,92,26,0.3); border-radius: 2px; }
+
+/* ── Paste these into Dashboard.module.css ── */
+
+.mealsSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.mealsTotals {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.mealsTotalChip {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--d-t2);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.mealsStack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.mealStackRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: background 0.2s;
+}
+
+.mealStackRow:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.mealStackEmoji {
+  font-size: 1.6rem;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.mealStackBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.mealStackTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.mealStackLabel {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--d-t2);
+  opacity: 0.7;
+}
+
+.mealStackCal {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #FF5C1A;
+  white-space: nowrap;
+}
+
+.mealStackName {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--d-t1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mealStackMacros {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+}
+
+.mealMacroChip {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+
+.bpNudge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.875rem;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 92, 26, 0.06);
+  border: 1px solid rgba(255, 92, 26, 0.2);
+  border-radius: 12px;
+  font-size: 0.82rem;
+  color: var(--d-t2);
+  flex-wrap: wrap;
+}
+
+.bpNudgeBtn {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #FF5C1A;
+  background: rgba(255, 92, 26, 0.1);
+  border: 1px solid rgba(255, 92, 26, 0.3);
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.bpNudgeBtn:hover {
+  background: rgba(255, 92, 26, 0.2);
+}
