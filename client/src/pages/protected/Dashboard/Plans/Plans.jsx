@@ -1,6 +1,3 @@
-// src/pages/Plans/Plans.jsx
-// v3 — with top nav tabs matching Dashboard
-
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { apiFetch } from "../../../../services/apiClient";
@@ -77,6 +74,8 @@ function shapeBToA(wp, durationWeeks = 4) {
       split: splitName, variation: splitName,
       muscle_groups: muscleGroups.filter(g => !/^rest/i.test(g)),
       exercises, estimated_kcal_burned: exercises.reduce((s, e) => s + (e.est_kcal || 0), 0),
+      // Attach the dayKey so assignWorkoutsToDays can map it correctly
+      _dayKey: dayKey,
     };
   }).filter(Boolean);
 
@@ -96,12 +95,52 @@ function normalizeMealPlan(raw) {
   return Array.isArray(raw) ? raw : [];
 }
 
-function assignWorkoutsToDays(workouts = []) {
-  const PATTERNS = { 1:[1], 2:[1,4], 3:[1,3,5], 4:[1,2,4,5], 5:[1,2,3,4,5], 6:[1,2,3,4,5,6] };
-  const count = Math.min(workouts.length, 6);
-  const slots = PATTERNS[count] ?? PATTERNS[5];
+// ── FIXED: use actual weekly_plan day-name keys when available ──
+function assignWorkoutsToDays(workouts = [], weeklyPlan = {}) {
+  const hasRealDayKeys = Object.keys(weeklyPlan).some(k => DAY_KEYS.includes(k));
+
+  if (hasRealDayKeys) {
+    // Map directly from day name → day index using the plan's own keys
+    const assigned = {};
+    DAY_KEYS.forEach((dayKey, idx) => {
+      const muscleGroups = weeklyPlan[dayKey] ?? [];
+      const isRest = !muscleGroups.length || muscleGroups.every(g => /^rest/i.test(g));
+      if (isRest) return;
+
+      // Find the workout whose _dayKey matches, or fall back to muscle-group overlap
+      const match =
+        workouts.find(w => w._dayKey === dayKey) ??
+        workouts.find(w =>
+          w.muscle_groups?.some(mg =>
+            muscleGroups.some(pg => pg.toLowerCase() === mg.toLowerCase())
+          )
+        ) ??
+        workouts.find(w =>
+          muscleGroups.some(pg =>
+            w.split?.toLowerCase().includes(pg.toLowerCase())
+          )
+        );
+
+      if (match) assigned[idx] = match;
+    });
+    return assigned;
+  }
+
+  // Fallback: original pattern-based assignment (Shape A plans without day keys)
+  const PATTERNS = {
+    1: [1],
+    2: [1, 4],
+    3: [1, 3, 5],
+    4: [1, 2, 4, 5],
+    5: [1, 2, 3, 4, 5],
+    6: [0, 1, 2, 3, 4, 5],
+  };
+  const count  = Math.min(workouts.length, 6);
+  const slots  = PATTERNS[count] ?? PATTERNS[5];
   const assigned = {};
-  workouts.forEach((w, i) => { assigned[slots[i]] = w; });
+  workouts.forEach((w, i) => {
+    if (slots[i] !== undefined) assigned[slots[i]] = w;
+  });
   return assigned;
 }
 
@@ -188,11 +227,11 @@ function NutritionTargets({ targets }) {
       <div className={styles.nutTargetsTitle}>🎯 Today's Nutrition Targets</div>
       <div className={styles.nutTargetsGrid}>
         {[
-          { label: "Calories",  val: targets.kcal      ? `${targets.kcal} kcal`   : null, color: "#f59e0b" },
-          { label: "Protein",   val: targets.protein_g ? `${targets.protein_g}g`  : null, color: "#ef4444" },
-          { label: "Carbs",     val: targets.carbs_g   ? `${targets.carbs_g}g`    : null, color: "#3b82f6" },
-          { label: "Fats",      val: targets.fat_g     ? `${targets.fat_g}g`      : null, color: "#10b981" },
-          { label: "Water",     val: targets.hydration_L ? `${targets.hydration_L}L` : null, color: "#06b6d4" },
+          { label: "Calories",  val: targets.kcal        ? `${targets.kcal} kcal`      : null, color: "#f59e0b" },
+          { label: "Protein",   val: targets.protein_g   ? `${targets.protein_g}g`     : null, color: "#ef4444" },
+          { label: "Carbs",     val: targets.carbs_g     ? `${targets.carbs_g}g`       : null, color: "#3b82f6" },
+          { label: "Fats",      val: targets.fat_g       ? `${targets.fat_g}g`         : null, color: "#10b981" },
+          { label: "Water",     val: targets.hydration_L ? `${targets.hydration_L}L`   : null, color: "#06b6d4" },
         ].filter(t => t.val).map(t => (
           <div key={t.label} className={styles.nutTargetChip} style={{ borderColor: `${t.color}44`, color: t.color }}>
             <span className={styles.nutTargetVal}>{t.val}</span>
@@ -286,10 +325,10 @@ function MacroSummaryCard({ macros }) {
       <div className={styles.macroSummaryTitle}>📊 Weekly Macro Targets</div>
       <div className={styles.macroSummaryGrid}>
         {[
-          { label: "Daily kcal",  val: macros.dailyKcal,     unit: "kcal", color: "#f59e0b" },
-          { label: "Protein",     val: macros.proteinTarget,  unit: "g",   color: "#ef4444" },
-          { label: "Carbs",       val: macros.carbsTarget,    unit: "g",   color: "#3b82f6" },
-          { label: "Fats",        val: macros.fatTarget,      unit: "g",   color: "#10b981" },
+          { label: "Daily kcal", val: macros.dailyKcal,    unit: "kcal", color: "#f59e0b" },
+          { label: "Protein",    val: macros.proteinTarget, unit: "g",   color: "#ef4444" },
+          { label: "Carbs",      val: macros.carbsTarget,   unit: "g",   color: "#3b82f6" },
+          { label: "Fats",       val: macros.fatTarget,     unit: "g",   color: "#10b981" },
         ].filter(m => m.val != null).map(m => (
           <div key={m.label} className={styles.macroSummaryItem}>
             <span className={styles.macroSummaryVal} style={{ color: m.color }}>{m.val}{m.unit}</span>
@@ -320,15 +359,15 @@ export default function Plans() {
   const location = useLocation();
   const activeTab = NAV_TABS.find(t => t.path === location.pathname)?.key ?? "plans";
 
-  const [plan,          setPlan]          = useState(null);
-  const [loading,       setLoading]       = useState(true);
-  const [generating,    setGenerating]    = useState(false);
-  const [alert,         setAlert]         = useState(null);
-  const [activeWeek,    setActiveWeek]    = useState(1);
-  const [activeDay,     setActiveDay]     = useState(null);
-  const [gamification,  setGamification]  = useState(null);
-  const [adaptSignal,   setAdaptSignal]   = useState(null);
-  const [missedInfo,    setMissedInfo]    = useState(null);
+  const [plan,         setPlan]         = useState(null);
+  const [loading,      setLoading]      = useState(true);
+  const [generating,   setGenerating]   = useState(false);
+  const [alert,        setAlert]        = useState(null);
+  const [activeWeek,   setActiveWeek]   = useState(1);
+  const [activeDay,    setActiveDay]    = useState(null);
+  const [gamification, setGamification] = useState(null);
+  const [adaptSignal,  setAdaptSignal]  = useState(null);
+  const [missedInfo,   setMissedInfo]   = useState(null);
 
   useEffect(() => { fetchPlan(); fetchGamification(); }, []);
 
@@ -390,7 +429,12 @@ export default function Plans() {
   const weekMeals = mealPlan.find(w => w.week === activeWeek)    ?? mealPlan[0]    ?? null;
 
   const workouts = weekData?.workouts ?? [];
-  const dayMap   = assignWorkoutsToDays(workouts);
+
+  // ── KEY FIX: pass the raw weekly_plan so day-name keys are used ──
+  const rawWeeklyPlan = isShapeB(plan?.workout_plan)
+    ? (plan.workout_plan.weekly_plan ?? {})
+    : {};
+  const dayMap = assignWorkoutsToDays(workouts, rawWeeklyPlan);
 
   const activeDayWorkout = activeDay != null ? (dayMap[activeDay] ?? null) : null;
   const activeDayMeal    = activeDay != null
@@ -429,7 +473,6 @@ export default function Plans() {
           <span className={styles.navLogoWord}>FIT<span>MITRA</span></span>
         </a>
 
-        {/* ── Same tab nav as Dashboard ── */}
         <div className={styles.navTabs}>
           {NAV_TABS.map(t => (
             <button
@@ -507,8 +550,8 @@ export default function Plans() {
                       : metaActivity  ? fmt(metaActivity)
                       : "—"
                   },
-                  { icon: "📅", label: "Duration",   val: `${totalWeeks} weeks` },
-                  { icon: "🏃", label: "Activity",   val: fmt(metaActivity ?? "—") },
+                  { icon: "📅", label: "Duration",  val: `${totalWeeks} weeks` },
+                  { icon: "🏃", label: "Activity",  val: fmt(metaActivity ?? "—") },
                 ].map(m => (
                   <div key={m.label} className={styles.metaCard}>
                     <span className={styles.metaIcon}>{m.icon}</span>
@@ -533,8 +576,8 @@ export default function Plans() {
                       key={w}
                       className={[
                         styles.weekTab,
-                        activeWeek === w  ? styles.weekTabActive : "",
-                        wd?.is_deload     ? styles.weekTabDeload : "",
+                        activeWeek === w ? styles.weekTabActive : "",
+                        wd?.is_deload   ? styles.weekTabDeload : "",
                       ].join(" ")}
                       style={activeWeek === w ? { borderColor: p.color, color: p.color } : {}}
                       onClick={() => { setActiveWeek(w); setActiveDay(null); }}

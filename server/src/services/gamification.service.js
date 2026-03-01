@@ -1,19 +1,6 @@
 // src/services/gamification.service.js
-// ─────────────────────────────────────────────────────────────
-//  Gamification Engine
-//  Features:
-//    • XP system (workout completed, PBs, streaks)
-//    • Level system with thresholds + XP-to-next display
-//    • Daily streak tracking (consecutive days active)
-//    • Weekly streak bonus
-//    • Missed workout penalty + recovery suggestion
-//    • Adaptive difficulty signal (too easy / too hard)
-//    • Badge / achievement unlocks
-// ─────────────────────────────────────────────────────────────
 
 import { MISSED_WORKOUT_RECOVERY } from "./plan.generator.js";
-
-// ── XP TABLE ─────────────────────────────────────────────────
 
 export const XP_TABLE = {
   workout_completed:   100,
@@ -21,27 +8,24 @@ export const XP_TABLE = {
   streak_7_days:       500,
   streak_14_days:     1000,
   streak_30_days:     2500,
-  all_workouts_week:   300,   // completed every planned session in a week
-  missed_workout:      -50,   // penalty per skipped session
-  deload_completed:    150,   // bonus for completing deload week (recovery discipline)
+  all_workouts_week:   300,   
+  missed_workout:      -50,   
+  deload_completed:    150,   
   hydration_logged:     25,
   sleep_logged:         25,
 };
 
-// ── LEVEL THRESHOLDS ─────────────────────────────────────────
-// Level 1 starts at 0 XP. Each row = XP needed to reach that level.
-
 const LEVEL_THRESHOLDS = [
-  0,       // Level 1
-  500,     // Level 2
-  1200,    // Level 3
-  2500,    // Level 4
-  5000,    // Level 5
-  9000,    // Level 6
-  15000,   // Level 7
-  25000,   // Level 8
-  40000,   // Level 9
-  60000,   // Level 10 — Elite
+  0,       
+  500,     
+  1200,    
+  2500,    
+  5000,    
+  9000,    
+  15000,   
+  25000,   
+  40000,   
+  60000,   
 ];
 
 export function computeLevel(xp) {
@@ -81,8 +65,6 @@ function getLevelLabel(level) {
   return labels[level] ?? `Level ${level}`;
 }
 
-// ── BADGE / ACHIEVEMENT SYSTEM ────────────────────────────────
-
 const BADGES = [
   { id: "first_workout",   label: "First Step 👟",      condition: (stats) => stats.total_completed >= 1       },
   { id: "week_streak",     label: "7-Day Warrior 🔥",   condition: (stats) => stats.longest_streak >= 7        },
@@ -97,13 +79,6 @@ export function computeBadges(stats) {
   return BADGES.filter((b) => b.condition(stats)).map((b) => ({ id: b.id, label: b.label }));
 }
 
-// ── STREAK CALCULATOR ─────────────────────────────────────────
-
-/**
- * Computes the current streak and longest streak from an array of
- * { date: "YYYY-MM-DD", completed: boolean } log entries.
- * Entries should be sorted ascending by date.
- */
 export function computeStreak(logs = []) {
   const completedDates = [
     ...new Set(
@@ -127,7 +102,6 @@ export function computeStreak(logs = []) {
     if (streak > longestStreak) longestStreak = streak;
   }
 
-  // Current streak: only counts if last activity was today or yesterday
   if (completedDates.length > 0) {
     const lastDate  = new Date(completedDates[completedDates.length - 1]);
     const today     = new Date();
@@ -138,17 +112,6 @@ export function computeStreak(logs = []) {
   return { currentStreak, longestStreak };
 }
 
-// ── XP ENGINE ────────────────────────────────────────────────
-
-/**
- * Computes total XP, level, streak, and gamification stats
- * from an array of workout log entries.
- *
- * @param {Array} logs  — workout log entries:
- *   { date, completed, personal_best, is_deload, split, kcal_burned, perceived_effort }
- * @param {Array} weeklyPlans — planned workouts per week (for "all completed" bonus)
- * @returns {Object} gamification summary
- */
 export function computeXP(logs = [], weeklyPlans = []) {
   let xp = 0;
 
@@ -161,7 +124,6 @@ export function computeXP(logs = [], weeklyPlans = []) {
     consecutive_weeks_full: 0,
   };
 
-  // Per-log XP
   for (const log of logs) {
     if (log.completed) {
       xp += XP_TABLE.workout_completed;
@@ -176,7 +138,6 @@ export function computeXP(logs = [], weeklyPlans = []) {
     }
   }
 
-  // Streak bonuses
   const { currentStreak, longestStreak } = computeStreak(logs);
   stats.longest_streak = longestStreak;
 
@@ -184,7 +145,6 @@ export function computeXP(logs = [], weeklyPlans = []) {
   else if (longestStreak >= 14) xp += XP_TABLE.streak_14_days;
   else if (longestStreak >= 7)  xp += XP_TABLE.streak_7_days;
 
-  // Weekly completion bonus: check each week's logs vs. plan count
   if (weeklyPlans.length > 0) {
     let consecutiveFullWeeks = 0;
     for (const wp of weeklyPlans) {
@@ -200,7 +160,6 @@ export function computeXP(logs = [], weeklyPlans = []) {
     stats.consecutive_weeks_full = consecutiveFullWeeks;
   }
 
-  // Ensure XP never goes below 0
   xp = Math.max(0, xp);
 
   const level  = computeLevel(xp);
@@ -218,15 +177,6 @@ export function computeXP(logs = [], weeklyPlans = []) {
   };
 }
 
-// ── ADAPTIVE DIFFICULTY ───────────────────────────────────────
-
-/**
- * Signals whether the plan should be made harder or easier
- * based on the user's recent perceived effort logs.
- *
- * @param {Array} recentLogs  — last 2–3 weeks of logs with perceived_effort
- * @returns {{ signal, message }}
- */
 export function adaptiveDifficultySignal(recentLogs = []) {
   if (recentLogs.length === 0) return { signal: "maintain", message: "Not enough data." };
 
@@ -253,14 +203,6 @@ export function adaptiveDifficultySignal(recentLogs = []) {
   };
 }
 
-// ── MISSED WORKOUT RECOVERY ───────────────────────────────────
-
-/**
- * Returns a makeup suggestion when a user misses a session.
- *
- * @param {string} missedSplit  — e.g. "Push", "Legs"
- * @returns {{ missed_split, recovery_suggestion, xp_penalty }}
- */
 export function getMissedWorkoutRecovery(missedSplit) {
   return {
     missed_split:         missedSplit,

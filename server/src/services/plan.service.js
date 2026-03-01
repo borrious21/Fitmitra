@@ -4,8 +4,6 @@ import PlanModel from "../models/plan.model.js";
 import ProfileModel from "../models/profile.model.js";
 import { generatePlan as runPlanGenerator } from "./plan.generator.js";
 
-// ── CALORIE ADJUSTMENT ───────────────────────────────────────
-
 export function computeCalorieAdjustment({ weightTrend, targetKcal, goal }) {
   if (!weightTrend || weightTrend.length < 2) {
     return { adjustment: 0, reason: "Not enough data yet." };
@@ -78,12 +76,9 @@ export function recommendProgression({ log, currentExercise }) {
   return { action: "add_set", message: "Add 1 extra set next session to build volume." };
 }
 
-// ── PROGRESS METRICS ─────────────────────────────────────────
-
 export function computeProgressMetrics({ weightLogs = [], strengthLogs = [], measurements = [] }) {
   const metrics = {};
 
-  // Weight trend
   if (weightLogs.length >= 2) {
     const first = weightLogs[0].weight_kg;
     const last  = weightLogs[weightLogs.length - 1].weight_kg;
@@ -92,7 +87,6 @@ export function computeProgressMetrics({ weightLogs = [], strengthLogs = [], mea
     metrics.current_weight_kg = last;
   }
 
-  // Strength PRs: max weight lifted per exercise
   if (strengthLogs.length > 0) {
     const bests = {};
     for (const log of strengthLogs) {
@@ -103,7 +97,6 @@ export function computeProgressMetrics({ weightLogs = [], strengthLogs = [], mea
     metrics.strength_prs = bests;
   }
 
-  // Body measurements (waist, chest, etc.)
   if (measurements.length >= 2) {
     const first = measurements[0];
     const last  = measurements[measurements.length - 1];
@@ -117,8 +110,6 @@ export function computeProgressMetrics({ weightLogs = [], strengthLogs = [], mea
 
   return metrics;
 }
-
-// ── PLAN SERVICE ─────────────────────────────────────────────
 
 const PlanService = {
   async generateAndSave(userId) {
@@ -136,12 +127,11 @@ const PlanService = {
       goals:             profile.goal,
       habits:            profile.custom_habits ?? [],
       medicalConditions: profile.medical_conditions ?? [],
-      // ✅ NEW: pass body weight so generator can compute personalised macros
       bodyWeightKg:      profile.weight_kg ?? 70,
       targetKcal:        profile.target_kcal ?? null,
     };
 
-    const generated = runPlanGenerator(input); // sync
+    const generated = runPlanGenerator(input); 
 
     if (!generated?.schedule || !Array.isArray(generated.schedule)) {
       const err = new Error("Plan generation failed. Invalid generator output.");
@@ -161,8 +151,7 @@ const PlanService = {
       meals:     week.meals,
       nutrition_targets: week.nutrition_targets,
     }));
-
-    // Deactivate BEFORE insert to avoid unique_active_plan_per_user constraint
+    
     await PlanModel.deactivateAllPlans(userId);
 
     const saved = await PlanModel.create({

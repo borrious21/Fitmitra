@@ -1,14 +1,4 @@
 // src/routes/plan.routes.js
-//
-// ⚠️  ROUTE ORDER MATTERS IN EXPRESS
-//
-//  Express matches routes top-to-bottom.
-//  If  GET /:id  is registered before  GET /gamification,
-//  Express treats "gamification" as the :id param value.
-//  validateNumericId then rejects it → 400 Bad Request.
-//
-//  Rule: every named route  (fixed path, no param)
-//        MUST be registered BEFORE any  /:param  route.
 
 import { Router } from "express";
 import PlanController from "../controllers/plan.controller.js";
@@ -16,10 +6,7 @@ import protect from "../middlewares/auth.middleware.js";
 
 const router = Router();
 
-// All plan routes require authentication.
 router.use(protect);
-
-// ─── ID validator (only used on param routes) ─────────────────────────────────
 
 const validateNumericId = (req, res, next) => {
   const id = Number(req.params.id);
@@ -29,11 +16,6 @@ const validateNumericId = (req, res, next) => {
   req.params.id = id;
   next();
 };
-
-// ════════════════════════════════════════════════════════════════════════════════
-//  SECTION 1 — NAMED ROUTES (no :id param)
-//  These MUST come before any  /:id  route.
-// ════════════════════════════════════════════════════════════════════════════════
 
 // POST   /api/plans/generate
 router.post("/generate", PlanController.generatePlan);
@@ -48,12 +30,6 @@ router.get("/history", PlanController.getPlanHistory);
 // GET    /api/plans/stats
 router.get("/stats", PlanController.getPlanStats);
 
-// ── Gamification ────────────────────────────────────────────────────────────
-// GET    /api/plans/gamification
-//   ← ROOT CAUSE OF THE 400:
-//     When this was after /:id, Express matched "gamification" as the :id value.
-//     validateNumericId correctly rejected it → 400.
-//     Solution: move it here, above /:id.
 router.get("/gamification", PlanController.getGamification);
 
 // POST   /api/plans/missed-workout    body: { split }
@@ -62,7 +38,6 @@ router.post("/missed-workout", PlanController.missedWorkout);
 // POST   /api/plans/adaptive-difficulty    body: { recent_logs }
 router.post("/adaptive-difficulty", PlanController.adaptiveDifficulty);
 
-// ── Analytics ────────────────────────────────────────────────────────────────
 // POST   /api/plans/insights
 router.post("/insights", PlanController.getInsights);
 

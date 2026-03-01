@@ -48,7 +48,6 @@ function getMealMeta(meal) {
     return { emoji: "🌙", label: "Dinner" };
   if (t.includes("snack") || meal.emoji === "🥜")
     return { emoji: "🥜", label: "Snack" };
-  // Clock-like time (e.g. "04:59 pm") → treat as snack
   if (/^\d{1,2}:\d{2}/.test(t))
     return { emoji: "🥜", label: "Snack" };
   return { emoji: meal.emoji ?? "🍽️", label: meal.time ?? "Meal" };
@@ -166,10 +165,19 @@ function RestDayCard({ mesocycleWeek, missedRecovery }) {
   );
 }
 
+// ── FIXED: exercises presence is the ground truth for rest day detection ──
 function checkRestDay(workout) {
   if (!workout) return false;
+
+  // If there are real exercises, it's NOT a rest day regardless of flags/name
+  const hasExercises = Array.isArray(workout.exercises) && workout.exercises.length > 0;
+  if (hasExercises) return false;
+
+  // No exercises — now check explicit flags and name
   if (workout.isRestDay === true) return true;
-  const name = (workout.name ?? "").toLowerCase();
+  if (workout.is_rest_day === true) return true;
+
+  const name = (workout.name ?? "").toLowerCase().trim();
   return name === "rest day" || name === "rest" || name === "recovery day";
 }
 
@@ -290,8 +298,8 @@ function DeloadWellnessCard({ recovery }) {
 
 function ProgressMetricsCard({ metrics }) {
   if (!metrics) return null;
-  const hasWeight  = metrics.weight_change_kg !== undefined;
-  const hasPRs     = metrics.strength_prs && Object.keys(metrics.strength_prs).length > 0;
+  const hasWeight = metrics.weight_change_kg !== undefined;
+  const hasPRs    = metrics.strength_prs && Object.keys(metrics.strength_prs).length > 0;
   if (!hasWeight && !hasPRs) return null;
   return (
     <div className={`${styles.card} ${styles.accent}`}>
@@ -514,17 +522,18 @@ export default function Dashboard() {
           if (data?.weight_kg)  setWeight({ current: data.weight_kg, change: data.weight_change_this_week ?? null });
         }
         if (results[1].status === "fulfilled") setNutrition(results[1].value?.data ?? results[1].value ?? null);
-        if (results[2].status === "fulfilled") setWorkout(results[2].value?.data   ?? results[2].value ?? null);
+        if (results[2].status === "fulfilled") {
+          const raw = results[2].value?.data ?? results[2].value ?? null;
+          console.log("🏋️ workout payload:", raw); // remove after confirming fix
+          setWorkout(raw);
+        }
         if (results[3].status === "fulfilled") {
           const d = results[3].value?.data ?? results[3].value;
           setMeals(Array.isArray(d) ? d : []);
         }
-
-        // Health: backend now returns { sleep, heartRate, bp, bpStatus, ... } directly
         if (results[4].status === "fulfilled") {
           setHealth(results[4].value?.data ?? results[4].value ?? null);
         }
-
         if (results[5].status === "fulfilled") setWeekly(results[5].value?.data ?? results[5].value ?? null);
         if (results[6].status === "fulfilled") {
           const d = results[6].value?.data ?? results[6].value;
@@ -600,7 +609,6 @@ export default function Dashboard() {
   const isDeloadWeek  = workout?.is_deload_week ?? false;
   const workoutWarmup = workout?.warmup ?? [];
 
-  // BP is genuinely logged only when it's a real "sys/dia" value
   const bpLogged = !!(health?.bp && health.bp !== "—" && health.bp !== "Not logged");
 
   const QUICK_ACTIONS = [

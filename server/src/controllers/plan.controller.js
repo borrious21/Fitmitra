@@ -1,4 +1,4 @@
-// src/controllers/plan.controller.js
+
 
 import PlanService, {
   generateInsights,
@@ -13,13 +13,13 @@ import {
   adaptiveDifficultySignal,
 } from "../services/gamification.service.js";
 
+import pool from "../config/db.config.js";
 import response from "../utils/response.util.js";
 
 class PlanController {
 
-  // ── PLAN CRUD ───────────────────────────────────────────────────────────────
+  
 
-  // POST /api/plans/generate
   static async generatePlan(req, res, next) {
     try {
       const saved = await PlanService.generateAndSave(req.user.id);
@@ -29,7 +29,6 @@ class PlanController {
     }
   }
 
-  // GET /api/plans/active
   static async getActivePlan(req, res, next) {
     try {
       const plan = await PlanService.getActivePlan(req.user.id);
@@ -39,7 +38,6 @@ class PlanController {
     }
   }
 
-  // GET /api/plans/history
   static async getPlanHistory(req, res, next) {
     try {
       const { page = 1, limit = 10 } = req.query;
@@ -50,7 +48,6 @@ class PlanController {
     }
   }
 
-  // GET /api/plans/:id
   static async getPlanById(req, res, next) {
     try {
       const plan = await PlanService.getPlanById(req.params.id, req.user.id);
@@ -60,7 +57,6 @@ class PlanController {
     }
   }
 
-  // GET /api/plans/stats
   static async getPlanStats(req, res, next) {
     try {
       const stats = await PlanService.getStats(req.user.id);
@@ -70,7 +66,6 @@ class PlanController {
     }
   }
 
-  // PATCH /api/plans/:id/activate
   static async activatePlan(req, res, next) {
     try {
       const activated = await PlanService.activatePlan(req.params.id, req.user.id);
@@ -80,7 +75,6 @@ class PlanController {
     }
   }
 
-  // PATCH /api/plans/:id/complete
   static async completePlan(req, res, next) {
     try {
       const completed = await PlanService.completePlan(req.params.id, req.user.id);
@@ -90,7 +84,6 @@ class PlanController {
     }
   }
 
-  // DELETE /api/plans/:id
   static async deletePlan(req, res, next) {
     try {
       await PlanService.deletePlan(req.params.id, req.user.id);
@@ -100,12 +93,59 @@ class PlanController {
     }
   }
 
+  
   static async getGamification(req, res, next) {
     try {
-      const workoutLogs = [];   
-      const weeklyPlans = []; 
+      const userId = req.user.id;
 
-      const gamification = computeXP(workoutLogs, weeklyPlans);
+      
+      let logRows = [];
+      try {
+        const { rows } = await pool.query(
+          `SELECT
+             wl.workout_date        AS date,
+             wl.completed,
+             wl.personal_best,
+             wl.is_deload,
+             wl.perceived_effort,
+             wl.kcal_burned,
+             wl.total_volume_kg,
+             wl.week_number         AS week,
+             (pl.sleep_hours IS NOT NULL)        AS sleep_logged,
+             (pl.water_intake_liters IS NOT NULL) AS hydration_logged
+           FROM workout_logs wl
+           LEFT JOIN progress_logs pl
+             ON pl.user_id = wl.user_id AND pl.log_date = wl.workout_date
+           WHERE wl.user_id = $1
+             AND wl.workout_date >= CURRENT_DATE - INTERVAL '90 days'
+           ORDER BY wl.workout_date ASC`,
+          [userId]
+        );
+        logRows = rows;
+      } catch {
+        
+        logRows = [];
+      }
+
+      
+      let weeklyPlans = [];
+      try {
+        const { rows: planRows } = await pool.query(
+          `SELECT workout_plan FROM plans WHERE user_id = $1 AND is_active = true LIMIT 1`,
+          [userId]
+        );
+        if (planRows[0]?.workout_plan) {
+          const wp = planRows[0].workout_plan;
+          if (Array.isArray(wp)) {
+            weeklyPlans = wp.map(w => ({
+              week:     w.week,
+              workouts: (w.workouts ?? []).filter(Boolean),
+            }));
+          }
+        }
+      } catch { }
+
+      const gamification = computeXP(logRows, weeklyPlans);
       return response(res, 200, true, "Gamification data retrieved", gamification);
     } catch (error) {
       next(error);
