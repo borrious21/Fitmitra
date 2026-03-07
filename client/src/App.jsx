@@ -1,13 +1,15 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "./context/ThemeContext";
-import { AuthProvider } from "./context/AuthContext"; 
+import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./routes/ProtectedRoute";
+import AdminRoute from "./routes/AdminRoute";
+
 // Pages
 import Landing from "./pages/public/Landing/Landing";
 import Signup from "./pages/public/Signup/Signup";
 import Login from "./pages/public/Login/Login";
-import VerifyEmail from "./pages/public/VerifyEmail/VerifyEmail"; 
-import VerifyEmailPending from "./pages/public/VerifyPendingEmail/VerifyPendingEmail"; 
+import VerifyEmail from "./pages/public/VerifyEmail/VerifyEmail";
+import VerifyEmailPending from "./pages/public/VerifyPendingEmail/VerifyPendingEmail";
 import ResetPassword from "./pages/public/ResetPassword/ResetPassword";
 import ForgotPassword from "./pages/public/ForgotPassword/ForgotPassword";
 import NotFound from "./pages/public/Notfound/NotFound";
@@ -20,60 +22,93 @@ import Plans from "./pages/protected/Dashboard/Plans/Plans";
 import LogMeal from "./pages/protected/Dashboard/Logmeal/Logmeal";
 import Workout from "./pages/protected/Dashboard/workout/workout";
 import Progress from "./pages/protected/Dashboard/Progress/Progress";
+import AdminDashboard from "./pages/protected/Admin/AdminDashboard";
 
 function App() {
   return (
-    <AuthProvider> 
+    <AuthProvider>
       <ThemeProvider>
         <Router>
           <Routes>
+            {/* ── Public routes ── */}
             <Route path="/" element={<Landing />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/login" element={<Login />} />
-            <Route path="/verify-email" element={<VerifyEmail />} /> 
-            <Route path="/verify-pending-email" element={<VerifyEmailPending />} /> 
+            <Route path="/verify-email" element={<VerifyEmail />} />
+            <Route path="/verify-pending-email" element={<VerifyEmailPending />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/404" element={<NotFound />} />
             <Route path="/check-email" element={<CheckEmail />} />
             <Route path="/contact-support" element={<ContactSupport />} />
 
-            {/* Protected routes */}
-            <Route path="/onboarding" element={
-              <ProtectedRoute allowOnboarding={true}>  {/* ← add this */}
-              <Onboarding />
-              </ProtectedRoute>
-            } />
-            <Route path="/dashboard" element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/profile" element={
-              <ProtectedRoute>
-                <Profile />
-              </ProtectedRoute>
-            } />
-            <Route path="/plans" element={
-              <ProtectedRoute>
-                <Plans />
-              </ProtectedRoute>
-            } />
-            <Route path="/log-meal" element={
-              <ProtectedRoute>
-                <LogMeal />
-              </ProtectedRoute>
-            } />
-            <Route path="/workout" element={
-              <ProtectedRoute>
-                <Workout />
-              </ProtectedRoute>
-            } />
-            <Route path="/progress" element={
-              <ProtectedRoute>
-                <Progress />
-              </ProtectedRoute>
-            } />
+            {/* ── Admin routes ── */}
+            <Route
+              path="/admin"
+              element={
+                <AdminRoute>
+                  <AdminDashboard />
+                </AdminRoute>
+              }
+            />
+
+            {/* ── Protected user routes ── */}
+            <Route
+              path="/onboarding"
+              element={
+                <ProtectedRoute allowOnboarding={true}>
+                  <Onboarding />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/plans"
+              element={
+                <ProtectedRoute>
+                  <Plans />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/log-meal"
+              element={
+                <ProtectedRoute>
+                  <LogMeal />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/workout"
+              element={
+                <ProtectedRoute>
+                  <Workout />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/progress"
+              element={
+                <ProtectedRoute>
+                  <Progress />
+                </ProtectedRoute>
+              }
+            />
 
             <Route path="*" element={<NotFound />} />
           </Routes>

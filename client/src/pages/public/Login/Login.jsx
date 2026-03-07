@@ -11,6 +11,19 @@ import OtpInput from "../../../components/Otp/OtpInput";
 import ThemeToggle from "../../../components/ThemeToggle/ThemeToggle";
 import styles from "./Login.module.css";
 
+// ── Helper: resolve where a verified, onboarded user should land ──────────────
+function resolveDestination(user, fallback) {
+  const role = user.role ?? user.user_role ?? "";
+
+  // Admins always go to the admin dashboard
+  if (role === "admin") return "/admin";
+
+  // Regular users: respect the "from" redirect or go to dashboard
+  const hasOnboarded =
+    user.hasCompletedOnboarding ?? user.has_completed_onboarding ?? false;
+  return hasOnboarded ? fallback : "/onboarding";
+}
+
 const Login = () => {
   const navigate  = useNavigate();
   const location  = useLocation();
@@ -31,20 +44,23 @@ const Login = () => {
   const [verifyError, setVerifyError]       = useState(null);
   const [postVerifyMessage, setPostVerifyMessage] = useState(null);
 
+  // Where to send the user after login (ignored for admins)
   const from = location.state?.from?.pathname || "/dashboard";
 
   useEffect(() => { clearError(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Redirect once auth state is resolved ────────────────────────────────────
   useEffect(() => {
     if (isAuthenticated && user && !isInitializing) {
+      // Block unverified users — let the unverified prompt handle them
       if (!user.isVerified) return;
-      const hasOnboarded =
-        user.hasCompletedOnboarding ?? user.has_completed_onboarding ?? false;
-      const destination = hasOnboarded ? from : "/onboarding";
+
+      const destination = resolveDestination(user, from);
       navigate(destination, { replace: true });
     }
   }, [isAuthenticated, user, isInitializing, navigate, from]);
 
+  // ── Show "email not verified" prompt ────────────────────────────────────────
   useEffect(() => {
     if (localError) {
       const msg = (localError?.message || String(localError)).toLowerCase();
@@ -87,6 +103,7 @@ const Login = () => {
     setLocalError(null);
     try {
       const { token, user: rawUser } = await loginService(formData.email, formData.password);
+      // login() updates AuthContext → the useEffect above fires → navigate()
       login(token, rawUser);
     } catch (err) {
       if (err?.status === 403) logout();
@@ -118,20 +135,25 @@ const Login = () => {
 
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
-    if (otp.length !== 6) { setVerifyError("Please enter the complete 6-digit code"); return; }
-    if (!formData.email.trim()) { setVerifyError("Email is required."); return; }
+    if (otp.length !== 6)        { setVerifyError("Please enter the complete 6-digit code"); return; }
+    if (!formData.email.trim())  { setVerifyError("Email is required."); return; }
+
     setVerifyLoading(true);
     setVerifyError(null);
     setPostVerifyMessage(null);
+
     try {
       await verifyEmailService(formData.email, otp);
       setOtp("");
       setResendSuccess(false);
       setLocalError(null);
+
+      // Auto-login after verification
       try {
         setIsLoading(true);
         const { token, user: rawUser } = await loginService(formData.email, formData.password);
         login(token, rawUser);
+        // Navigation handled by the useEffect above
       } catch {
         setPostVerifyMessage("Email verified! Please sign in with your password to continue.");
       } finally {
@@ -256,13 +278,13 @@ const Login = () => {
             {resendSuccess && (
               <div className={styles.successAlert}>
                 <div style={{ width: "100%" }}>
-                  <div style={{ display:"flex", alignItems:"flex-start", gap:"0.75rem", marginBottom:"1rem" }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: "0.75rem", marginBottom: "1rem" }}>
                     <Mail className={styles.successIcon} />
                     <p className={styles.successText}>
                       Code sent to <strong>{formData.email}</strong>! Enter it below:
                     </p>
                   </div>
-                  <form onSubmit={handleVerifyOtp} style={{ marginTop:"1rem" }}>
+                  <form onSubmit={handleVerifyOtp} style={{ marginTop: "1rem" }}>
                     <OtpInput
                       length={6}
                       value={otp}
@@ -271,7 +293,7 @@ const Login = () => {
                       error={!!verifyError}
                     />
                     {verifyError && (
-                      <p style={{ color:"var(--err-icon)", fontSize:"0.75rem", marginTop:"0.5rem", textAlign:"center", fontWeight:700, fontFamily:"var(--font-mono)", letterSpacing:"0.06em" }}>
+                      <p style={{ color: "var(--err-icon)", fontSize: "0.75rem", marginTop: "0.5rem", textAlign: "center", fontWeight: 700, fontFamily: "var(--font-mono)", letterSpacing: "0.06em" }}>
                         {verifyError}
                       </p>
                     )}
@@ -279,18 +301,18 @@ const Login = () => {
                       type="submit"
                       disabled={verifyLoading || otp.length !== 6}
                       className={styles.submitButton}
-                      style={{ marginTop:"1rem" }}
+                      style={{ marginTop: "1rem" }}
                     >
                       {verifyLoading ? (
                         <><Loader2 className={styles.loadingSpinner} /> Verifying...</>
                       ) : "Verify & Sign In"}
                     </button>
-                    <p style={{ fontSize:"0.7rem", color:"var(--ok-text)", marginTop:"0.75rem", textAlign:"center", fontFamily:"var(--font-mono)", letterSpacing:"0.06em", textTransform:"uppercase" }}>
+                    <p style={{ fontSize: "0.7rem", color: "var(--ok-text)", marginTop: "0.75rem", textAlign: "center", fontFamily: "var(--font-mono)", letterSpacing: "0.06em", textTransform: "uppercase" }}>
                       Prefer a separate page?{" "}
                       <Link
                         to="/verify-email"
                         state={{ email: formData.email }}
-                        style={{ color:"var(--orange)", fontWeight:700, textDecoration:"underline" }}
+                        style={{ color: "var(--orange)", fontWeight: 700, textDecoration: "underline" }}
                       >
                         Go to verification page
                       </Link>
