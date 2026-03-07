@@ -1,7 +1,7 @@
 // src/controllers/admin/admin.meal.controller.js
-import * as MealsService from "../services/mealsService.js";
-import { validateMeal } from "../validators/mealValidator.js";
-import logAdminAction from "../utils/adminLogger.js";
+import * as MealsService from "../../services/Admin/meal.service.js";
+import { validateMeal } from "../../validators/admin/meal.validator.js";
+import logAdminAction from "../../utils/admin/admin.logger.js";
 import response from "../../utils/response.util.js";
 
 class MealsController {

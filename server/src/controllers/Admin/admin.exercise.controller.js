@@ -1,8 +1,8 @@
 // 
 
-import * as ExercisesService from "../services/exercisesService.js";
-import { validateExercise } from "../validators/exerciseValidator.js";
-import logAdminAction from "../utils/adminLogger.js";
+import * as ExercisesService from "../../services/Admin/exercise.service.js";
+import { validateExercise } from "../../validators/admin/exercise.validator.js";
+import logAdminAction from "../../utils/admin/admin.logger.js";
 import response from "../../utils/response.util.js";
 
 class ExercisesController {

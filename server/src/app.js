@@ -9,13 +9,14 @@ import corsOptions from "./config/cors.config.js";
 import errorMiddleware from "./middlewares/error.middleware.js";
 
 // Routes
-import authRoutes from "./routes/auth.routes.js";
-import profileRoutes from "./routes/profile.route.js";
-import workoutRoutes from "./routes/workout.routes.js";
+import authRoutes      from "./routes/auth.routes.js";
+import profileRoutes   from "./routes/profile.route.js";
+import workoutRoutes   from "./routes/workout.routes.js";
 import dashboardRoutes from "./routes/dashboard.routes.js";
-import planRoutes from "./routes/plan.route.js";
-import mealRoutes from "./routes/meal.route.js"
-import progressRoutes from "./routes/progress.route.js"
+import planRoutes      from "./routes/plan.route.js";
+import mealRoutes      from "./routes/meal.route.js";
+import progressRoutes  from "./routes/progress.route.js";
+import adminRoutes     from "./routes/admin.routes.js";
 
 const app = express();
 
@@ -29,35 +30,23 @@ if (process.env.NODE_ENV !== "production") {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Only auth routes
-app.use("/api/auth", authRoutes);
+app.use("/api/auth",      authRoutes);
 
-// Protected profile routes
-app.use("/api/profile", profileRoutes);
-
-// Protected workout routes
-app.use("/api/workouts", workoutRoutes);
-
-// Protected dashboard routes
+app.use("/api/profile",   profileRoutes);
+app.use("/api/workouts",  workoutRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/plans",     planRoutes);
+app.use("/api/meals",     mealRoutes);
+app.use("/api/progress",  progressRoutes);
 
-// Protected plan routes
-app.use("/api/plans", planRoutes);
+app.use("/api/admin",     adminRoutes);
 
-// Protected meal routes
-app.use("/api/meals", mealRoutes);
-
-// Progress meal routes
-app.use("/api/progress", progressRoutes);
-
-// 404 for any other route
 app.use((req, res, next) => {
   const error = new Error(`Not Found - ${req.originalUrl}`);
   error.statusCode = 404;
   next(error);
 });
 
-// Global error handler
 app.use(errorMiddleware);
 
 export default app;

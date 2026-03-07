@@ -1,5 +1,5 @@
 // admin/controllers/analyticsController.js
-import * as AnalyticsService from "../services/analyticsService.js";
+import * as AnalyticsService from "../../services/Admin/analytic.service.js";
 import response from "../../utils/response.util.js";
 
 class AnalyticsController {

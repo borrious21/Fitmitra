@@ -1,6 +1,6 @@
 // admin/controllers/logsController.js
-import * as LogsService from "../services/logsService.js";
-import logAdminAction from "../utils/adminLogger.js";
+import * as LogsService from "../../services/Admin/log.service.js";
+import logAdminAction from "../../utils/admin/admin.logger.js";
 import response from "../../utils/response.util.js";
 
 class LogsController {

@@ -1,5 +1,5 @@
 // Controllers/Admin/admin.dashboard.controller.js
-import { getPlatformOverview } from "../services/analyticsService.js";
+import { getPlatformOverview } from "../../services/Admin/analytic.service.js";
 import pool from "../../db/pool.js";
 import response from "../../utils/response.util.js";
 

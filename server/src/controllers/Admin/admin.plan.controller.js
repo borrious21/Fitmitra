@@ -1,7 +1,7 @@
 // 
 
-import * as PlansService from "../services/plansService.js";
-import logAdminAction from "../utils/adminLogger.js";
+import * as PlansService from "../../services/plan.service.js";
+import logAdminAction from "../../utils/admin/admin.logger.js";
 import response from "../../utils/response.util.js";
 
 class PlansController {

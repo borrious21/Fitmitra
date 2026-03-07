@@ -1,8 +1,8 @@
 // controllers/Admin/admin.user.controller.js
 import bcrypt from "bcryptjs";
-import * as UsersService from "../services/usersService.js";
-import { validateUserUpdate } from "../validators/userValidator.js";
-import logAdminAction from "../utils/adminLogger.js";
+import * as UsersService from "../../services/Admin/UsersService.js";
+import { validateUserUpdate } from "../../validators/admin/user.validator.js";
+import logAdminAction from "../../utils/admin/admin.logger.js";
 import response from "../../utils/response.util.js";
 
 class UsersController {

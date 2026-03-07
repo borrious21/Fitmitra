@@ -1,6 +1,6 @@
 // admin/controllers/notificationsController.js
 import pool from "../../db/pool.js";
-import logAdminAction from "../utils/adminLogger.js";
+import logAdminAction from "../../utils/admin/admin.logger.js";
 import response from "../../utils/response.util.js";
 
 const VALID_TYPES = ["info", "warning", "achievement", "reminder", "system"];
