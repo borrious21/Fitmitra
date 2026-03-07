@@ -29,7 +29,7 @@ class MealsController {
       return response(res, 200, true, "Meal retrieved", meal);
     } catch (err) { next(err); }
   }
-
+  
   static async createMeal(req, res, next) {
     try {
       validateMeal(req.body, false);
@@ -49,7 +49,7 @@ class MealsController {
       validateMeal(req.body, true);
       const meal = await MealsService.updateMeal(req.params.id, req.body);
       if (!meal) return response(res, 404, false, "Meal not found");
-      await logAdminAction(req.user.id, "UPDATE_MEAL", { meal_id: req.params.id });
+      await logAdminAction(req.user.id, "UPDATE_MEAL", { meal_id: Number(req.params.id) });
       return response(res, 200, true, "Meal updated successfully", meal);
     } catch (err) {
       if (err.name === "ValidationError") {
@@ -63,7 +63,7 @@ class MealsController {
     try {
       const meal = await MealsService.deleteMeal(req.params.id);
       if (!meal) return response(res, 404, false, "Meal not found");
-      await logAdminAction(req.user.id, "DELETE_MEAL", { meal_id: req.params.id });
+      await logAdminAction(req.user.id, "DELETE_MEAL", { meal_id: Number(req.params.id) });
       return response(res, 200, true, "Meal deleted successfully");
     } catch (err) { next(err); }
   }

@@ -33,22 +33,27 @@ class UsersController {
     } catch (err) { next(err); }
   }
 
+  // Sets is_active = false (schema has no is_banned column)
   static async banUser(req, res, next) {
     try {
+      if (String(req.params.id) === String(req.user.id)) {
+        return response(res, 400, false, "You cannot ban your own account");
+      }
       const user = await UsersService.banUser(req.params.id);
       if (!user) return response(res, 404, false, "User not found");
 
-      await logAdminAction(req.user.id, "BAN_USER", { target_user_id: req.params.id });
+      await logAdminAction(req.user.id, "BAN_USER", { target_user_id: Number(req.params.id) });
       return response(res, 200, true, "User banned successfully", user);
     } catch (err) { next(err); }
   }
 
+  // Sets is_active = true
   static async activateUser(req, res, next) {
     try {
       const user = await UsersService.activateUser(req.params.id);
       if (!user) return response(res, 404, false, "User not found");
 
-      await logAdminAction(req.user.id, "ACTIVATE_USER", { target_user_id: req.params.id });
+      await logAdminAction(req.user.id, "ACTIVATE_USER", { target_user_id: Number(req.params.id) });
       return response(res, 200, true, "User activated successfully", user);
     } catch (err) { next(err); }
   }
@@ -58,7 +63,7 @@ class UsersController {
       const user = await UsersService.verifyUser(req.params.id);
       if (!user) return response(res, 404, false, "User not found");
 
-      await logAdminAction(req.user.id, "VERIFY_USER", { target_user_id: req.params.id });
+      await logAdminAction(req.user.id, "VERIFY_USER", { target_user_id: Number(req.params.id) });
       return response(res, 200, true, "User verified successfully", user);
     } catch (err) { next(err); }
   }
@@ -72,7 +77,7 @@ class UsersController {
       const user = await UsersService.deleteUser(req.params.id);
       if (!user) return response(res, 404, false, "User not found");
 
-      await logAdminAction(req.user.id, "DELETE_USER", { target_user_id: req.params.id });
+      await logAdminAction(req.user.id, "DELETE_USER", { target_user_id: Number(req.params.id) });
       return response(res, 200, true, "User deleted successfully");
     } catch (err) { next(err); }
   }
@@ -88,7 +93,7 @@ class UsersController {
       const user = await UsersService.resetUserPassword(req.params.id, hashedPassword);
       if (!user) return response(res, 404, false, "User not found");
 
-      await logAdminAction(req.user.id, "RESET_USER_PASSWORD", { target_user_id: req.params.id });
+      await logAdminAction(req.user.id, "RESET_USER_PASSWORD", { target_user_id: Number(req.params.id) });
       return response(res, 200, true, "Password reset successfully");
     } catch (err) { next(err); }
   }

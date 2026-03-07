@@ -1,5 +1,4 @@
-// 
-
+// controllers/Admin/admin.exercise.controller.js
 import * as ExercisesService from "../../services/Admin/exercise.service.js";
 import { validateExercise } from "../../validators/admin/exercise.validator.js";
 import logAdminAction from "../../utils/admin/admin.logger.js";
@@ -32,6 +31,7 @@ class ExercisesController {
     } catch (err) { next(err); }
   }
 
+  // Body shape: { name, muscle_group, equipment, difficulty: "beginner"|"intermediate"|"advanced", contraindications }
   static async createExercise(req, res, next) {
     try {
       validateExercise(req.body, false);
@@ -51,7 +51,7 @@ class ExercisesController {
       validateExercise(req.body, true);
       const exercise = await ExercisesService.updateExercise(req.params.id, req.body);
       if (!exercise) return response(res, 404, false, "Exercise not found");
-      await logAdminAction(req.user.id, "UPDATE_EXERCISE", { exercise_id: req.params.id });
+      await logAdminAction(req.user.id, "UPDATE_EXERCISE", { exercise_id: Number(req.params.id) });
       return response(res, 200, true, "Exercise updated successfully", exercise);
     } catch (err) {
       if (err.name === "ValidationError") {
@@ -65,7 +65,7 @@ class ExercisesController {
     try {
       const exercise = await ExercisesService.deleteExercise(req.params.id);
       if (!exercise) return response(res, 404, false, "Exercise not found");
-      await logAdminAction(req.user.id, "DELETE_EXERCISE", { exercise_id: req.params.id });
+      await logAdminAction(req.user.id, "DELETE_EXERCISE", { exercise_id: Number(req.params.id) });
       return response(res, 200, true, "Exercise deleted successfully");
     } catch (err) { next(err); }
   }

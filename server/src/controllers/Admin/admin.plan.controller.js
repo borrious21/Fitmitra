@@ -1,6 +1,6 @@
 // 
 
-import * as PlansService from "../../services/plan.service.js";
+import * as PlansService from "../../services/Admin/plan.service.js";
 import logAdminAction from "../../utils/admin/admin.logger.js";
 import response from "../../utils/response.util.js";
 

@@ -1,4 +1,4 @@
-// admin/services/exercisesService.js
+// admin/services/exercise.service.js
 import pool from "../../db/pool.js";
 
 export const getAllExercises = async ({ limit = 50, offset = 0, search = "", muscle_group = "", equipment = "" }) => {
@@ -40,21 +40,27 @@ export const getExerciseById = async (id) => {
   return rows[0] || null;
 };
 
+// exercises table: id, name, muscle_group, difficulty (VARCHAR), equipment, contraindications (JSONB)
 export const createExercise = async (data) => {
   const {
-    name, muscle_group, equipment = "bodyweight",
-    difficulty = 1, tier = "A", instructions = null,
-    video_url = null, is_cardio = false,
+    name,
+    muscle_group      = null,
+    equipment         = null,
+    difficulty        = "beginner",   // VARCHAR: beginner | intermediate | advanced
+    contraindications = null,
   } = data;
 
   const { rows } = await pool.query(
-    `INSERT INTO exercises
-       (name, muscle_group, equipment, difficulty, tier,
-        instructions, video_url, is_cardio, created_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW())
+    `INSERT INTO exercises (name, muscle_group, equipment, difficulty, contraindications, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
      RETURNING *`,
-    [name, muscle_group, equipment, difficulty, tier,
-     instructions, video_url, is_cardio]
+    [
+      name,
+      muscle_group,
+      equipment,
+      difficulty,
+      contraindications ? JSON.stringify(contraindications) : null,
+    ]
   );
   return rows[0];
 };
@@ -62,16 +68,15 @@ export const createExercise = async (data) => {
 export const updateExercise = async (id, data) => {
   const fields  = [];
   const params  = [];
-  const allowed = [
-    "name", "muscle_group", "equipment", "difficulty",
-    "tier", "instructions", "video_url", "is_cardio",
-  ];
 
-  for (const key of allowed) {
-    if (data[key] !== undefined) {
-      params.push(data[key]);
-      fields.push(`${key} = $${params.length}`);
-    }
+  // Only columns that actually exist in the exercises table
+  if (data.name         !== undefined) { params.push(data.name);         fields.push(`name = $${params.length}`); }
+  if (data.muscle_group !== undefined) { params.push(data.muscle_group); fields.push(`muscle_group = $${params.length}`); }
+  if (data.equipment    !== undefined) { params.push(data.equipment);    fields.push(`equipment = $${params.length}`); }
+  if (data.difficulty   !== undefined) { params.push(data.difficulty);   fields.push(`difficulty = $${params.length}`); }
+  if (data.contraindications !== undefined) {
+    params.push(JSON.stringify(data.contraindications));
+    fields.push(`contraindications = $${params.length}`);
   }
 
   if (!fields.length) return getExerciseById(id);

@@ -20,7 +20,7 @@ export const getAllUsers = async ({ limit = 50, offset = 0, search = "", role = 
   const { rows } = await pool.query(
     `SELECT
        u.id, u.name, u.email, u.role, u.is_verified,
-       u.is_banned, u.has_completed_onboarding, u.created_at,
+       u.is_active, u.has_completed_onboarding, u.created_at,
        p.goal, p.activity_level
      FROM users u
      LEFT JOIN profiles p ON p.user_id = u.id
@@ -42,9 +42,9 @@ export const getUserById = async (userId) => {
   const { rows } = await pool.query(
     `SELECT
        u.id, u.name, u.email, u.role, u.is_verified,
-       u.is_banned, u.has_completed_onboarding, u.created_at,
-       p.age, p.gender, p.height, p.weight, p.goal,
-       p.activity_level, p.diet_type, p.bmi, p.bmr, p.tdee,
+       u.is_active, u.has_completed_onboarding, u.created_at,
+       p.age, p.gender, p.height_cm, p.weight_kg, p.goal,
+       p.activity_level, p.diet_type,
        up.avatar_url
      FROM users u
      LEFT JOIN profiles p ON p.user_id = u.id
@@ -55,19 +55,21 @@ export const getUserById = async (userId) => {
   return rows[0] || null;
 };
 
+// Ban = set is_active false (no is_banned column in schema)
 export const banUser = async (userId) => {
   const { rows } = await pool.query(
-    `UPDATE users SET is_banned = true, updated_at = NOW()
-     WHERE id = $1 RETURNING id, name, email, is_banned`,
+    `UPDATE users SET is_active = false, updated_at = NOW()
+     WHERE id = $1 RETURNING id, name, email, is_active`,
     [userId]
   );
   return rows[0] || null;
 };
 
+// Activate = set is_active true
 export const activateUser = async (userId) => {
   const { rows } = await pool.query(
-    `UPDATE users SET is_banned = false, updated_at = NOW()
-     WHERE id = $1 RETURNING id, name, email, is_banned`,
+    `UPDATE users SET is_active = true, updated_at = NOW()
+     WHERE id = $1 RETURNING id, name, email, is_active`,
     [userId]
   );
   return rows[0] || null;
