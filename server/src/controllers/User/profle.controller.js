@@ -11,7 +11,6 @@ class ProfileController {
     } catch (error) { next(error); }
   }
 
-  // Create profile
   static async createProfile(req, res, next) {
     try {
       const existingProfile = await ProfileModel.findByUserId(req.user.id);

@@ -1,122 +1,97 @@
-// server/controllers/Admin/adminUsersController.js
-const bcrypt         = require("bcryptjs");
-const userService    = require("../services/adminUserService");
+// controllers/Admin/admin.user.controller.js
+import bcrypt from "bcryptjs";
+import * as UsersService from "../services/usersService.js";
+import { validateUserUpdate } from "../validators/userValidator.js";
+import logAdminAction from "../utils/adminLogger.js";
+import response from "../../utils/response.util.js";
 
-exports.getAllUsers = async (req, res) => {
-  try {
-    const { search, role, is_active, page, limit } = req.query;
-    const result = await userService.getAllUsers({ search, role, is_active, page, limit });
-    res.json(result);
-  } catch (err) {
-    console.error("getAllUsers:", err);
-    res.status(500).json({ message: "Failed to fetch users." });
+class UsersController {
+
+  static async getAllUsers(req, res, next) {
+    try {
+      const { limit = 50, offset = 0, search = "", role = "" } = req.query;
+      const data = await UsersService.getAllUsers({
+        limit: Math.min(Number(limit), 100),
+        offset: Number(offset),
+        search,
+        role,
+      });
+      return response(res, 200, true, "Users retrieved", {
+        ...data,
+        pagination: { limit: Number(limit), offset: Number(offset), total: data.total },
+      });
+    } catch (err) { next(err); }
   }
-};
 
-exports.getUserById = async (req, res) => {
-  try {
-    const user = await userService.getUserById(req.params.id);
-    if (!user) return res.status(404).json({ message: "User not found." });
-    res.json(user);
-  } catch (err) {
-    console.error("getUserById:", err);
-    res.status(500).json({ message: "Failed to fetch user." });
+  static async getUserById(req, res, next) {
+    try {
+      const user = await UsersService.getUserById(req.params.id);
+      if (!user) {
+        return response(res, 404, false, "User not found");
+      }
+      return response(res, 200, true, "User retrieved", user);
+    } catch (err) { next(err); }
   }
-};
 
-exports.banUser = async (req, res) => {
-  try {
-    const user = await userService.banUser(req.params.id);
-    if (!user) return res.status(404).json({ message: "User not found." });
-    await userService.writeAdminLog(req.user.id, req.params.id, "ban_user", {}, req.ip);
-    res.json({ message: `User "${user.name}" has been banned.`, user });
-  } catch (err) {
-    console.error("banUser:", err);
-    res.status(500).json({ message: "Failed to ban user." });
+  static async banUser(req, res, next) {
+    try {
+      const user = await UsersService.banUser(req.params.id);
+      if (!user) return response(res, 404, false, "User not found");
+
+      await logAdminAction(req.user.id, "BAN_USER", { target_user_id: req.params.id });
+      return response(res, 200, true, "User banned successfully", user);
+    } catch (err) { next(err); }
   }
-};
 
-exports.activateUser = async (req, res) => {
-  try {
-    const user = await userService.activateUser(req.params.id);
-    if (!user) return res.status(404).json({ message: "User not found." });
-    await userService.writeAdminLog(req.user.id, req.params.id, "activate_user", {}, req.ip);
-    res.json({ message: `User "${user.name}" has been activated.`, user });
-  } catch (err) {
-    console.error("activateUser:", err);
-    res.status(500).json({ message: "Failed to activate user." });
+  static async activateUser(req, res, next) {
+    try {
+      const user = await UsersService.activateUser(req.params.id);
+      if (!user) return response(res, 404, false, "User not found");
+
+      await logAdminAction(req.user.id, "ACTIVATE_USER", { target_user_id: req.params.id });
+      return response(res, 200, true, "User activated successfully", user);
+    } catch (err) { next(err); }
   }
-};
 
-exports.deleteUser = async (req, res) => {
-  try {
-    const existing = await userService.getUserById(req.params.id);
-    if (!existing) return res.status(404).json({ message: "User not found." });
+  static async verifyUser(req, res, next) {
+    try {
+      const user = await UsersService.verifyUser(req.params.id);
+      if (!user) return response(res, 404, false, "User not found");
 
-    if (+req.params.id === req.user.id) {
-      return res.status(400).json({ message: "Cannot delete your own account." });
-    }
-
-    await userService.writeAdminLog(
-      req.user.id, req.params.id, "delete_user",
-      { deleted_name: existing.name, deleted_email: existing.email }, req.ip
-    );
-    await userService.deleteUser(req.params.id);
-    res.json({ message: `User "${existing.name}" deleted.` });
-  } catch (err) {
-    console.error("deleteUser:", err);
-    res.status(500).json({ message: "Failed to delete user." });
+      await logAdminAction(req.user.id, "VERIFY_USER", { target_user_id: req.params.id });
+      return response(res, 200, true, "User verified successfully", user);
+    } catch (err) { next(err); }
   }
-};
 
-exports.resetPassword = async (req, res) => {
-  try {
-    const { new_password } = req.body;
-    if (!new_password || new_password.length < 8) {
-      return res.status(400).json({ message: "Password must be at least 8 characters." });
-    }
+  static async deleteUser(req, res, next) {
+    try {
+      if (String(req.params.id) === String(req.user.id)) {
+        return response(res, 400, false, "You cannot delete your own account");
+      }
 
-    const hash = await bcrypt.hash(new_password, 10);
-    await userService.resetUserPassword(req.params.id, hash);
-    await userService.writeAdminLog(req.user.id, req.params.id, "reset_password", {}, req.ip);
-    res.json({ message: "Password has been reset." });
-  } catch (err) {
-    console.error("resetPassword:", err);
-    res.status(500).json({ message: "Failed to reset password." });
+      const user = await UsersService.deleteUser(req.params.id);
+      if (!user) return response(res, 404, false, "User not found");
+
+      await logAdminAction(req.user.id, "DELETE_USER", { target_user_id: req.params.id });
+      return response(res, 200, true, "User deleted successfully");
+    } catch (err) { next(err); }
   }
-};
 
-exports.sendNotification = async (req, res) => {
-  try {
-    const { user_id, title, message, notification_type = "admin_message", scheduled_for } = req.body;
+  static async resetPassword(req, res, next) {
+    try {
+      const { newPassword } = req.body || {};
+      if (!newPassword || newPassword.length < 8) {
+        return response(res, 400, false, "newPassword must be at least 8 characters");
+      }
 
-    if (!title || !message) {
-      return res.status(400).json({ message: "Title and message are required." });
-    }
+      const hashedPassword = await bcrypt.hash(newPassword, 12);
+      const user = await UsersService.resetUserPassword(req.params.id, hashedPassword);
+      if (!user) return response(res, 404, false, "User not found");
 
-    const pool = require("../db");
-
-    if (user_id) {
-      await pool.query(
-        `INSERT INTO notifications (user_id, notification_type, title, message, scheduled_for)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [user_id, notification_type, title, message, scheduled_for || null]
-      );
-      await userService.writeAdminLog(req.user.id, user_id, "send_notification", { title }, req.ip);
-      res.json({ message: "Notification sent to user." });
-    } else {
-      const result = await pool.query(
-        `INSERT INTO notifications (user_id, notification_type, title, message, scheduled_for)
-         SELECT id, $1, $2, $3, $4
-         FROM   users
-         WHERE  is_active = TRUE`,
-        [notification_type, title, message, scheduled_for || null]
-      );
-      await userService.writeAdminLog(req.user.id, null, "broadcast_notification", { title, count: result.rowCount }, req.ip);
-      res.json({ message: `Broadcast sent to ${result.rowCount} users.` });
-    }
-  } catch (err) {
-    console.error("sendNotification:", err);
-    res.status(500).json({ message: "Failed to send notification." });
+      await logAdminAction(req.user.id, "RESET_USER_PASSWORD", { target_user_id: req.params.id });
+      return response(res, 200, true, "Password reset successfully");
+    } catch (err) { next(err); }
   }
-};
+}
+
+export default UsersController;

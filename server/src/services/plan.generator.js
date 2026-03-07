@@ -1,21 +1,4 @@
 // src/services/plan.generator.js
-// ─────────────────────────────────────────────────────────────
-//  Plan Generator v2.0
-//  Features:
-//    • Phase-based periodization (Foundation → Volume → Intensity → Deload)
-//    • Exercise rotation via A/B split variants per week
-//    • HIIT capped at 1×/week; LISS added for fat loss + recovery
-//    • Warm-up & Cooldown blocks on every session
-//    • Balanced leg day (3 sets on main compound)
-//    • Upgraded Core day (5 exercises, heavier)
-//    • Personalized macro targets (protein g/kg, daily kcal)
-//    • Hydration + electrolyte guidance per week
-//    • Sleep & recovery protocol per week
-//    • Missed workout recovery suggestions
-// ─────────────────────────────────────────────────────────────
-
-// ── WARM-UP / COOLDOWN ────────────────────────────────────────
-
 const WARMUP = [
   { name: "Jump Rope / Light Jog",    duration_min: 5, est_kcal: 50, type: "warmup" },
   { name: "Arm Circles & Leg Swings", duration_min: 3, est_kcal: 20, type: "warmup" },
@@ -25,8 +8,6 @@ const WARMUP = [
 const COOLDOWN = [
   { name: "Static Stretching", duration_min: 5, est_kcal: 20, type: "cooldown" },
 ];
-
-// ── EXERCISE LIBRARY ─────────────────────────────────────────
 
 const EXERCISE_POOL = {
   "Full Body": [
@@ -68,7 +49,6 @@ const EXERCISE_POOL = {
     { name: "Concentration Curl", muscles: ["Biceps"],            sets: 3, reps: 12, weight_kg: 8,  est_kcal: 75  },
   ],
 
-  // Back Squat reduced 4→3 sets to balance intensity with other days
   Legs: [
     { name: "Back Squat",            muscles: ["Quads","Glutes","Hamstrings"], sets: 3, reps: 8,  weight_kg: 60, est_kcal: 230 },
     { name: "Bulgarian Split Squat", muscles: ["Quads","Glutes"],              sets: 3, reps: 10, weight_kg: 20, est_kcal: 200 },
@@ -82,7 +62,6 @@ const EXERCISE_POOL = {
     { name: "Seated Calf Raise", muscles: ["Calves"],                sets: 3, reps: 15, weight_kg: 20, est_kcal: 70  },
   ],
 
-  // 5 exercises, heavier weights
   Core: [
     { name: "Cable Crunch",      muscles: ["Abs"],               sets: 3, reps: 15, weight_kg: 15, est_kcal: 80  },
     { name: "Hanging Leg Raise", muscles: ["Abs","Hip Flexors"], sets: 3, reps: 12, weight_kg: 0,  est_kcal: 110 },
@@ -98,7 +77,6 @@ const EXERCISE_POOL = {
     { name: "Dragon Flag Negatives", muscles: ["Abs","Core"],     sets: 3, reps: 5,  weight_kg: 0, est_kcal: 90  },
   ],
 
-  // Max 1×/week via SPLITS definition
   HIIT: [
     { name: "Burpees",          muscles: ["Full Body"],               sets: 4, reps: 10, weight_kg: 0, est_kcal: 160 },
     { name: "Jump Squats",      muscles: ["Quads","Glutes"],          sets: 4, reps: 12, weight_kg: 0, est_kcal: 140 },
@@ -106,7 +84,6 @@ const EXERCISE_POOL = {
     { name: "Box Jumps",        muscles: ["Quads","Glutes","Calves"], sets: 3, reps: 10, weight_kg: 0, est_kcal: 130 },
   ],
 
-  // Replaces excessive HIIT for active recovery + fat loss
   LISS: [
     { name: "Brisk Walk",    muscles: ["Full Body"],      sets: 1, duration_min: 30, reps: null, weight_kg: 0, est_kcal: 150 },
     { name: "Light Cycling", muscles: ["Quads","Calves"], sets: 1, duration_min: 25, reps: null, weight_kg: 0, est_kcal: 130 },
@@ -128,15 +105,11 @@ const EXERCISE_POOL = {
   ],
 };
 
-// ── WORKOUT SPLITS PER LEVEL ──────────────────────────────────
-
 const SPLITS = {
   beginner:     ["Full Body", "Cardio",  "Stretching"],
   intermediate: ["Push", "Pull", "Legs", "Core", "LISS"],
   advanced:     ["Push", "Pull", "Legs", "HIIT", "Core", "LISS"],
 };
-
-// ── MISSED WORKOUT RECOVERY MAP ───────────────────────────────
 
 export const MISSED_WORKOUT_RECOVERY = {
   Push:        "3×10 push-ups + 3×10 dumbbell press at home",
@@ -149,8 +122,6 @@ export const MISSED_WORKOUT_RECOVERY = {
   Cardio:      "20-min easy walk",
   Stretching:  "10-min bedtime stretch routine",
 };
-
-// ── MEAL LIBRARY ──────────────────────────────────────────────
 
 const MEAL_POOL = {
   veg: {
@@ -235,24 +206,12 @@ const MEAL_POOL = {
   },
 };
 
-// ── HELPERS ───────────────────────────────────────────────────
-
 function normalizeDiet(dietType = "") {
   const d = dietType.toLowerCase();
   return d.includes("non") || d.includes("chicken") || d.includes("meat") || d.includes("fish")
     ? "non_veg"
     : "veg";
 }
-
-// ── PROGRESSION ENGINE ────────────────────────────────────────
-//
-//  Phase-based periodization per 4-week block:
-//    Block Week 1 (Foundation): base reps, base weight
-//    Block Week 2 (Volume):     +2 reps, same weight
-//    Block Week 3 (Intensity):  −1 rep,  +10% weight
-//    Block Week 4 (Deload):     −1 set,  −20% reps, same weight
-//
-//  Cross-block: every completed 4-week block → +2.5 kg on weighted exercises.
 
 function applyProgression(exercise, week) {
   const ex        = { ...exercise };
@@ -305,16 +264,12 @@ function applyProgression(exercise, week) {
   return ex;
 }
 
-// ── SPLIT ROTATION ────────────────────────────────────────────
-
 function getRotatedSplit(splitName, week) {
   const blockWeek  = ((week - 1) % 4) + 1;
   const useVariant = blockWeek % 2 === 0;
   const variantKey = `${splitName} B`;
   return useVariant && EXERCISE_POOL[variantKey] ? variantKey : splitName;
 }
-
-// ── MEAL BUILDER ──────────────────────────────────────────────
 
 function buildWeekMeals(dietKey, week, daysPerWeek = 7, targets = {}) {
   const pool  = MEAL_POOL[dietKey];
@@ -343,8 +298,6 @@ function buildWeekMeals(dietKey, week, daysPerWeek = 7, targets = {}) {
   return meals;
 }
 
-// ── FOCUS TAG ─────────────────────────────────────────────────
-
 function weekFocusTag(blockWeek, goals) {
   return {
     1: `Foundation — ${goals}`,
@@ -354,7 +307,6 @@ function weekFocusTag(blockWeek, goals) {
   }[blockWeek] ?? `Week ${blockWeek} — ${goals}`;
 }
 
-// ── RECOVERY PROTOCOL ─────────────────────────────────────────
 
 function buildRecoveryProtocol(isDeload) {
   return {
@@ -372,7 +324,6 @@ function buildRecoveryProtocol(isDeload) {
   };
 }
 
-// ── MACRO CALCULATOR ─────────────────────────────────────────
 
 function computeMacros(bodyWeightKg, goal) {
   const proteinMult   = goal?.includes("muscle") ? 2.2 : 1.8;
@@ -386,7 +337,6 @@ function computeMacros(bodyWeightKg, goal) {
   return { proteinTarget, dailyKcal, carbsTarget, fatTarget };
 }
 
-// ── MAIN EXPORT ───────────────────────────────────────────────
 
 export function generatePlan({
   fitnessLevel      = "beginner",
