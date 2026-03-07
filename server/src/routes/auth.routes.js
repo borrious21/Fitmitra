@@ -1,6 +1,6 @@
 // src/routes/auth.routes.js
 import { Router } from "express";
-import AuthController from "../controllers/auth.controller.js";
+import AuthController from "../controllers/User/auth.controller.js";
 import authenticate, { requireVerified } from "../middlewares/auth.middleware.js";
 
 const router = Router();

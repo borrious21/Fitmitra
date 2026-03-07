@@ -1,7 +1,7 @@
 // src/controllers/auth.controller.js
-import AuthService from "../services/auth.service.js";
-import AuthError from "../errors/auth.error.js";
-import response from "../utils/response.util.js";
+import AuthService from "../../services/auth.service.js";
+import AuthError from "../../errors/auth.error.js";
+import response from "../../utils/response.util.js";
 
 class AuthController {
   static async signup(req, res, next) {

@@ -1,6 +1,6 @@
-import ProfileModel from "../models/profile.model.js";
-import pool from "../db/pool.js";
-import cloudinary from "../config/cloudinary.js"; // ← add this import
+import ProfileModel from "../../models/profile.model.js";
+import pool from "../../db/pool.js";
+import cloudinary from "../../config/cloudinary.js"; 
 
 class ProfileController {
   static async getMyProfile(req, res, next) {

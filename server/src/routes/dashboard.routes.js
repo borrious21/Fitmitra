@@ -1,7 +1,7 @@
 // src/routes/dashboard.routes.js
 import { Router } from "express";
 import authMiddleware from "../middlewares/auth.middleware.js";
-import DashboardController from "../controllers/dashboard.controller.js";
+import DashboardController from "../controllers/User/dashboard.controller.js";
 
 const router = Router();
 router.use(authMiddleware);

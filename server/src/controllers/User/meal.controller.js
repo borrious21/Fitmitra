@@ -13,7 +13,7 @@ import {
   getDailySummary,
   getWeeklySummary,
   MealLogServiceError,
-} from "../services/meal.service.js";
+} from "../../services/meal.service.js";
 
 const NOT_FOUND_CODES = new Set(["MEAL_NOT_FOUND", "LOG_NOT_FOUND"]);
 

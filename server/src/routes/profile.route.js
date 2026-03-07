@@ -1,6 +1,6 @@
 import { Router } from "express";
 import authMiddleware from "../middlewares/auth.middleware.js";
-import ProfileController from "../controllers/profle.controller.js";
+import ProfileController from "../controllers/User/profle.controller.js";
 import fileUpload from "express-fileupload";
 
 const router = Router();

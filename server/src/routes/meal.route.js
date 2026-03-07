@@ -13,7 +13,7 @@ import {
   deleteMealLogsByDate,
   getMealSummaryDaily,
   getMealSummaryWeekly,
-} from "../controllers/meal.controller.js";
+} from "../controllers/User/meal.controller.js";
 
 const router = Router();
 

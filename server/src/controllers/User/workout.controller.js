@@ -1,9 +1,9 @@
 // src/controllers/workout.controller.js
 
-import WorkoutService from '../services/workout.service.js';
-import WorkoutModel   from '../models/workout.model.js';
-import { isValidDateString } from '../utils/validation.util.js';
-import { validateWorkoutLog } from '../validators/workout.validator.js';
+import WorkoutService from '../../services/workout.service.js';
+import WorkoutModel   from '../../models/workout.model.js';
+import { isValidDateString } from '../../utils/validation.util.js';
+import { validateWorkoutLog } from '../../validators/workout.validator.js';
 
 class WorkoutController {
 

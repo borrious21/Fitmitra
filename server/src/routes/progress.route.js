@@ -1,5 +1,5 @@
 import { Router } from "express";
-import ProgressController from "../controllers/progress.controller.js";
+import ProgressController from "../controllers/User/progress.controller.js";
 import authMiddleware from "../middlewares/auth.middleware.js";
 
 const router = Router();

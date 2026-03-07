@@ -1,7 +1,7 @@
 // src/routes/workout.routes.js
 
 import { Router }         from 'express';
-import WorkoutController  from '../controllers/workout.controller.js';
+import WorkoutController  from '../controllers/User/workout.controller.js';
 import authMiddleware     from '../middlewares/auth.middleware.js';
 
 const router = Router();

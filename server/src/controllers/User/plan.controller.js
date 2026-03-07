@@ -5,16 +5,16 @@ import PlanService, {
   computeCalorieAdjustment,
   recommendProgression,
   computeProgressMetrics,
-} from "../services/plan.service.js";
+} from "../../services/plan.service.js";
 
 import {
   computeXP,
   getMissedWorkoutRecovery,
   adaptiveDifficultySignal,
-} from "../services/gamification.service.js";
+} from "../../services/gamification.service.js";
 
-import pool from "../config/db.config.js";
-import response from "../utils/response.util.js";
+import pool from "../../config/db.config.js";
+import response from "../../utils/response.util.js";
 
 class PlanController {
 

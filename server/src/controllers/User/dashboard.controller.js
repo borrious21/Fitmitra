@@ -1,8 +1,8 @@
 // src/controllers/dashboard.controller.js
-import pool from "../db/pool.js";
-import ProfileModel from "../models/profile.model.js";
-import WorkoutService from "../services/workout.service.js";
-import { calculateRecommendedCalories, calculateMacroSplit } from "../domain/nutrition.rules.js";
+import pool from "../../db/pool.js";
+import ProfileModel from "../../models/profile.model.js";
+import WorkoutService from "../../services/workout.service.js";
+import { calculateRecommendedCalories, calculateMacroSplit } from "../../domain/nutrition.rules.js";
 
 class DashboardController {
 

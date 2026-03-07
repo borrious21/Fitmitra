@@ -1,7 +1,7 @@
 // src/routes/plan.routes.js
 
 import { Router } from "express";
-import PlanController from "../controllers/plan.controller.js";
+import PlanController from "../controllers/User/plan.controller.js";
 import protect from "../middlewares/auth.middleware.js";
 
 const router = Router();

@@ -1,6 +1,6 @@
 // src/controllers/progress.controller.js
-import ProgressModel from "../models/progress.model.js";
-import { validateProgressLog } from "../validators/progress.validator.js";
+import ProgressModel from "../../models/progress.model.js";
+import { validateProgressLog } from "../../validators/progress.validator.js";
 
 class ProgressController {
   static async logProgress(req, res, next) {
