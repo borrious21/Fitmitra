@@ -1,191 +1,455 @@
-// ── src/pages/protected/Admin/Sections/AdminLogs.jsx ─────────
+// ── src/pages/protected/Admin/Sections/AdminLogs.jsx ──────────
 import { useState, useEffect, useCallback } from "react";
-import api from "../../../../services/api";
+import { apiFetch } from "../../../../services/apiClient";
 
-const Btn = ({ onClick, color = "orange", children, disabled }) => {
-  const bg = { orange: "#FF5C1A", red: "#ef4444", gray: "rgba(255,255,255,0.08)" };
+const LIMIT = 20;
+
+const TAB_CONFIG = {
+  workout:  { label: "Workout Logs",  endpoint: "/admin/logs/workout-logs",  canDelete: true  },
+  meal:     { label: "Meal Logs",     endpoint: "/admin/logs/meal-logs",      canDelete: true  },
+  progress: { label: "Progress Logs", endpoint: "/admin/logs/progress-logs",  canDelete: false },
+  admin:    { label: "Admin Logs",    endpoint: "/admin/logs/admin-logs",     canDelete: false },
+};
+
+const COLS = {
+  workout:  ["User", "Email", "Date", "Exercise", "Sets", "Reps", "Weight", ""],
+  meal:     ["User", "Email", "Date", "Meal", "Type", "Cals", "Protein", ""],
+  progress: ["User", "Date", "Weight", "Body Fat", "Notes", ""],
+  admin:    ["Admin", "Email", "Action", "Target", "Details", "When"],
+};
+
+// ── Helpers ───────────────────────────────────────────────────
+const ActionBtn = ({ onClick, color = "orange", children, disabled, small }) => {
+  const bg = {
+    orange: "linear-gradient(135deg,#FF5C1A,#FF8A3D)",
+    red:    "linear-gradient(135deg,#dc2626,#ef4444)",
+    gray:   "rgba(255,255,255,0.07)",
+  };
+  const [hover, setHover] = useState(false);
   return (
-    <button onClick={onClick} disabled={disabled} style={{
-      padding: "0.45rem 0.9rem", borderRadius: 8, border: "none",
-      cursor: disabled ? "not-allowed" : "pointer",
-      background: disabled ? "rgba(255,255,255,0.05)" : bg[color],
-      color: "#fff", fontSize: "0.72rem", fontWeight: 700,
-      letterSpacing: "0.07em", textTransform: "uppercase",
-      opacity: disabled ? 0.5 : 1,
-    }}>{children}</button>
+    <button
+      onClick={onClick} disabled={disabled}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        padding: small ? "0.3rem 0.65rem" : "0.45rem 0.9rem",
+        borderRadius: 7, border: "none",
+        cursor: disabled ? "not-allowed" : "pointer",
+        background: disabled ? "rgba(255,255,255,0.05)" : bg[color],
+        color: "#fff", fontSize: small ? "0.65rem" : "0.72rem",
+        fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase",
+        opacity: disabled ? 0.45 : hover ? 0.88 : 1,
+        transition: "opacity 0.18s, transform 0.18s",
+        transform: !disabled && hover ? "translateY(-1px)" : "none",
+        whiteSpace: "nowrap", flexShrink: 0,
+      }}
+    >{children}</button>
   );
 };
 
-const TAB_CONFIG = {
-  workout:  { label: "Workout Logs",  endpoint: "/admin/logs/workout-logs",  dateField: "workout_date" },
-  meal:     { label: "Meal Logs",     endpoint: "/admin/logs/meal-logs",      dateField: "log_date"     },
-  progress: { label: "Progress Logs", endpoint: "/admin/logs/progress-logs",  dateField: "log_date"     },
-  admin:    { label: "Admin Logs",    endpoint: "/admin/logs/admin-logs",     dateField: "created_at"   },
+const SkeletonRow = ({ cols }) => (
+  <tr>
+    {Array.from({ length: cols }).map((_, i) => (
+      <td key={i} style={{ padding: "0.75rem 1rem" }}>
+        <div style={{
+          height: 13, borderRadius: 5,
+          width: i === 0 ? "75%" : i === cols - 1 ? 50 : "60%",
+          backgroundImage: "linear-gradient(90deg,rgba(255,255,255,0.04) 0%,rgba(255,255,255,0.09) 50%,rgba(255,255,255,0.04) 100%)",
+          backgroundSize: "200% 100%",
+          animation: "shimmer 1.6s ease-in-out infinite",
+        }} />
+      </td>
+    ))}
+  </tr>
+);
+
+// ── Confirm dialog ────────────────────────────────────────────
+function ConfirmDialog({ message, onConfirm, onCancel }) {
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={onCancel}>
+      <div onClick={e => e.stopPropagation()} style={{ background: "#161A23", border: "1px solid rgba(255,77,109,0.25)", borderRadius: 16, padding: "1.75rem", width: 360, maxWidth: "90vw", textAlign: "center" }}>
+        <div style={{ fontSize: "2rem", marginBottom: "0.75rem" }}>⚠️</div>
+        <div style={{ fontSize: "0.9rem", color: "#F0F2F5", fontWeight: 600, marginBottom: "0.5rem" }}>Delete this log?</div>
+        <div style={{ fontSize: "0.78rem", color: "#525D72", marginBottom: "1.5rem", lineHeight: 1.55 }}>{message}</div>
+        <div style={{ display: "flex", gap: "0.625rem", justifyContent: "center" }}>
+          <ActionBtn onClick={onCancel}  color="gray">Cancel</ActionBtn>
+          <ActionBtn onClick={onConfirm} color="red">Delete</ActionBtn>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Cell helpers ──────────────────────────────────────────────
+const Td = ({ children, bold, mono, right }) => (
+  <td style={{
+    padding: "0.75rem 1rem",
+    fontSize: bold ? "0.82rem" : "0.76rem",
+    color: bold ? "#F0F2F5" : "#9AA3B4",
+    fontWeight: bold ? 600 : 400,
+    whiteSpace: "nowrap",
+    fontFamily: mono ? "monospace" : "inherit",
+    textAlign: right ? "right" : "left",
+    maxWidth: 220,
+    overflow: "hidden", textOverflow: "ellipsis",
+  }}>{children ?? "—"}</td>
+);
+
+const ActionBadge = ({ action }) => {
+  const color = action?.includes("DELETE") ? ["rgba(239,68,68,0.12)", "#ef4444"]
+              : action?.includes("CREATE") ? ["rgba(34,197,94,0.12)",  "#22c55e"]
+              : action?.includes("UPDATE") ? ["rgba(59,130,246,0.12)", "#60a5fa"]
+              : ["rgba(255,92,26,0.12)", "#FF5C1A"];
+  return (
+    <span style={{
+      padding: "0.2rem 0.55rem", borderRadius: 6,
+      fontSize: "0.6rem", fontWeight: 700,
+      letterSpacing: "0.07em", textTransform: "uppercase",
+      background: color[0], color: color[1], whiteSpace: "nowrap",
+    }}>{action}</span>
+  );
 };
 
-const WORKOUT_COLS  = ["User",  "Email",       "Date",      "Exercise",     "Sets", "Reps", "Weight", ""];
-const MEAL_COLS     = ["User",  "Email",       "Date",      "Meal",         "Type", "Cals", "Protein", ""];
-const PROGRESS_COLS = ["User",  "Date",        "Weight",    "Body Fat",     "Notes", ""];
-const ADMIN_COLS    = ["Admin", "Email",       "Action",    "Target User",  "When", ""];
+const fmt = (dateStr) => {
+  if (!dateStr) return "—";
+  try { return new Date(dateStr).toLocaleDateString("en-IN"); }
+  catch { return "—"; }
+};
+const fmtFull = (dateStr) => {
+  if (!dateStr) return "—";
+  try { return new Date(dateStr).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" }); }
+  catch { return "—"; }
+};
 
+// ── Main component ────────────────────────────────────────────
 export default function AdminLogs({ toast }) {
-  const [tab,     setTab]    = useState("workout");
-  const [logs,    setLogs]   = useState([]);
-  const [total,   setTotal]  = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [offset,  setOffset] = useState(0);
-  const [userId,  setUserId] = useState("");
+  const [tab,       setTab]       = useState("workout");
+  const [logs,      setLogs]      = useState([]);
+  const [total,     setTotal]     = useState(0);
+  const [loading,   setLoading]   = useState(true);
+  const [offset,    setOffset]    = useState(0);
+
+  // filters
+  const [userId,    setUserId]    = useState("");
+  const [adminId,   setAdminId]   = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate,   setEndDate]   = useState("");
-  const LIMIT = 20;
 
+  // delete confirm
+  const [deleting,  setDeleting]  = useState(null); // { id, tab }
+  const [busy,      setBusy]      = useState(false);
+
+  // ── Fetch ─────────────────────────────────────────────────
   const fetchLogs = useCallback(async () => {
     setLoading(true);
     try {
-      const cfg = TAB_CONFIG[tab];
+      const { endpoint } = TAB_CONFIG[tab];
       const params = new URLSearchParams({ limit: LIMIT, offset });
-      if (userId)    params.set("user_id",    userId);
-      if (startDate) params.set("start_date", startDate);
-      if (endDate)   params.set("end_date",   endDate);
-      const { data } = await api.get(`${cfg.endpoint}?${params}`);
-      setLogs(data.data.logs);
-      setTotal(data.data.total);
-    } catch { toast("Failed to load logs", "error"); }
-    finally { setLoading(false); }
-  }, [tab, offset, userId, startDate, endDate]);
+      if (tab === "admin") {
+        if (adminId) params.set("admin_id", adminId);
+      } else {
+        if (userId)    params.set("user_id",    userId);
+        if (startDate && tab !== "progress") params.set("start_date", startDate);
+        if (endDate   && tab !== "progress") params.set("end_date",   endDate);
+      }
+      const payload = await apiFetch(`${endpoint}?${params}`);
+      setLogs(payload.logs  ?? []);
+      setTotal(payload.total ?? 0);
+    } catch (err) {
+      toast?.(err?.message ?? "Failed to load logs", "error");
+    } finally {
+      setLoading(false);
+    }
+  }, [tab, offset, userId, adminId, startDate, endDate]);
 
-  useEffect(() => { setOffset(0); setLogs([]); }, [tab]);
+  // Reset page + clear logs when tab changes
+  useEffect(() => { setOffset(0); setLogs([]); setUserId(""); setAdminId(""); setStartDate(""); setEndDate(""); }, [tab]);
   useEffect(() => { fetchLogs(); }, [fetchLogs]);
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Delete this log entry?")) return;
-    const endpoint = tab === "workout" ? `/admin/logs/workout-logs/${id}` : `/admin/logs/meal-logs/${id}`;
+  // ── Delete ────────────────────────────────────────────────
+  const handleDelete = async () => {
+    if (!deleting) return;
+    setBusy(true);
     try {
-      await api.delete(endpoint);
-      toast("Log deleted");
+      const endpoint = deleting.tab === "workout"
+        ? `/admin/logs/workout-logs/${deleting.id}`
+        : `/admin/logs/meal-logs/${deleting.id}`;
+      await apiFetch(endpoint, { method: "DELETE" });
+      toast?.("Log entry deleted", "success");
+      setDeleting(null);
       fetchLogs();
-    } catch { toast("Delete failed", "error"); }
+    } catch (err) {
+      toast?.(err?.message ?? "Delete failed", "error");
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const pages = Math.ceil(total / LIMIT);
-  const page  = Math.floor(offset / LIMIT);
+  const pages   = Math.ceil(total / LIMIT);
+  const page    = Math.floor(offset / LIMIT);
+  const colDefs = COLS[tab];
+  const { canDelete } = TAB_CONFIG[tab];
 
-  const inputStyle = { background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "0.45rem 0.75rem", color: "#F0F2F5", fontSize: "0.78rem", outline: "none" };
-
+  // ── Row renderers ─────────────────────────────────────────
   const renderRow = (log) => {
-    const canDelete = tab === "workout" || tab === "meal";
     const delBtn = canDelete ? (
-      <button onClick={() => handleDelete(log.id)} style={{ padding: "0.3rem 0.6rem", borderRadius: 6, border: "1px solid rgba(239,68,68,0.3)", background: "transparent", color: "#ef4444", cursor: "pointer", fontSize: "0.68rem", fontWeight: 700 }}>Del</button>
+      <td style={{ padding: "0.75rem 1rem" }}>
+        <button
+          onClick={() => setDeleting({ id: log.id, tab })}
+          style={{ padding: "0.28rem 0.6rem", borderRadius: 6, border: "1px solid rgba(239,68,68,0.3)", background: "transparent", color: "#ef4444", cursor: "pointer", fontSize: "0.65rem", fontWeight: 700, transition: "all 0.15s" }}
+          onMouseEnter={e => { e.currentTarget.style.background = "rgba(239,68,68,0.1)"; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+        >Del</button>
+      </td>
     ) : null;
 
-    const cell = (v) => <td style={{ padding: "0.7rem 1rem", fontSize: "0.78rem", color: "#9AA3B4", whiteSpace: "nowrap" }}>{v ?? "—"}</td>;
-    const bold = (v) => <td style={{ padding: "0.7rem 1rem", fontSize: "0.82rem", color: "#F0F2F5", fontWeight: 600, whiteSpace: "nowrap" }}>{v}</td>;
-    const action = <td style={{ padding: "0.7rem 1rem" }}>{delBtn}</td>;
+    const rowStyle = { borderBottom: "1px solid rgba(255,255,255,0.04)", transition: "background 0.12s" };
+    const hover = {
+      onMouseEnter: e => e.currentTarget.style.background = "rgba(255,255,255,0.02)",
+      onMouseLeave: e => e.currentTarget.style.background = "transparent",
+    };
 
     if (tab === "workout") return (
-      <tr key={log.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
-        onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.025)"}
-        onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-        {bold(log.user_name)}{cell(log.user_email)}{cell(new Date(log.workout_date).toLocaleDateString("en-IN"))}
-        {cell(log.exercise_name)}{cell(log.sets)}{cell(log.reps)}{cell(log.weight_kg ? `${log.weight_kg}kg` : "—")}{action}
+      <tr key={log.id} style={rowStyle} {...hover}>
+        <Td bold>{log.user_name}</Td>
+        <Td>{log.user_email}</Td>
+        <Td>{fmt(log.workout_date)}</Td>
+        <Td>{log.exercise_name}</Td>
+        <Td>{log.sets}</Td>
+        <Td>{log.reps}</Td>
+        <Td>{log.weight_kg ? `${log.weight_kg} kg` : null}</Td>
+        {delBtn}
       </tr>
     );
 
     if (tab === "meal") return (
-      <tr key={log.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
-        onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.025)"}
-        onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-        {bold(log.user_name)}{cell(log.user_email)}{cell(new Date(log.log_date).toLocaleDateString("en-IN"))}
-        {cell(log.meal_name)}{cell(log.meal_type)}{cell(log.calories_consumed)}{cell(log.protein_g ? `${log.protein_g}g` : "—")}{action}
+      <tr key={log.id} style={rowStyle} {...hover}>
+        <Td bold>{log.user_name}</Td>
+        <Td>{log.user_email}</Td>
+        <Td>{fmt(log.log_date)}</Td>
+        <Td>{log.meal_name}</Td>
+        <td style={{ padding: "0.75rem 1rem" }}>
+          {log.meal_type && (
+            <span style={{ padding: "0.18rem 0.5rem", borderRadius: 5, fontSize: "0.6rem", fontWeight: 700, background: "rgba(255,92,26,0.1)", color: "#FF5C1A", textTransform: "capitalize" }}>
+              {log.meal_type}
+            </span>
+          )}
+        </td>
+        <Td>{log.calories_consumed != null ? `${log.calories_consumed} kcal` : null}</Td>
+        <Td>{log.protein_g != null ? `${log.protein_g}g` : null}</Td>
+        {delBtn}
       </tr>
     );
 
     if (tab === "progress") return (
-      <tr key={log.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
-        onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.025)"}
-        onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-        {bold(log.user_name)}{cell(new Date(log.log_date).toLocaleDateString("en-IN"))}
-        {cell(log.weight_kg ? `${log.weight_kg}kg` : "—")}{cell(log.body_fat_pct ? `${log.body_fat_pct}%` : "—")}
-        {cell(log.notes)}{action}
+      <tr key={log.id} style={rowStyle} {...hover}>
+        <Td bold>{log.user_name}</Td>
+        <Td>{fmt(log.log_date)}</Td>
+        <Td>{log.weight_kg != null ? `${log.weight_kg} kg` : null}</Td>
+        <Td>{log.body_fat_pct != null ? `${log.body_fat_pct}%` : null}</Td>
+        <td style={{ padding: "0.75rem 1rem", fontSize: "0.76rem", color: "#9AA3B4", maxWidth: 240, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {log.notes ?? "—"}
+        </td>
+        {delBtn}
       </tr>
     );
 
-    // admin logs
+    // admin logs — no delete button
+    let details = "—";
+    try {
+      const p = typeof log.payload === "string" ? JSON.parse(log.payload) : log.payload;
+      if (p && Object.keys(p).length) {
+        details = Object.entries(p).map(([k, v]) => `${k}: ${v}`).join(" · ");
+      }
+    } catch {}
+
     return (
-      <tr key={log.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
-        onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.025)"}
-        onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-        {bold(log.admin_name)}{cell(log.admin_email)}
-        <td style={{ padding: "0.7rem 1rem" }}>
-          <span style={{ padding: "0.2rem 0.55rem", borderRadius: 6, fontSize: "0.62rem", fontWeight: 700, background: "rgba(255,92,26,0.12)", color: "#FF5C1A", letterSpacing: "0.06em" }}>{log.action}</span>
+      <tr key={log.id} style={rowStyle} {...hover}>
+        <Td bold>{log.admin_name}</Td>
+        <Td>{log.admin_email}</Td>
+        <td style={{ padding: "0.75rem 1rem" }}>
+          <ActionBadge action={log.action} />
         </td>
-        {cell(log.target_user_id ?? "—")}{cell(new Date(log.created_at).toLocaleString("en-IN"))}{action}
+        <Td>{log.target_user_id != null ? `#${log.target_user_id}` : null}</Td>
+        <td style={{ padding: "0.75rem 1rem", fontSize: "0.7rem", color: "#525D72", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {details}
+        </td>
+        <Td>{fmtFull(log.created_at)}</Td>
       </tr>
     );
   };
 
-  const cols = { workout: WORKOUT_COLS, meal: MEAL_COLS, progress: PROGRESS_COLS, admin: ADMIN_COLS }[tab];
-  const showDateFilters = tab !== "admin";
+  const inputSt = {
+    background: "rgba(255,255,255,0.05)",
+    border: "1px solid rgba(255,255,255,0.1)",
+    borderRadius: 9, padding: "0.5rem 0.75rem",
+    color: "#F0F2F5", fontSize: "0.78rem", outline: "none",
+    fontFamily: "inherit", transition: "border-color 0.2s",
+  };
 
   return (
     <div>
-      {/* Tabs */}
-      <div style={{ display: "flex", gap: "0.4rem", marginBottom: "1.25rem", flexWrap: "wrap" }}>
+      {/* ── Header ── */}
+      <div style={{ marginBottom: "1.5rem" }}>
+        <h2 style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: "1.6rem", fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase", color: "#F0F2F5", lineHeight: 1 }}>
+          Logs{" "}
+          {!loading && <span style={{ color: "#FF5C1A" }}>({total.toLocaleString()})</span>}
+        </h2>
+        <p style={{ fontSize: "0.72rem", color: "#525D72", marginTop: 4 }}>
+          Browse workout, meal, progress and admin action history
+        </p>
+      </div>
+
+      {/* ── Tabs ── */}
+      <div style={{ display: "flex", gap: "0.25rem", marginBottom: "1.25rem", background: "rgba(255,255,255,0.03)", borderRadius: 12, padding: "0.3rem", width: "fit-content", border: "1px solid rgba(255,255,255,0.07)" }}>
         {Object.entries(TAB_CONFIG).map(([key, { label }]) => (
-          <button key={key} onClick={() => setTab(key)} style={{
-            padding: "0.5rem 1rem", borderRadius: 8, border: "none", cursor: "pointer",
-            background: tab === key ? "rgba(255,92,26,0.15)" : "rgba(255,255,255,0.05)",
-            color: tab === key ? "#FF5C1A" : "#9AA3B4",
-            fontFamily: "'Barlow Condensed',sans-serif", fontSize: "0.8rem", fontWeight: 800,
-            letterSpacing: "0.1em", textTransform: "uppercase",
-            borderBottom: tab === key ? "2px solid #FF5C1A" : "2px solid transparent",
-            transition: "all 0.18s",
-          }}>{label}</button>
+          <button
+            key={key}
+            onClick={() => setTab(key)}
+            style={{
+              padding: "0.45rem 1rem", borderRadius: 9, border: "none", cursor: "pointer",
+              background: tab === key ? "rgba(255,92,26,0.15)" : "transparent",
+              color: tab === key ? "#FF5C1A" : "#525D72",
+              fontFamily: "'Barlow Condensed',sans-serif",
+              fontSize: "0.78rem", fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase",
+              borderBottom: tab === key ? "2px solid #FF5C1A" : "2px solid transparent",
+              transition: "all 0.18s", whiteSpace: "nowrap",
+            }}
+          >{label}</button>
         ))}
       </div>
 
-      {/* Filters */}
+      {/* ── Filters ── */}
       <div style={{ display: "flex", gap: "0.625rem", marginBottom: "1rem", flexWrap: "wrap", alignItems: "center" }}>
-        <input value={userId} onChange={e => { setUserId(e.target.value); setOffset(0); }} placeholder="Filter by User ID…" style={{ ...inputStyle, width: 180 }} />
-        {showDateFilters && <>
-          <input type="date" value={startDate} onChange={e => { setStartDate(e.target.value); setOffset(0); }} style={inputStyle} />
-          <input type="date" value={endDate}   onChange={e => { setEndDate(e.target.value);   setOffset(0); }} style={inputStyle} />
-        </>}
-        <span style={{ fontSize: "0.72rem", color: "#525D72" }}>{total} records</span>
+        {tab === "admin" ? (
+          <input
+            value={adminId}
+            onChange={e => { setAdminId(e.target.value); setOffset(0); }}
+            placeholder="Filter by Admin ID…"
+            style={{ ...inputSt, width: 180 }}
+            onFocus={e => e.target.style.borderColor = "rgba(255,92,26,0.4)"}
+            onBlur={e  => e.target.style.borderColor = "rgba(255,255,255,0.1)"}
+          />
+        ) : (
+          <input
+            value={userId}
+            onChange={e => { setUserId(e.target.value); setOffset(0); }}
+            placeholder="Filter by User ID…"
+            style={{ ...inputSt, width: 160 }}
+            onFocus={e => e.target.style.borderColor = "rgba(255,92,26,0.4)"}
+            onBlur={e  => e.target.style.borderColor = "rgba(255,255,255,0.1)"}
+          />
+        )}
+
+        {/* Date range — workout + meal only */}
+        {(tab === "workout" || tab === "meal") && (
+          <>
+            <input
+              type="date" value={startDate}
+              onChange={e => { setStartDate(e.target.value); setOffset(0); }}
+              style={{ ...inputSt, colorScheme: "dark" }}
+              onFocus={e => e.target.style.borderColor = "rgba(255,92,26,0.4)"}
+              onBlur={e  => e.target.style.borderColor = "rgba(255,255,255,0.1)"}
+            />
+            <span style={{ fontSize: "0.68rem", color: "#525D72" }}>→</span>
+            <input
+              type="date" value={endDate}
+              onChange={e => { setEndDate(e.target.value); setOffset(0); }}
+              style={{ ...inputSt, colorScheme: "dark" }}
+              onFocus={e => e.target.style.borderColor = "rgba(255,92,26,0.4)"}
+              onBlur={e  => e.target.style.borderColor = "rgba(255,255,255,0.1)"}
+            />
+          </>
+        )}
+
+        {/* Refresh */}
+        <button
+          onClick={fetchLogs}
+          title="Refresh"
+          style={{ width: 36, height: 36, borderRadius: 9, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)", color: "#525D72", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.2s" }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,92,26,0.4)"; e.currentTarget.style.color = "#FF5C1A"; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "#525D72"; }}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+            <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+          </svg>
+        </button>
+
+        {!loading && (
+          <span style={{ fontSize: "0.7rem", color: "#525D72", marginLeft: 4 }}>
+            {total.toLocaleString()} record{total !== 1 ? "s" : ""}
+          </span>
+        )}
       </div>
 
-      <div style={{ background: "#0F1217", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, overflow: "hidden" }}>
+      {/* ── Table ── */}
+      <div style={{ background: "#0F1217", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, overflow: "hidden", boxShadow: "0 12px 40px rgba(0,0,0,0.4)" }}>
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 640 }}>
             <thead>
-              <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
-                {cols.map(h => (
-                  <th key={h} style={{ padding: "0.75rem 1rem", textAlign: "left", fontSize: "0.6rem", fontWeight: 800, letterSpacing: "0.15em", textTransform: "uppercase", color: "#525D72", whiteSpace: "nowrap" }}>{h}</th>
+              <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)" }}>
+                {colDefs.map(h => (
+                  <th key={h} style={{ padding: "0.75rem 1rem", textAlign: "left", fontSize: "0.55rem", fontWeight: 800, letterSpacing: "0.18em", textTransform: "uppercase", color: "#525D72", whiteSpace: "nowrap" }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading
-                ? Array.from({ length: 6 }).map((_, i) => (
-                    <tr key={i}><td colSpan={cols.length} style={{ padding: "0.875rem 1rem" }}>
-                      <div style={{ height: 16, borderRadius: 6, background: "rgba(255,255,255,0.05)", animation: "shimmer 1.5s infinite" }} />
-                    </td></tr>
-                  ))
-                : logs.map(renderRow)
+                ? Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} cols={colDefs.length} />)
+                : logs.length === 0
+                  ? (
+                    <tr>
+                      <td colSpan={colDefs.length} style={{ padding: "3.5rem 1rem", textAlign: "center" }}>
+                        <div style={{ fontSize: "2.5rem", marginBottom: "0.75rem", opacity: 0.4 }}>📋</div>
+                        <div style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: "0.9rem", fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525D72" }}>
+                          No logs found
+                        </div>
+                        <div style={{ fontSize: "0.72rem", color: "#525D72", marginTop: "0.4rem" }}>
+                          Try adjusting your filters
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                  : logs.map(renderRow)
               }
             </tbody>
           </table>
         </div>
-        {pages > 1 && (
-          <div style={{ padding: "0.875rem 1rem", borderTop: "1px solid rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <span style={{ fontSize: "0.72rem", color: "#525D72" }}>Page {page + 1} of {pages}</span>
-            <div style={{ display: "flex", gap: "0.4rem" }}>
-              <Btn onClick={() => setOffset(o => Math.max(0, o - LIMIT))} disabled={page === 0} color="gray">← Prev</Btn>
-              <Btn onClick={() => setOffset(o => o + LIMIT)} disabled={page >= pages - 1} color="gray">Next →</Btn>
+
+        {/* ── Pagination ── */}
+        {!loading && pages > 1 && (
+          <div style={{ padding: "0.875rem 1.25rem", borderTop: "1px solid rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
+            <span style={{ fontSize: "0.72rem", color: "#525D72" }}>
+              Showing {offset + 1}–{Math.min(offset + LIMIT, total)} of {total.toLocaleString()}
+            </span>
+            <div style={{ display: "flex", gap: "0.375rem", alignItems: "center" }}>
+              <ActionBtn small color="gray" disabled={page === 0}        onClick={() => setOffset(0)}>«</ActionBtn>
+              <ActionBtn small color="gray" disabled={page === 0}        onClick={() => setOffset(o => Math.max(0, o - LIMIT))}>‹ Prev</ActionBtn>
+              <span style={{ padding: "0.35rem 0.75rem", borderRadius: 7, background: "rgba(255,92,26,0.12)", color: "#FF5C1A", fontSize: "0.72rem", fontWeight: 700, border: "1px solid rgba(255,92,26,0.25)" }}>
+                {page + 1} / {pages}
+              </span>
+              <ActionBtn small color="gray" disabled={page >= pages - 1} onClick={() => setOffset(o => o + LIMIT)}>Next ›</ActionBtn>
+              <ActionBtn small color="gray" disabled={page >= pages - 1} onClick={() => setOffset((pages - 1) * LIMIT)}>»</ActionBtn>
             </div>
           </div>
         )}
       </div>
+
+      {/* ── Delete confirm ── */}
+      {deleting && (
+        <ConfirmDialog
+          message="This log entry will be permanently removed and cannot be recovered."
+          onConfirm={handleDelete}
+          onCancel={() => setDeleting(null)}
+        />
+      )}
+
+      <style>{`
+        @keyframes shimmer {
+          0%   { background-position: -200% 0; }
+          100% { background-position:  200% 0; }
+        }
+      `}</style>
     </div>
   );
 }
