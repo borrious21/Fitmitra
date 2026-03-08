@@ -1,56 +1,59 @@
-// ── src/pages/protected/Admin/adminUtils.js 
 
-export const BASE = "/api/admin";
+const BASE_ADMIN = import.meta.env.VITE_API_URL ?? "/api/admin";
+const BASE_API   = BASE_ADMIN.replace(/\/admin$/, ""); 
 
-export function getToken() {
-  return (
-    localStorage.getItem("token") ||
-    localStorage.getItem("authToken") ||
-    localStorage.getItem("jwt") ||
-    localStorage.getItem("access_token") ||
-    localStorage.getItem("accessToken") ||
-    sessionStorage.getItem("token") ||
-    sessionStorage.getItem("authToken") ||
-    ""
-  );
-}
+const NON_ADMIN_PREFIXES = ["/profile", "/auth", "/workouts", "/plans", "/progress"];
 
-export async function apiFetch(path, opts = {}) {
-  const token = getToken();
-  const res = await fetch(`${BASE}${path}`, {
+export async function apiFetch(path, options = {}) {
+  const token    = localStorage.getItem("token") ?? localStorage.getItem("accessToken") ?? "";
+  const isNonAdmin = NON_ADMIN_PREFIXES.some(p => path.startsWith(p));
+  const base     = isNonAdmin ? BASE_API : BASE_ADMIN;
+
+  const res = await fetch(`${base}${path}`, {
+    ...options,
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options.headers ?? {}),
     },
-    ...opts,
+    body: options.body != null && typeof options.body !== "string"
+      ? JSON.stringify(options.body)
+      : options.body,
   });
+
+  const json = await res.json().catch(() => ({}));
+
   if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`${res.status} ${res.statusText}${body ? ": " + body : ""}`);
+    const msg  = json?.message ?? json?.error ?? `HTTP ${res.status}`;
+    const err  = new Error(msg);
+    err.status = res.status;
+    err.data   = json;
+    throw err;
   }
-  return res.json();
+
+  return json;
 }
 
-export function extractArray(raw, hint = null) {
-  if (!raw) return [];
-  if (Array.isArray(raw)) return raw;
-  if (hint && Array.isArray(raw[hint])) return raw[hint];
-  const KEYS = ["data", "users", "result", "rows", "items", "list", "records", "results", "entries"];
-  for (const k of KEYS) if (Array.isArray(raw[k])) return raw[k];
-  if (raw.data && typeof raw.data === "object" && !Array.isArray(raw.data)) {
-    if (hint && Array.isArray(raw.data[hint])) return raw.data[hint];
-    for (const k of KEYS) if (Array.isArray(raw.data[k])) return raw.data[k];
+export function extractObject(json) {
+  if (!json || typeof json !== "object") return {};
+  if (json.data && typeof json.data === "object" && !Array.isArray(json.data)) return json.data;
+  if (json.data && Array.isArray(json.data) && json.data.length === 1) return json.data[0];
+  return json;
+}
+
+export function extractArray(json, key = null) {
+  if (!json || typeof json !== "object") return [];
+  if (key && json.data && typeof json.data === "object" && Array.isArray(json.data[key])) return json.data[key];
+  if (Array.isArray(json.data)) return json.data;
+  if (key && Array.isArray(json[key])) return json[key];
+  if (json.data && typeof json.data === "object" && key && Array.isArray(json.data[key])) return json.data[key];
+  const firstArr = Object.values(json).find(v => Array.isArray(v));
+  return firstArr ?? [];
+}
+
+export function pick(...values) {
+  for (const v of values) {
+    if (v !== undefined && v !== null) return v;
   }
-  return [];
-}
-
-export function extractObject(raw) {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
-  if (raw.data && typeof raw.data === "object" && !Array.isArray(raw.data)) return raw.data;
-  return raw;
-}
-
-export function pick(...vals) {
-  for (const v of vals) if (v !== undefined && v !== null) return v;
-  return undefined;
+  return null;
 }
