@@ -22,7 +22,7 @@ const AdminMeals     = lazy(() => import("./Sections/AdminMeals"));
 const AdminExercises = lazy(() => import("./Sections/AdminExercises"));
 const AdminPlans     = lazy(() => import("./Sections/AdminPlans"));
 const AdminLogs      = lazy(() => import("./Sections/AdminLogs"));
-// const AdminAnalytics = lazy(() => import("./Sections/AdminAnalytics"));     // TODO
+const AdminAnalytics = lazy(() => import("./Sections/AdminAnalytics"));
 // const AdminNotifications = lazy(() => import("./Sections/AdminNotifications")); // TODO
 
 const ComingSoon = ({ label }) => (
@@ -334,7 +334,7 @@ export default function AdminDashboard() {
     exercises:     <AdminExercises toast={showToast} />,
     plans:         <AdminPlans    toast={showToast} />,
     logs:          <AdminLogs     toast={showToast} />,
-    analytics:     <ComingSoon label="Analytics"     />,
+    analytics:     <AdminAnalytics toast={showToast} />,
     notifications: <ComingSoon label="Notifications" />,
   }[section];
 
