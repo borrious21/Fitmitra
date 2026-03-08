@@ -1,8 +1,9 @@
-// src/pages/protected/Admin/AdminDashboard.jsx
+// ── src/pages/protected/Admin/AdminDashboard.jsx ─────────────
 import { useState, Suspense, lazy, useEffect, useRef } from "react";
 import { Toast, Spinner } from "./AdminComponents";
 import "./AdminDashboard.css";
 
+// ── Inline SVG icons ──────────────────────────────────────────
 const IC = {
   dashboard: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>,
   users:     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
@@ -14,9 +15,10 @@ const IC = {
   bell:      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>,
 };
 
+// ── Lazy-load each section ────────────────────────────────────
 const AdminOverview  = lazy(() => import("./Sections/AdminOverview"));
 const AdminUsers     = lazy(() => import("./Sections/AdminUsers"));
-// const AdminMeals     = lazy(() => import("./Sections/AdminMeals"));         // TODO
+const AdminMeals     = lazy(() => import("./Sections/AdminMeals"));
 // const AdminExercises = lazy(() => import("./Sections/AdminExercises"));     // TODO
 // const AdminPlans     = lazy(() => import("./Sections/AdminPlans"));         // TODO
 // const AdminLogs      = lazy(() => import("./Sections/AdminLogs"));          // TODO
@@ -48,6 +50,7 @@ function initials(name) {
   return name.trim().split(" ").filter(Boolean).map(n => n[0]).join("").slice(0, 2).toUpperCase();
 }
 
+// ── Toggle Switch ─────────────────────────────────────────────
 function Toggle({ on, onClick }) {
   return (
     <button
@@ -255,6 +258,7 @@ function AdminSettingsPanel({ authUser, onClose }) {
   );
 }
 
+// ── TopbarUser ────────────────────────────────────────────────
 function TopbarUser() {
   const [authUser, setAuthUser] = useState(null);
   const [open,     setOpen]     = useState(false);
@@ -303,6 +307,7 @@ function TopbarUser() {
   );
 }
 
+// ── Main Dashboard ────────────────────────────────────────────
 export default function AdminDashboard() {
   const [section,  setSection]  = useState("overview");
   const [toast,    setToast]    = useState(null);
@@ -317,6 +322,7 @@ export default function AdminDashboard() {
     document.head.appendChild(link);
   }, []);
 
+  // ── showToast is passed as the `toast` prop into each section ──
   const showToast = (msg, type = "success") => setToast({ msg, type });
 
   const activeNav = NAV.find(n => n.key === section);
@@ -324,7 +330,7 @@ export default function AdminDashboard() {
   const SectionComponent = {
     overview:      <AdminOverview  showToast={showToast} />,
     users:         <AdminUsers     toast={showToast} />,   // ← wired here
-    meals:         <ComingSoon label="Meals"         />,
+    meals:         <AdminMeals    toast={showToast} />,
     exercises:     <ComingSoon label="Exercises"     />,
     plans:         <ComingSoon label="Plans"         />,
     logs:          <ComingSoon label="Logs"          />,
