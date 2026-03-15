@@ -564,7 +564,6 @@
   border: 1px solid rgba(255,92,26,0.2);
 }
 
-/* Progress ring */
 .circleWrap {
   position: relative;
   width: 72px; height: 72px;
@@ -600,7 +599,6 @@
   transition: color 0.35s;
 }
 
-/* Exercise list */
 .exerciseList { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.25rem; }
 .exerciseRow {
   display: flex;
@@ -638,7 +636,6 @@
   flex-shrink: 0;
 }
 
-/* Progression chip */
 .progressionChip {
   display: inline-flex;
   align-items: center;
@@ -651,7 +648,6 @@
   letter-spacing: 0.04em;
 }
 
-/* Warmup reminder */
 .warmupReminder {
   display: flex;
   align-items: center;
@@ -765,7 +761,6 @@
 }
 .missedRecoveryChip em { font-style: normal; color: #f59e0b; font-weight: 700; }
 
-/* ── PR BANNER ───────────────────────────────────────────────── */
 .prBanner {
   display: flex;
   align-items: center;
@@ -779,7 +774,6 @@
 .prBannerIcon { font-size: 1.25rem; flex-shrink: 0; }
 .prBannerText { font-size: 0.85rem; color: #FFD700; font-weight: 600; }
 
-/* ── NUTRITION ───────────────────────────────────────────────── */
 .calRingWrap {
   display: flex;
   align-items: center;
@@ -839,7 +833,6 @@
 .waterFilled { background: var(--cyan); }
 .waterEmpty  { background: var(--d-border); }
 
-/* Unlogged nutrition state */
 .nutritionUnlogged   { display: flex; flex-direction: column; gap: 0; padding-top: 0.5rem; }
 .nutUnloggedHeader   { display: flex; flex-direction: column; gap: 0.15rem; margin-bottom: 1.1rem; }
 .nutUnloggedCal      { font-family: var(--font-display); font-size: 2rem; font-weight: 900; color: var(--d-t1); line-height: 1; }
@@ -856,7 +849,6 @@
 .nutUnloggedWater    { display: flex; align-items: center; gap: 0.4rem; font-size: 0.72rem; color: var(--d-t3); padding: 0.55rem 0; border-top: 1px solid var(--d-border); margin-top: 0.15rem; }
 .nutUnloggedWater strong { color: var(--d-t1); font-weight: 600; }
 
-/* ── PROGRESS METRICS ────────────────────────────────────────── */
 .perfHeader { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem; }
 .progMetricsGrid { display: flex; flex-wrap: wrap; gap: 0.875rem; margin-top: 0.875rem; }
 .progMetricItem {
@@ -873,7 +865,6 @@
 .progMetricLabel { font-size: 0.65rem; color: var(--d-t3); margin-top: 0.15rem; text-transform: uppercase; letter-spacing: 0.07em; }
 .progMetricTrend { font-size: 0.6rem; color: var(--d-t3); margin-top: 0.05rem; opacity: 0.6; }
 
-/* ── PERFORMANCE SNAPSHOT ────────────────────────────────────── */
 .perfGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px,1fr)); gap: 0.75rem; }
 .prCard, .volCard {
   background: rgba(255,255,255,0.03);
@@ -896,11 +887,27 @@
 .volSub   { font-size: 0.6rem; color: var(--d-t3); text-transform: uppercase; letter-spacing: 0.06em; }
 .volVol   { font-size: 0.72rem; color: var(--d-t3); }
 
+.showMoreBtn {
+  width: 100%;
+  margin-top: 0.75rem;
+  padding: 0.5rem;
+  background: none;
+  border: 1px dashed var(--d-border);
+  border-radius: var(--r-lg);
+  color: var(--d-t3);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.showMoreBtn:hover { border-color: var(--d-border-hi); color: var(--d-t2); }
+
 .strengthBar  { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.875rem; flex-wrap: wrap; }
 .strengthBarLabel { font-size: 0.7rem; color: var(--d-t3); flex-shrink: 0; }
 .strengthChip { font-size: 0.72rem; font-weight: 700; padding: 0.15rem 0.5rem; background: rgba(255,255,255,0.04); border-radius: var(--r-full); border: 1px solid var(--d-border-hi); }
 
-/* ── EMPTY STATE ─────────────────────────────────────────────── */
 .emptyState {
   display: flex;
   flex-direction: column;
@@ -913,24 +920,98 @@
 .emptyIcon { font-size: 2rem; opacity: 0.6; }
 .emptyMsg  { font-size: 0.875rem; color: var(--d-t2); opacity: 0.7; max-width: 280px; line-height: 1.6; margin: 0; }
 
-/* ── MEALS ───────────────────────────────────────────────────── */
-.mealsGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 1px;
-  background: var(--d-border);
-  border-radius: var(--r-lg);
-  overflow: hidden;
-  border: 1px solid var(--d-border);
+.mealsSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
 }
-.mealCell { background: var(--d-card); padding: 1.125rem; transition: background 0.2s; overflow: hidden; word-break: break-word; }
-.mealCell:hover { background: var(--d-card-2); }
-.mealTime  { font-size: 0.55rem; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: var(--d-t3); margin-bottom: 0.5rem; display: block; }
-.mealEmoji { font-size: 1.75rem; margin-bottom: 0.375rem; display: block; }
-.mealName  { font-size: 0.8rem; font-weight: 600; margin-bottom: 0.35rem; line-height: 1.3; color: var(--d-t1); }
-.mealMacro { font-size: 0.65rem; color: var(--d-t3); white-space: normal; word-break: break-word; }
+.mealsTotals {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.mealsTotalChip {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.12);
+  color: var(--d-t2);
+  background: rgba(255,255,255,0.05);
+}
+.mealsStack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.mealStackRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  transition: background 0.2s;
+}
+.mealStackRow:hover { background: rgba(255,255,255,0.06); }
+.mealStackEmoji {
+  font-size: 1.6rem;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+.mealStackBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.mealStackTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.mealStackLabel {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--d-t2);
+  opacity: 0.7;
+}
+.mealStackCal {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #FF5C1A;
+  white-space: nowrap;
+}
+.mealStackName {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--d-t1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mealStackMacros {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+}
+.mealMacroChip {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
 
-/* ── HEALTH SNAPSHOT ─────────────────────────────────────────── */
 .healthGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -952,7 +1033,38 @@
 .healthVal    { font-family: var(--font-display); font-size: 1.5rem; font-weight: 900; line-height: 1; margin-bottom: 0.25rem; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .healthStatus { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 0.15rem 0.5rem; border-radius: var(--r-full); display: inline-block; }
 
-/* ── AI INSIGHTS ─────────────────────────────────────────────── */
+.bpNudge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.875rem;
+  padding: 0.75rem 1rem;
+  background: rgba(255,92,26,0.06);
+  border: 1px solid rgba(255,92,26,0.2);
+  border-radius: var(--r-lg);
+  font-size: 0.82rem;
+  color: var(--d-t2);
+  flex-wrap: wrap;
+}
+.bpNudgeBtn {
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--orange);
+  background: rgba(255,92,26,0.1);
+  border: 1px solid rgba(255,92,26,0.3);
+  padding: 0.3rem 0.75rem;
+  border-radius: var(--r-full);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.bpNudgeBtn:hover { background: rgba(255,92,26,0.18); }
+
 .aiHeader { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
 .aiIconWrap {
   width: 2.25rem; height: 2.25rem;
@@ -983,41 +1095,6 @@
 .insightIcon  { font-size: 1.125rem; flex-shrink: 0; }
 .insightText  { font-size: 0.8125rem; color: var(--d-t2); line-height: 1.6; flex: 1; word-break: break-word; min-width: 0; }
 
-.bpNudge {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-top: 0.875rem;
-  padding: 0.75rem 1rem;
-  background: rgba(255, 92, 26, 0.06);
-  border: 1px solid rgba(255, 92, 26, 0.2);
-  border-radius: var(--r-lg);
-  font-size: 0.82rem;
-  color: var(--d-t2);
-  flex-wrap: wrap;
-}
-.bpNudgeBtn {
-  font-family: var(--font-display);
-  font-size: 0.7rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--orange);
-  background: rgba(255, 92, 26, 0.1);
-  border: 1px solid rgba(255, 92, 26, 0.3);
-  padding: 0.3rem 0.75rem;
-  border-radius: var(--r-full);
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.2s;
-  flex-shrink: 0;
-}
-.bpNudgeBtn:hover {
-  background: rgba(255, 92, 26, 0.18);
-}
-
-/* ── WEEKLY PROGRESS ─────────────────────────────────────────── */
 .weekStats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
@@ -1051,7 +1128,6 @@
 .wkEmpty  { height: 0 !important; }
 .calBarDay { font-size: 0.5rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--d-t3); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* ── QUICK ACTIONS ───────────────────────────────────────────── */
 .actionsGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.625rem; }
 @media (min-width: 480px) { .actionsGrid { grid-template-columns: repeat(6, 1fr); } }
 .actionBtn {
@@ -1070,157 +1146,11 @@
   color: var(--d-t2); text-align: center; word-break: break-word; line-height: 1.2;
 }
 
-/* ── RESPONSIVE ──────────────────────────────────────────────── */
 @media (max-width: 580px) {
   .navTabs { display: none; }
   .main    { padding: 1.5rem 1rem 5rem; gap: 1.25rem; }
 }
 
-/* ── SCROLLBAR ───────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: var(--d-bg); }
 ::-webkit-scrollbar-thumb { background: rgba(255,92,26,0.3); border-radius: 2px; }
-
-/* ── Paste these into Dashboard.module.css ── */
-
-.mealsSectionHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.75rem;
-}
-
-.mealsTotals {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.mealsTotalChip {
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 0.2rem 0.6rem;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: var(--d-t2);
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.mealsStack {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.mealStackRow {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  padding: 0.75rem;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  transition: background 0.2s;
-}
-
-.mealStackRow:hover {
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.mealStackEmoji {
-  font-size: 1.6rem;
-  line-height: 1;
-  flex-shrink: 0;
-  margin-top: 0.1rem;
-}
-
-.mealStackBody {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.mealStackTop {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-
-.mealStackLabel {
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--d-t2);
-  opacity: 0.7;
-}
-
-.mealStackCal {
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: #FF5C1A;
-  white-space: nowrap;
-}
-
-.mealStackName {
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: var(--d-t1);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.mealStackMacros {
-  display: flex;
-  gap: 0.35rem;
-  flex-wrap: wrap;
-  margin-top: 0.25rem;
-}
-
-.mealMacroChip {
-  font-size: 0.7rem;
-  font-weight: 600;
-  padding: 0.15rem 0.45rem;
-  border-radius: 999px;
-  border: 1px solid transparent;
-}
-
-.bpNudge {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-top: 0.875rem;
-  padding: 0.75rem 1rem;
-  background: rgba(255, 92, 26, 0.06);
-  border: 1px solid rgba(255, 92, 26, 0.2);
-  border-radius: 12px;
-  font-size: 0.82rem;
-  color: var(--d-t2);
-  flex-wrap: wrap;
-}
-
-.bpNudgeBtn {
-  font-size: 0.7rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #FF5C1A;
-  background: rgba(255, 92, 26, 0.1);
-  border: 1px solid rgba(255, 92, 26, 0.3);
-  padding: 0.3rem 0.75rem;
-  border-radius: 999px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.2s;
-  flex-shrink: 0;
-}
-
-.bpNudgeBtn:hover {
-  background: rgba(255, 92, 26, 0.2);
-}

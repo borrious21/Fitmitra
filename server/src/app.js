@@ -17,6 +17,7 @@ import planRoutes      from "./routes/plan.route.js";
 import mealRoutes      from "./routes/meal.route.js";
 import progressRoutes  from "./routes/progress.route.js";
 import adminRoutes     from "./routes/admin.routes.js";
+import chatRoutes      from "./routes/chat.routes.js";          // ← add
 
 const app = express();
 
@@ -31,15 +32,14 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api/auth",      authRoutes);
-
 app.use("/api/profile",   profileRoutes);
 app.use("/api/workouts",  workoutRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/plans",     planRoutes);
 app.use("/api/meals",     mealRoutes);
 app.use("/api/progress",  progressRoutes);
-
 app.use("/api/admin",     adminRoutes);
+app.use("/api/chat",      chatRoutes);                          // ← add
 
 app.use((req, res, next) => {
   const error = new Error(`Not Found - ${req.originalUrl}`);

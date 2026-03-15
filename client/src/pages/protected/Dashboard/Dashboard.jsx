@@ -9,6 +9,7 @@ import {
   getDashboardHealth, getDashboardWeekly, getDashboardInsights, getDashboardStreak,
 } from "../../../services/dashboardService";
 import { apiFetch } from "../../../services/apiClient";
+import Chatbot from "../../../components/Chatbot/Chatbot";
 
 const GOAL_LABELS = {
   weight_loss: "Weight Loss", maintain_fitness: "Maintain Fitness",
@@ -37,7 +38,6 @@ const LEVEL_LABELS = {
   9:"💎 Legend", 10:"🚀 GOAT",
 };
 
-// ── Meal time/type → display meta ──
 function getMealMeta(meal) {
   const t = (meal.time ?? meal.meal_type ?? "").toLowerCase();
   if (t.includes("breakfast") || t.includes("morning") || meal.emoji === "🌅")
@@ -53,7 +53,6 @@ function getMealMeta(meal) {
   return { emoji: meal.emoji ?? "🍽️", label: meal.time ?? "Meal" };
 }
 
-// ── Strip trailing .00 / .0 from macro/numeric values ──
 function fmtMacro(v) {
   const n = Number(v);
   if (!n) return "0";
@@ -165,18 +164,12 @@ function RestDayCard({ mesocycleWeek, missedRecovery }) {
   );
 }
 
-// ── FIXED: exercises presence is the ground truth for rest day detection ──
 function checkRestDay(workout) {
   if (!workout) return false;
-
-  // If there are real exercises, it's NOT a rest day regardless of flags/name
   const hasExercises = Array.isArray(workout.exercises) && workout.exercises.length > 0;
   if (hasExercises) return false;
-
-  // No exercises — now check explicit flags and name
   if (workout.isRestDay === true) return true;
   if (workout.is_rest_day === true) return true;
-
   const name = (workout.name ?? "").toLowerCase().trim();
   return name === "rest day" || name === "rest" || name === "recovery day";
 }
@@ -338,7 +331,6 @@ function WarmupReminder({ warmup = [] }) {
   );
 }
 
-// ── Meals Card ──
 function MealsCard({ meals, onLogMeal }) {
   const totalCal = meals.reduce((s, m) => s + (Number(m.cal) || 0), 0);
   const totalP   = meals.reduce((s, m) => s + (Number(m.p)   || 0), 0);
@@ -398,7 +390,6 @@ function MealsCard({ meals, onLogMeal }) {
   );
 }
 
-// ── Performance Snapshot with expand ──
 function PerformanceCard({ prs, volumeDelta, dashboard, onViewAll }) {
   const [expanded, setExpanded] = useState(false);
   const filteredVol  = volumeDelta.filter(v => v.delta_pct !== null);
@@ -413,7 +404,6 @@ function PerformanceCard({ prs, volumeDelta, dashboard, onViewAll }) {
         <span className={styles.secLabel}>📊 Performance Snapshot</span>
         <button className={styles.ghostBtnSm} onClick={onViewAll}>Full Progress →</button>
       </div>
-
       <div className={styles.perfGrid}>
         {visiblePRs.map(pr => (
           <div key={pr.exercise_name} className={styles.prCard}>
@@ -440,13 +430,11 @@ function PerformanceCard({ prs, volumeDelta, dashboard, onViewAll }) {
           </div>
         ))}
       </div>
-
       {hasMore && (
         <button className={styles.showMoreBtn} onClick={() => setExpanded(e => !e)}>
           {expanded ? "▲ Show Less" : `▼ Show All ${totalEntries} Entries`}
         </button>
       )}
-
       {dashboard?.strength_improvements?.length > 0 && (
         <div className={styles.strengthBar}>
           <span className={styles.strengthBarLabel}>💪 Strength gains (30d):</span>
@@ -524,7 +512,6 @@ export default function Dashboard() {
         if (results[1].status === "fulfilled") setNutrition(results[1].value?.data ?? results[1].value ?? null);
         if (results[2].status === "fulfilled") {
           const raw = results[2].value?.data ?? results[2].value ?? null;
-          console.log("🏋️ workout payload:", raw); // remove after confirming fix
           setWorkout(raw);
         }
         if (results[3].status === "fulfilled") {
@@ -622,6 +609,7 @@ export default function Dashboard() {
 
   return (
     <div className={styles.wrapper}>
+      {/* ── NAV ── */}
       <nav className={styles.nav}>
         <a className={styles.navLogo} href="#">
           <span className={styles.navLogoIcon}>
@@ -652,6 +640,7 @@ export default function Dashboard() {
         </div>
       </nav>
 
+      {/* ── MAIN ── */}
       <main className={styles.main}>
         {error && (
           <div className={styles.alertBanner} style={{ marginBottom: "1rem" }}>
@@ -928,7 +917,6 @@ export default function Dashboard() {
                   </div>
                 ))}
               </div>
-
               {!bpLogged && (
                 <div className={styles.bpNudge}>
                   <span>🫀 Blood pressure not logged today.</span>
@@ -937,7 +925,6 @@ export default function Dashboard() {
                   </button>
                 </div>
               )}
-
               {health.sleep && health.sleep < 7 && (
                 <div className={styles.alertBanner} style={{ marginTop: "0.75rem" }}>
                   <span className={styles.alertIcon}>⚠️</span>
@@ -1005,7 +992,6 @@ export default function Dashboard() {
                     </div>
                   ))}
                 </div>
-
                 <div className={styles.dayTracker}>
                   <span className={styles.secLabel}>Workout Days</span>
                   <div className={styles.dayRow}>
@@ -1019,7 +1005,6 @@ export default function Dashboard() {
                     ))}
                   </div>
                 </div>
-
                 {hasWeeklyData ? (
                   <div>
                     <span className={styles.secLabel}>Calories vs Target</span>
@@ -1064,6 +1049,9 @@ export default function Dashboard() {
           </div>
         </Section>
       </main>
+
+      {/* ── CHATBOT FLOATING WIDGET ── */}
+      <Chatbot />
     </div>
   );
 }
