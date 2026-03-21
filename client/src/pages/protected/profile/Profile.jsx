@@ -262,6 +262,7 @@ export default function Profile() {
   };
 
 
+  // ─── FIXED: Avatar upload with robust URL parsing ────────────────────────
   const handleAvatarChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -282,14 +283,29 @@ export default function Profile() {
         throw new Error(j?.message ?? `Upload failed (${res.status})`);
       }
       const json = await res.json();
-      const uploadedUrl = json?.data?.avatar_url;
-      URL.revokeObjectURL(localPreview);
+
+      // Handle varied response shapes:
+      // { data: { avatar_url } }, { data: { url } }, { avatar_url }, { url }
+      const uploadedUrl =
+        json?.data?.avatar_url ??
+        json?.data?.url        ??
+        json?.avatar_url       ??
+        json?.url              ??
+        null;
+
+      if (!uploadedUrl) {
+        // Log for debugging — remove once confirmed working
+        console.error("Avatar upload response shape:", json);
+        throw new Error("Server did not return a valid avatar URL.");
+      }
+
+      URL.revokeObjectURL(localPreview); // only revoke AFTER we have a real URL
       setAvatarUrl(uploadedUrl);
       setSavedAvatarUrl(uploadedUrl);
       showAlert("success", "Profile photo updated!");
     } catch (err) {
       showAlert("error", err?.message ?? "Photo upload failed. Please try again.");
-      setAvatarUrl(savedAvatarUrl);
+      setAvatarUrl(savedAvatarUrl); // restore last known good avatar
     } finally {
       setAvatarUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";

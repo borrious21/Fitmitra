@@ -23,6 +23,7 @@ import LogMeal from "./pages/protected/Dashboard/Logmeal/Logmeal";
 import Workout from "./pages/protected/Dashboard/workout/workout";
 import Progress from "./pages/protected/Dashboard/Progress/Progress";
 import AdminDashboard from "./pages/protected/Admin/AdminDashboard";
+import MealPlanner from "./pages/protected/Dashboard/MealPlanner/Mealplanner";
 
 function App() {
   return (
@@ -84,6 +85,14 @@ function App() {
                   <Plans />
                 </ProtectedRoute>
               }
+            />
+            <Route
+            path="/meal-plan"
+            element={
+              <ProtectedRoute>
+                  <MealPlanner />
+                </ProtectedRoute>
+            }
             />
             <Route
               path="/log-meal"

@@ -1,0 +1,221 @@
+/* MealPlanner.module.css */
+
+/* ─── Layout ───────────────────────────────────────────────────────────────── */
+.wrapper { min-height: 100vh; background: var(--bg, #0f172a); }
+
+.nav {
+  display: flex; align-items: center; gap: 16px;
+  padding: 0 24px; height: 60px;
+  background: var(--nav-bg, #070c14);
+  border-bottom: 1px solid var(--border, #1e293b);
+  position: sticky; top: 0; z-index: 100;
+}
+.navLogo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.navLogoIcon { width: 28px; height: 28px; color: #FF5C1A; }
+.navLogoWord { font-weight: 800; font-size: 16px; color: #f1f5f9; letter-spacing: 0.06em; }
+.navLogoWord span { color: #FF5C1A; }
+.backBtn {
+  margin-left: auto; padding: 7px 14px; font-size: 13px; font-weight: 600;
+  background: transparent; border: 1px solid #1e293b; border-radius: 8px;
+  color: #64748b; cursor: pointer; transition: all .15s;
+}
+.backBtn:hover { background: #1e293b; color: #f1f5f9; }
+.navAvatar {
+  width: 34px; height: 34px; border-radius: 10px;
+  background: linear-gradient(135deg,#FF5C1A,#FF8A3D);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; color: #fff;
+}
+.navAvatarImg { width: 34px; height: 34px; border-radius: 10px; object-fit: cover; }
+.navAvatarLink { text-decoration: none; margin-left: 10px; }
+
+.main { max-width: 900px; margin: 0 auto; padding: 28px 20px 80px; }
+
+/* ─── Header ───────────────────────────────────────────────────────────────── */
+.pageHeader { margin-bottom: 28px; }
+.pageTitle { font-size: 26px; font-weight: 800; color: #f1f5f9; letter-spacing: -0.02em; margin: 0 0 6px; }
+.pageTitle span { color: #FF5C1A; }
+.pageSub { font-size: 14px; color: #475569; margin: 0; }
+
+/* ─── Alert ────────────────────────────────────────────────────────────────── */
+.alertSuccess, .alertError {
+  padding: 12px 16px; border-radius: 12px; font-size: 13px; font-weight: 600;
+  margin-bottom: 20px; display: flex; align-items: center; gap: 8px;
+}
+.alertSuccess { background: rgba(16,185,129,.12); border: 1px solid rgba(16,185,129,.3); color: #4ade80; }
+.alertError   { background: rgba(239,68,68,.12);  border: 1px solid rgba(239,68,68,.3);  color: #f87171; }
+
+/* ─── Calorie summary bar ──────────────────────────────────────────────────── */
+.calSummary {
+  display: grid; grid-template-columns: repeat(4,1fr); gap: 12px;
+  margin-bottom: 24px;
+}
+.calCard {
+  background: #1e293b; border: 1px solid #334155; border-radius: 14px;
+  padding: 16px; text-align: center;
+}
+.calCardVal  { font-size: 22px; font-weight: 800; color: #f1f5f9; letter-spacing: -0.02em; }
+.calCardUnit { font-size: 11px; color: #475569; font-weight: 600; }
+.calCardKey  { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+
+/* ─── Safety chips ─────────────────────────────────────────────────────────── */
+.safetyRow { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+.safetyChip {
+  padding: 5px 12px; border-radius: 50px; font-size: 11px; font-weight: 600;
+  background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.3); color: #f87171;
+}
+
+/* ─── Meal cards grid ──────────────────────────────────────────────────────── */
+.mealsGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+@media (max-width: 640px) { .mealsGrid { grid-template-columns: 1fr; } }
+
+.mealCard {
+  background: #1e293b; border: 1px solid #334155; border-radius: 16px; overflow: hidden;
+  transition: border-color .2s;
+}
+.mealCard:hover { border-color: #FF5C1A44; }
+
+.mealCardHeader {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid #334155;
+}
+.mealCardTitle { display: flex; align-items: center; gap: 8px; }
+.mealEmoji  { font-size: 20px; }
+.mealName   { font-size: 14px; font-weight: 700; color: #f1f5f9; text-transform: capitalize; }
+.mealCal    { font-size: 12px; font-weight: 700; color: #FF5C1A; }
+
+.mealItems  { padding: 10px 16px 14px; display: flex; flex-direction: column; gap: 8px; }
+
+.mealItem {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+}
+.mealItemLeft  { display: flex; flex-direction: column; flex: 1; }
+.mealItemName  { font-size: 13px; color: #e2e8f0; font-weight: 500; }
+.mealItemPortion { font-size: 11px; color: #475569; margin-top: 1px; }
+.mealItemRight { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex-shrink: 0; }
+.mealItemCal   { font-size: 12px; font-weight: 700; color: #FF5C1A; }
+.mealItemMacros { display: flex; gap: 5px; }
+.macroChip {
+  font-size: 10px; font-weight: 600; padding: 2px 5px; border-radius: 4px;
+}
+
+.logMealBtn {
+  margin: 0 16px 14px; width: calc(100% - 32px);
+  padding: 9px; border-radius: 9px; border: none; cursor: pointer;
+  background: linear-gradient(135deg, rgba(255,92,26,.15), rgba(255,138,61,.08));
+  border: 1px solid rgba(255,92,26,.3);
+  color: #FF5C1A; font-size: 12px; font-weight: 700;
+  transition: all .15s;
+}
+.logMealBtn:hover { background: rgba(255,92,26,.25); }
+.logMealBtn:disabled { opacity: .45; cursor: not-allowed; }
+
+/* ─── Tips ─────────────────────────────────────────────────────────────────── */
+.tipsCard {
+  background: #1e293b; border: 1px solid #334155; border-radius: 16px; padding: 20px;
+  margin-bottom: 24px;
+}
+.tipsTitle { font-size: 13px; font-weight: 700; color: #94a3b8; text-transform: uppercase;
+             letter-spacing: .06em; margin-bottom: 12px; }
+.tipsList { display: flex; flex-direction: column; gap: 8px; }
+.tipItem {
+  display: flex; align-items: flex-start; gap: 10px;
+  font-size: 13px; color: #cbd5e1; line-height: 1.5;
+}
+.tipDot {
+  width: 6px; height: 6px; border-radius: 50%; background: #FF5C1A;
+  margin-top: 6px; flex-shrink: 0;
+}
+.waterTip {
+  margin-top: 10px; padding: 10px 14px; border-radius: 10px;
+  background: rgba(0,200,224,.08); border: 1px solid rgba(0,200,224,.2);
+  font-size: 13px; color: #00C8E0; display: flex; align-items: center; gap: 8px;
+}
+
+/* ─── History ──────────────────────────────────────────────────────────────── */
+.historySection { margin-top: 24px; }
+.historyTitle { font-size: 13px; font-weight: 700; color: #94a3b8;
+                text-transform: uppercase; letter-spacing: .06em; margin-bottom: 12px; }
+.historyRow {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; background: #1e293b; border: 1px solid #334155;
+  border-radius: 10px; margin-bottom: 8px; font-size: 13px;
+}
+.historyDate { color: #94a3b8; font-weight: 600; }
+.historyStats { display: flex; gap: 14px; color: #64748b; }
+.historyStat  { display: flex; flex-direction: column; align-items: center; }
+.historyStatVal { font-weight: 700; color: #e2e8f0; font-size: 13px; }
+.historyStatKey { font-size: 10px; color: #475569; }
+
+/* ─── Generate button ──────────────────────────────────────────────────────── */
+.generateSection { display: flex; gap: 12px; margin-bottom: 28px; }
+.generateBtn {
+  flex: 1; padding: 14px; border: none; border-radius: 12px; cursor: pointer;
+  background: linear-gradient(135deg, #FF5C1A, #FF8A3D);
+  color: #fff; font-size: 15px; font-weight: 700;
+  transition: all .2s; letter-spacing: .02em;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.generateBtn:hover:not(:disabled) { filter: brightness(1.1); transform: translateY(-1px); }
+.generateBtn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+.regenerateBtn {
+  padding: 14px 20px; border-radius: 12px; cursor: pointer;
+  background: #1e293b; border: 1px solid #334155;
+  color: #94a3b8; font-size: 14px; font-weight: 600; transition: all .2s;
+}
+.regenerateBtn:hover:not(:disabled) { background: #334155; color: #f1f5f9; }
+.regenerateBtn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ─── Loading skeleton ─────────────────────────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: 8px;
+}
+@keyframes shimmer { 0%{background-position:200%} 100%{background-position:-200%} }
+
+.skeletonCard {
+  background: #1e293b; border: 1px solid #334155; border-radius: 16px;
+  padding: 20px; display: flex; flex-direction: column; gap: 10px;
+}
+
+/* ─── Empty state ──────────────────────────────────────────────────────────── */
+.emptyState {
+  background: #1e293b; border: 1px dashed #334155; border-radius: 20px;
+  padding: 48px 24px; text-align: center;
+}
+.emptyIcon  { font-size: 48px; display: block; margin-bottom: 12px; }
+.emptyTitle { font-size: 18px; font-weight: 700; color: #f1f5f9; margin-bottom: 8px; }
+.emptySub   { font-size: 14px; color: #475569; margin-bottom: 24px; line-height: 1.6; }
+
+/* ─── Profile missing ──────────────────────────────────────────────────────── */
+.profileMissing {
+  background: rgba(239,68,68,.06); border: 1px solid rgba(239,68,68,.2);
+  border-radius: 16px; padding: 24px; text-align: center;
+}
+.profileMissingTitle { font-size: 16px; font-weight: 700; color: #f87171; margin-bottom: 8px; }
+.profileMissingSub   { font-size: 13px; color: #94a3b8; margin-bottom: 16px; }
+.profileBtn {
+  padding: 10px 20px; background: linear-gradient(135deg,#FF5C1A,#FF8A3D);
+  border: none; border-radius: 10px; color: #fff; font-weight: 700;
+  font-size: 13px; cursor: pointer; transition: all .2s;
+}
+
+/* ─── Macro bar in meal card ───────────────────────────────────────────────── */
+.mealMacroBar {
+  display: flex; gap: 6px; padding: 8px 16px;
+  border-top: 1px solid #334155; background: #0f172a;
+}
+.mealMacroItem { display: flex; flex-direction: column; align-items: center; flex: 1; }
+.mealMacroVal  { font-size: 12px; font-weight: 700; }
+.mealMacroKey  { font-size: 10px; color: #475569; }
+
+/* ─── Logged state ─────────────────────────────────────────────────────────── */
+.loggedBadge {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 9px; font-size: 12px; font-weight: 700; color: #4ade80;
+  background: rgba(74,222,128,.08); border: 1px solid rgba(74,222,128,.25);
+  border-radius: 9px; margin: 0 16px 14px;
+}

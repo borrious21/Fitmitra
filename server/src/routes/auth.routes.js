@@ -27,7 +27,6 @@ router.post("/forgot-password", AuthController.forgotPassword);
 router.post("/verify-reset-otp", AuthController.verifyResetOtp);
 
 // URL: /api/auth/reset-password
-// Resets user's password after verifying OTP
 router.post("/reset-password", AuthController.resetPassword);
 
 // URL: /api/auth/me

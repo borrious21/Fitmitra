@@ -1,11 +1,12 @@
 // src/pages/LogMeal/LogMeal.jsx
-import { useState } from "react";
+import { useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
+import { AuthContext } from "../../../../context/AuthContext";
+import { getMyProfile } from "../../../../services/profileService";
 import { apiFetch } from "../../../../services/apiClient";
 import styles from "./LogMeal.module.css";
 
 const MEAL_TYPES = ["breakfast", "lunch", "dinner", "snack"];
-
 const MEAL_EMOJI = { breakfast: "🌅", lunch: "☀️", dinner: "🌙", snack: "🍎" };
 
 const QUICK_MEALS = {
@@ -29,15 +30,58 @@ const QUICK_MEALS = {
   ],
 };
 
-const EMPTY = { meal_type: "breakfast", meal_name: "", calories_consumed: "", protein_g: "", carbs_g: "", fats_g: "", notes: "" };
+const EMPTY = {
+  meal_type: "breakfast", meal_name: "", calories_consumed: "",
+  protein_g: "", carbs_g: "", fats_g: "", notes: "",
+};
+
+// ── Mirrors Dashboard's NavAvatar exactly ────────────────────────────────────
+function NavAvatar({ avatarUrl, initials }) {
+  const [imgError, setImgError] = useState(false);
+  useEffect(() => { setImgError(false); }, [avatarUrl]);
+  if (avatarUrl && !imgError) {
+    return (
+      <img
+        src={avatarUrl}
+        alt="avatar"
+        className={styles.navAvatarImg}
+        onError={() => setImgError(true)}
+      />
+    );
+  }
+  return <div className={styles.navAvatar}>{initials}</div>;
+}
 
 export default function LogMeal() {
-  const navigate = useNavigate();
-  const [form,    setForm]    = useState(EMPTY);
-  const [saving,  setSaving]  = useState(false);
-  const [alert,   setAlert]   = useState(null);
-  const [errors,  setErrors]  = useState({});
-  const [search,  setSearch]  = useState("");
+  const navigate        = useNavigate();
+  const { user }        = useContext(AuthContext);
+  const [form,    setForm]      = useState(EMPTY);
+  const [saving,  setSaving]    = useState(false);
+  const [alert,   setAlert]     = useState(null);
+  const [errors,  setErrors]    = useState({});
+  const [search,  setSearch]    = useState("");
+  const [avatarUrl, setAvatarUrl] = useState(null);
+
+  const displayName = user?.name ?? "User";
+  const initials    = displayName.split(" ").map(n => n[0] ?? "").join("").slice(0, 2).toUpperCase();
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const raw  = await getMyProfile();
+        const data = raw?.data ?? raw;
+        // Same multi-field resolution as Dashboard
+        const resolved =
+          data?.avatar_url       ??
+          data?.data?.avatar_url ??
+          data?.url              ??
+          data?.data?.url        ??
+          null;
+        if (resolved) setAvatarUrl(resolved);
+      } catch {}
+    };
+    fetchProfile();
+  }, []);
 
   const set = (field, val) => {
     setForm(f => ({ ...f, [field]: val }));
@@ -47,18 +91,18 @@ export default function LogMeal() {
   const fillFromQuick = (meal) => {
     setForm(f => ({
       ...f,
-      meal_name:          meal.name,
-      calories_consumed:  String(meal.calories),
-      protein_g:          String(meal.protein_g),
-      carbs_g:            String(meal.carbs_g),
-      fats_g:             String(meal.fats_g),
+      meal_name:         meal.name,
+      calories_consumed: String(meal.calories),
+      protein_g:         String(meal.protein_g),
+      carbs_g:           String(meal.carbs_g),
+      fats_g:            String(meal.fats_g),
     }));
     setSearch("");
   };
 
   const validate = () => {
     const e = {};
-    if (!form.meal_name.trim())       e.meal_name          = "Meal name required";
+    if (!form.meal_name.trim()) e.meal_name = "Meal name required";
     if (!form.calories_consumed || isNaN(Number(form.calories_consumed)) || Number(form.calories_consumed) < 0)
       e.calories_consumed = "Valid calories required";
     if (form.protein_g && isNaN(Number(form.protein_g))) e.protein_g = "Must be a number";
@@ -75,17 +119,17 @@ export default function LogMeal() {
     try {
       await apiFetch("/meals/log", {
         method: "POST",
-      body: JSON.stringify({
-  mealType:  form.meal_type,           
-  mealName:  form.meal_name.trim(),    
-  calories:  Number(form.calories_consumed),  
-  protein:   Number(form.protein_g  || 0),    
-  carbs:     Number(form.carbs_g    || 0),     
-  fats:      Number(form.fats_g     || 0),     
-  notes:     form.notes,
-  source:    "custom",                 
-  log_date:  new Date().toISOString().split("T")[0],
-}),
+        body: JSON.stringify({
+          mealType: form.meal_type,
+          mealName: form.meal_name.trim(),
+          calories: Number(form.calories_consumed),
+          protein:  Number(form.protein_g || 0),
+          carbs:    Number(form.carbs_g   || 0),
+          fats:     Number(form.fats_g    || 0),
+          notes:    form.notes,
+          source:   "custom",
+          log_date: new Date().toISOString().split("T")[0],
+        }),
       });
       showAlert("success", `${form.meal_name} logged! 🍽️`);
       setForm(EMPTY);
@@ -101,7 +145,7 @@ export default function LogMeal() {
     setTimeout(() => setAlert(null), 4000);
   };
 
-  const allMeals = [...(QUICK_MEALS.veg), ...(QUICK_MEALS.non_veg)];
+  const allMeals = [...QUICK_MEALS.veg, ...QUICK_MEALS.non_veg];
   const filtered = search.trim()
     ? allMeals.filter(m => m.name.toLowerCase().includes(search.toLowerCase()))
     : [];
@@ -112,13 +156,19 @@ export default function LogMeal() {
         <a className={styles.navLogo} href="/dashboard">
           <span className={styles.navLogoIcon}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
-              <line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/>
+              <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
+              <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+              <line x1="6" y1="1" x2="6" y2="4"/>
+              <line x1="10" y1="1" x2="10" y2="4"/>
+              <line x1="14" y1="1" x2="14" y2="4"/>
             </svg>
           </span>
           <span className={styles.navLogoWord}>FIT<span>MITRA</span></span>
         </a>
         <button className={styles.backBtn} onClick={() => navigate(-1)}>← Dashboard</button>
+        <a href="/profile" className={styles.navAvatarLink} title="Edit profile">
+          <NavAvatar avatarUrl={avatarUrl} initials={initials} />
+        </a>
       </nav>
 
       <main className={styles.main}>
@@ -195,17 +245,20 @@ export default function LogMeal() {
             </div>
             <div className={styles.formGroup}>
               <label className={styles.label}>Protein (g)</label>
-              <input type="number" min="0" step="0.1" className={`${styles.input} ${errors.protein_g ? styles.inputErr : ""}`}
+              <input type="number" min="0" step="0.1"
+                className={`${styles.input} ${errors.protein_g ? styles.inputErr : ""}`}
                 value={form.protein_g} onChange={e => set("protein_g", e.target.value)} placeholder="0"/>
             </div>
             <div className={styles.formGroup}>
               <label className={styles.label}>Carbs (g)</label>
-              <input type="number" min="0" step="0.1" className={`${styles.input} ${errors.carbs_g ? styles.inputErr : ""}`}
+              <input type="number" min="0" step="0.1"
+                className={`${styles.input} ${errors.carbs_g ? styles.inputErr : ""}`}
                 value={form.carbs_g} onChange={e => set("carbs_g", e.target.value)} placeholder="0"/>
             </div>
             <div className={styles.formGroup}>
               <label className={styles.label}>Fats (g)</label>
-              <input type="number" min="0" step="0.1" className={`${styles.input} ${errors.fats_g ? styles.inputErr : ""}`}
+              <input type="number" min="0" step="0.1"
+                className={`${styles.input} ${errors.fats_g ? styles.inputErr : ""}`}
                 value={form.fats_g} onChange={e => set("fats_g", e.target.value)} placeholder="0"/>
             </div>
           </div>
@@ -216,7 +269,6 @@ export default function LogMeal() {
               onChange={e => set("notes", e.target.value)} placeholder="e.g. Home cooked, no oil"/>
           </div>
 
-          {/* MACRO PREVIEW */}
           {form.calories_consumed && (
             <div className={styles.macroPreview}>
               <div className={styles.macroPreviewItem} style={{ color: "#FF5C1A" }}>

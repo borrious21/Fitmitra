@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useContext } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import styles from "./Dashboard.module.css";
 import ThemeToggle from "../../../components/ThemeToggle/ThemeToggle";
+import AiCoach from "../../../components/AiCoach/AiCoach";
 import { AuthContext } from "../../../context/AuthContext";
 import { getMyProfile } from "../../../services/profileService";
 import {
@@ -9,7 +10,7 @@ import {
   getDashboardHealth, getDashboardWeekly, getDashboardInsights, getDashboardStreak,
 } from "../../../services/dashboardService";
 import { apiFetch } from "../../../services/apiClient";
-import Chatbot from "../../../components/Chatbot/Chatbot";
+import { buildFitnessData } from "../../../utils/buildFitnessData";
 
 const GOAL_LABELS = {
   weight_loss: "Weight Loss", maintain_fitness: "Maintain Fitness",
@@ -23,13 +24,13 @@ const NAV_TABS = [
 ];
 
 const PROGRESSION_LABELS = {
-  reps_increase:   { label: "📈 +1 Rep",  color: "#10b981" },
-  weight_increase: { label: "🏋️ +2.5kg",  color: "#f59e0b" },
-  set_increase:    { label: "➕ +1 Set",  color: "#6366f1" },
-  deload:          { label: "🔄 Deload",  color: "#64748b" },
-  maintain:        { label: "✓ Maintain", color: "#94a3b8" },
-  maintain_hard:   { label: "💪 Hold",    color: "#f97316" },
-  at_ceiling:      { label: "🏆 Peak",    color: "#eab308" },
+  reps_increase:   { label: "📈 +1 Rep",   color: "#10b981" },
+  weight_increase: { label: "🏋️ +2.5kg",   color: "#f59e0b" },
+  set_increase:    { label: "➕ +1 Set",   color: "#6366f1" },
+  deload:          { label: "🔄 Deload",   color: "#64748b" },
+  maintain:        { label: "✓ Maintain",  color: "#94a3b8" },
+  maintain_hard:   { label: "💪 Hold",     color: "#f97316" },
+  at_ceiling:      { label: "🏆 Peak",     color: "#eab308" },
 };
 
 const LEVEL_LABELS = {
@@ -40,16 +41,11 @@ const LEVEL_LABELS = {
 
 function getMealMeta(meal) {
   const t = (meal.time ?? meal.meal_type ?? "").toLowerCase();
-  if (t.includes("breakfast") || t.includes("morning") || meal.emoji === "🌅")
-    return { emoji: "🌅", label: "Breakfast" };
-  if (t.includes("lunch") || t.includes("afternoon") || meal.emoji === "☀️")
-    return { emoji: "☀️", label: "Lunch" };
-  if (t.includes("dinner") || t.includes("evening") || meal.emoji === "🌙")
-    return { emoji: "🌙", label: "Dinner" };
-  if (t.includes("snack") || meal.emoji === "🥜")
-    return { emoji: "🥜", label: "Snack" };
-  if (/^\d{1,2}:\d{2}/.test(t))
-    return { emoji: "🥜", label: "Snack" };
+  if (t.includes("breakfast") || t.includes("morning") || meal.emoji === "🌅") return { emoji: "🌅", label: "Breakfast" };
+  if (t.includes("lunch")     || t.includes("afternoon")|| meal.emoji === "☀️") return { emoji: "☀️", label: "Lunch" };
+  if (t.includes("dinner")    || t.includes("evening")  || meal.emoji === "🌙") return { emoji: "🌙", label: "Dinner" };
+  if (t.includes("snack")                                || meal.emoji === "🥜") return { emoji: "🥜", label: "Snack" };
+  if (/^\d{1,2}:\d{2}/.test(t)) return { emoji: "🥜", label: "Snack" };
   return { emoji: meal.emoji ?? "🍽️", label: meal.time ?? "Meal" };
 }
 
@@ -120,7 +116,11 @@ function MacroBar({ label, value, target, fillColor }) {
 }
 
 function NavAvatar({ avatarUrl, initials }) {
-  if (avatarUrl) return <img src={avatarUrl} alt="avatar" className={styles.navAvatarImg} />;
+  const [imgError, setImgError] = useState(false);
+  useEffect(() => { setImgError(false); }, [avatarUrl]);
+  if (avatarUrl && !imgError) {
+    return <img src={avatarUrl} alt="avatar" className={styles.navAvatarImg} onError={() => setImgError(true)} />;
+  }
   return <div className={styles.navAvatar}>{initials}</div>;
 }
 
@@ -168,8 +168,7 @@ function checkRestDay(workout) {
   if (!workout) return false;
   const hasExercises = Array.isArray(workout.exercises) && workout.exercises.length > 0;
   if (hasExercises) return false;
-  if (workout.isRestDay === true) return true;
-  if (workout.is_rest_day === true) return true;
+  if (workout.isRestDay === true || workout.is_rest_day === true) return true;
   const name = (workout.name ?? "").toLowerCase().trim();
   return name === "rest day" || name === "rest" || name === "recovery day";
 }
@@ -361,21 +360,9 @@ function MealsCard({ meals, onLogMeal }) {
                 <div className={styles.mealStackName}>{m.name}</div>
                 {(m.p > 0 || m.c > 0 || m.f > 0) && (
                   <div className={styles.mealStackMacros}>
-                    {m.p > 0 && (
-                      <span className={styles.mealMacroChip} style={{ color: "#FF5C1A", borderColor: "rgba(255,92,26,0.2)", background: "rgba(255,92,26,0.06)" }}>
-                        P {fmtMacro(m.p)}g
-                      </span>
-                    )}
-                    {m.c > 0 && (
-                      <span className={styles.mealMacroChip} style={{ color: "#00C8E0", borderColor: "rgba(0,200,224,0.2)", background: "rgba(0,200,224,0.06)" }}>
-                        C {fmtMacro(m.c)}g
-                      </span>
-                    )}
-                    {m.f > 0 && (
-                      <span className={styles.mealMacroChip} style={{ color: "#B8F000", borderColor: "rgba(184,240,0,0.2)", background: "rgba(184,240,0,0.06)" }}>
-                        F {fmtMacro(m.f)}g
-                      </span>
-                    )}
+                    {m.p > 0 && <span className={styles.mealMacroChip} style={{ color: "#FF5C1A", borderColor: "rgba(255,92,26,0.2)", background: "rgba(255,92,26,0.06)" }}>P {fmtMacro(m.p)}g</span>}
+                    {m.c > 0 && <span className={styles.mealMacroChip} style={{ color: "#00C8E0", borderColor: "rgba(0,200,224,0.2)", background: "rgba(0,200,224,0.06)" }}>C {fmtMacro(m.c)}g</span>}
+                    {m.f > 0 && <span className={styles.mealMacroChip} style={{ color: "#B8F000", borderColor: "rgba(184,240,0,0.2)", background: "rgba(184,240,0,0.06)" }}>F {fmtMacro(m.f)}g</span>}
                   </div>
                 )}
               </div>
@@ -383,9 +370,7 @@ function MealsCard({ meals, onLogMeal }) {
           );
         })}
       </div>
-      <button className={styles.ghostBtn} style={{ marginTop: "0.875rem" }} onClick={onLogMeal}>
-        + Log Meal
-      </button>
+      <button className={styles.ghostBtn} style={{ marginTop: "0.875rem" }} onClick={onLogMeal}>+ Log Meal</button>
     </div>
   );
 }
@@ -397,7 +382,6 @@ function PerformanceCard({ prs, volumeDelta, dashboard, onViewAll }) {
   const visibleVol   = expanded ? filteredVol : filteredVol.slice(0, 2);
   const totalEntries = prs.length + filteredVol.length;
   const hasMore      = prs.length > 3 || filteredVol.length > 2;
-
   return (
     <div className={`${styles.card} ${styles.accent}`}>
       <div className={styles.perfHeader}>
@@ -438,10 +422,7 @@ function PerformanceCard({ prs, volumeDelta, dashboard, onViewAll }) {
       {dashboard?.strength_improvements?.length > 0 && (
         <div className={styles.strengthBar}>
           <span className={styles.strengthBarLabel}>💪 Strength gains (30d):</span>
-          {(expanded
-            ? dashboard.strength_improvements
-            : dashboard.strength_improvements.slice(0, 3)
-          ).map(s => (
+          {(expanded ? dashboard.strength_improvements : dashboard.strength_improvements.slice(0, 3)).map(s => (
             <span key={s.exercise_name} className={styles.strengthChip}
               style={{ color: s.improvement_pct >= 0 ? "#10b981" : "#ef4444" }}>
               {s.exercise_name} {s.improvement_pct >= 0 ? "+" : ""}{s.improvement_pct}%
@@ -453,10 +434,11 @@ function PerformanceCard({ prs, volumeDelta, dashboard, onViewAll }) {
   );
 }
 
+// ─── Main Dashboard ───────────────────────────────────────────────────────────
 export default function Dashboard() {
-  const { user }  = useContext(AuthContext);
-  const navigate  = useNavigate();
-  const location  = useLocation();
+  const { user } = useContext(AuthContext);
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const activeTab = NAV_TABS.find(t => t.path === location.pathname)?.key ?? "today";
 
@@ -504,23 +486,23 @@ export default function Dashboard() {
         if (cancelled) return;
 
         if (results[0].status === "fulfilled") {
-          const data = results[0].value?.data ?? results[0].value;
-          if (data?.avatar_url) setAvatarUrl(data.avatar_url);
-          if (data?.goal)       setGoalLabel(GOAL_LABELS[data.goal] ?? data.goal);
-          if (data?.weight_kg)  setWeight({ current: data.weight_kg, change: data.weight_change_this_week ?? null });
+          const raw  = results[0].value;
+          const data = raw?.data ?? raw;
+          const resolvedAvatar =
+            data?.avatar_url ?? data?.data?.avatar_url ??
+            data?.url        ?? data?.data?.url        ?? null;
+          if (resolvedAvatar) setAvatarUrl(resolvedAvatar);
+          if (data?.goal)      setGoalLabel(GOAL_LABELS[data.goal] ?? data.goal);
+          if (data?.weight_kg) setWeight({ current: data.weight_kg, change: data.weight_change_this_week ?? null });
         }
+
         if (results[1].status === "fulfilled") setNutrition(results[1].value?.data ?? results[1].value ?? null);
-        if (results[2].status === "fulfilled") {
-          const raw = results[2].value?.data ?? results[2].value ?? null;
-          setWorkout(raw);
-        }
+        if (results[2].status === "fulfilled") setWorkout(results[2].value?.data ?? results[2].value ?? null);
         if (results[3].status === "fulfilled") {
           const d = results[3].value?.data ?? results[3].value;
           setMeals(Array.isArray(d) ? d : []);
         }
-        if (results[4].status === "fulfilled") {
-          setHealth(results[4].value?.data ?? results[4].value ?? null);
-        }
+        if (results[4].status === "fulfilled") setHealth(results[4].value?.data ?? results[4].value ?? null);
         if (results[5].status === "fulfilled") setWeekly(results[5].value?.data ?? results[5].value ?? null);
         if (results[6].status === "fulfilled") {
           const d = results[6].value?.data ?? results[6].value;
@@ -538,30 +520,17 @@ export default function Dashboard() {
           const d = results[9].value?.data ?? results[9].value;
           setVolumeDelta(d?.weekly_delta ?? []);
         }
-        if (results[10].status === "fulfilled") {
-          const d = results[10].value?.data ?? results[10].value;
-          setDashboard(d ?? null);
-        }
-        if (results[11].status === "fulfilled") {
-          const d = results[11].value?.data ?? results[11].value;
-          setGamification(d ?? null);
-        }
-        if (results[12].status === "fulfilled") {
-          const d = results[12].value?.data ?? results[12].value;
-          setActivePlan(d ?? null);
-        }
+        if (results[10].status === "fulfilled") setDashboard(results[10].value?.data ?? results[10].value ?? null);
+        if (results[11].status === "fulfilled") setGamification(results[11].value?.data ?? results[11].value ?? null);
+        if (results[12].status === "fulfilled") setActivePlan(results[12].value?.data ?? results[12].value ?? null);
 
         try {
-          const sigRes = await apiFetch("/plans/adaptive-difficulty", {
-            method: "POST", body: JSON.stringify({ recent_logs: [] }),
-          });
+          const sigRes = await apiFetch("/plans/adaptive-difficulty", { method: "POST", body: JSON.stringify({ recent_logs: [] }) });
           if (!cancelled) setAdaptSignal(sigRes?.data ?? sigRes ?? null);
         } catch { }
 
         try {
-          const metRes = await apiFetch("/plans/progress-metrics", {
-            method: "POST", body: JSON.stringify({ weight_logs: [], strength_logs: [], measurements: [] }),
-          });
+          const metRes = await apiFetch("/plans/progress-metrics", { method: "POST", body: JSON.stringify({ weight_logs: [], strength_logs: [], measurements: [] }) });
           if (!cancelled) setProgressMetrics(metRes?.data ?? metRes ?? null);
         } catch { }
 
@@ -574,6 +543,11 @@ export default function Dashboard() {
     fetchAll();
     return () => { cancelled = true; };
   }, []);
+
+  // ── Build fitnessData for AI Coach ──────────────────────────────────────────
+  const fitnessData = !loading
+    ? buildFitnessData({ nutrition, workout, health, streak, weight, goalLabel })
+    : null;
 
   const displayName = user?.name ?? "User";
   const initials    = displayName.split(" ").map(n => n[0] ?? "").join("").slice(0, 2).toUpperCase();
@@ -595,21 +569,22 @@ export default function Dashboard() {
   const hasWeeklyData = weekly && Array.isArray(weekly.calories) && weekly.calories.some(Boolean);
   const isDeloadWeek  = workout?.is_deload_week ?? false;
   const workoutWarmup = workout?.warmup ?? [];
+  const bpLogged      = !!(health?.bp && health.bp !== "—" && health.bp !== "Not logged");
 
-  const bpLogged = !!(health?.bp && health.bp !== "—" && health.bp !== "Not logged");
-
+  // ── ✅ UPDATED: Added Meal Plan quick action ─────────────────────────────────
   const QUICK_ACTIONS = [
-    { icon: "⚖️", label: "Log Weight",  action: () => navigate("/progress") },
-    { icon: "🩺", label: "Log BP",      action: () => navigate("/progress") },
-    { icon: "🍽️", label: "Log Meal",    action: () => navigate("/log-meal") },
-    { icon: "📋", label: "Full Plan",   action: () => navigate("/plans")    },
-    { icon: "🎯", label: "Update Goal", action: () => navigate("/profile")  },
-    { icon: "💪", label: "Workout",     action: () => navigate("/workout")  },
+    { icon: "⚖️", label: "Log Weight",  action: () => navigate("/progress")  },
+    { icon: "🩺", label: "Log BP",      action: () => navigate("/progress")  },
+    { icon: "🍽️", label: "Log Meal",    action: () => navigate("/log-meal")  },
+    { icon: "🥗", label: "Meal Plan",   action: () => navigate("/meal-plan") },
+    { icon: "📋", label: "Full Plan",   action: () => navigate("/plans")     },
+    { icon: "🎯", label: "Update Goal", action: () => navigate("/profile")   },
+    { icon: "💪", label: "Workout",     action: () => navigate("/workout")   },
   ];
 
   return (
     <div className={styles.wrapper}>
-      {/* ── NAV ── */}
+      {/* ── NAV ─────────────────────────────────────────────────────────────── */}
       <nav className={styles.nav}>
         <a className={styles.navLogo} href="#">
           <span className={styles.navLogoIcon}>
@@ -625,9 +600,11 @@ export default function Dashboard() {
         </a>
         <div className={styles.navTabs}>
           {NAV_TABS.map(t => (
-            <button key={t.key}
+            <button
+              key={t.key}
               className={`${styles.navTab}${activeTab === t.key ? " " + styles.navTabActive : ""}`}
-              onClick={() => navigate(t.path)}>
+              onClick={() => navigate(t.path)}
+            >
               {t.label}
             </button>
           ))}
@@ -640,7 +617,7 @@ export default function Dashboard() {
         </div>
       </nav>
 
-      {/* ── MAIN ── */}
+      {/* ── MAIN ────────────────────────────────────────────────────────────── */}
       <main className={styles.main}>
         {error && (
           <div className={styles.alertBanner} style={{ marginBottom: "1rem" }}>
@@ -651,7 +628,7 @@ export default function Dashboard() {
         {!loading && prs.length > 0 && <PRBanner prs={prs} />}
         {!loading && <AdaptiveBanner signal={adaptSignal} />}
 
-        {/* ── Welcome + XP ── */}
+        {/* Welcome + XP */}
         <Section>
           <div className={styles.welcomeGrid}>
             <div>
@@ -709,7 +686,7 @@ export default function Dashboard() {
           <Section delay={30}><DeloadWellnessCard recovery={activePlan.recovery_protocol} /></Section>
         )}
 
-        {/* ── Workout + Nutrition ── */}
+        {/* Workout + Nutrition */}
         <div className={styles.twoCol}>
           <Section>
             {loading ? <LoadingCard height={320} /> : isRestDay ? (
@@ -876,14 +853,12 @@ export default function Dashboard() {
 
         {!loading && <Section delay={40}><ProgressMetricsCard metrics={progressMetrics} /></Section>}
 
-        {/* ── Performance Snapshot ── */}
         {!loading && (prs.length > 0 || volumeDelta.length > 0) && (
           <Section delay={50}>
             <PerformanceCard prs={prs} volumeDelta={volumeDelta} dashboard={dashboard} onViewAll={() => navigate("/progress")} />
           </Section>
         )}
 
-        {/* ── Meals Today ── */}
         <Section hidden={!loading && meals.length === 0 && !hasNutrition}>
           {loading ? <LoadingCard /> : meals.length > 0 ? (
             <MealsCard meals={meals} onLogMeal={() => navigate("/log-meal")} />
@@ -895,34 +870,29 @@ export default function Dashboard() {
           )}
         </Section>
 
-        {/* ── Health Snapshot ── */}
+        {/* Health Snapshot */}
         <Section>
           <span className={styles.secLabel}>🩺 Health Snapshot</span>
           {loading ? <LoadingCard /> : hasAnyHealth ? (
             <>
               <div className={styles.healthGrid}>
                 {[
-                  { icon: "🫀", label: "Blood Pressure", value: bpLogged ? health.bp : "Not logged",                        status: health.bpStatus ?? null,       color: "#FF5C1A" },
-                  { icon: "😴", label: "Sleep",          value: health.sleep ? `${health.sleep}h` : "Not logged",            status: health.sleepStatus ?? null,    color: "#00C8E0" },
-                  { icon: "💓", label: "Heart Rate",     value: health.heartRate ? `${health.heartRate} bpm` : "Not logged", status: health.hrStatus ?? null,       color: "#FF4D6D" },
-                  { icon: "⚡", label: "Recovery",       value: health.recovery ? `${health.recovery}%` : "Not logged",     status: health.recoveryStatus ?? null, color: "#B8F000" },
+                  { icon: "🫀", label: "Blood Pressure", value: bpLogged ? health.bp : "Not logged",                        color: "#FF5C1A" },
+                  { icon: "😴", label: "Sleep",          value: health.sleep ? `${health.sleep}h` : "Not logged",            color: "#00C8E0" },
+                  { icon: "💓", label: "Heart Rate",     value: health.heartRate ? `${health.heartRate} bpm` : "Not logged", color: "#FF4D6D" },
+                  { icon: "⚡", label: "Recovery",       value: health.recovery ? `${health.recovery}%` : "Not logged",     color: "#B8F000" },
                 ].map(h => (
                   <div key={h.label} className={styles.healthCard}>
                     <span className={styles.healthIcon}>{h.icon}</span>
                     <span className={styles.healthLabel}>{h.label}</span>
                     <span className={styles.healthVal} style={{ color: h.color }}>{h.value}</span>
-                    {h.status && h.status !== "—" && (
-                      <span className={styles.healthStatus} style={{ color: h.color, background: `${h.color}18` }}>{h.status}</span>
-                    )}
                   </div>
                 ))}
               </div>
               {!bpLogged && (
                 <div className={styles.bpNudge}>
                   <span>🫀 Blood pressure not logged today.</span>
-                  <button className={styles.bpNudgeBtn} onClick={() => navigate("/progress")}>
-                    Log it on Progress →
-                  </button>
+                  <button className={styles.bpNudgeBtn} onClick={() => navigate("/progress")}>Log it on Progress →</button>
                 </div>
               )}
               {health.sleep && health.sleep < 7 && (
@@ -938,7 +908,7 @@ export default function Dashboard() {
           )}
         </Section>
 
-        {/* ── AI Insights ── */}
+        {/* AI Insights */}
         <Section hidden={!loading && insights.length === 0}>
           <div className={`${styles.card} ${styles.accent}`}>
             <div className={styles.aiHeader}>
@@ -972,7 +942,7 @@ export default function Dashboard() {
           </div>
         </Section>
 
-        {/* ── Weekly Progress ── */}
+        {/* Weekly Progress */}
         <Section>
           <div className={`${styles.card} ${styles.accent}`}>
             <span className={styles.secLabel}>📈 Weekly Progress</span>
@@ -1036,7 +1006,7 @@ export default function Dashboard() {
           </div>
         </Section>
 
-        {/* ── Quick Actions ── */}
+        {/* Quick Actions */}
         <Section>
           <span className={styles.secLabel}>Quick Actions</span>
           <div className={styles.actionsGrid}>
@@ -1050,8 +1020,8 @@ export default function Dashboard() {
         </Section>
       </main>
 
-      {/* ── CHATBOT FLOATING WIDGET ── */}
-      <Chatbot />
+      {/* ── AI COACH FLOATING WIDGET ─────────────────────────────────────────── */}
+      {!loading && <AiCoach fitnessData={fitnessData} />}
     </div>
   );
 }

@@ -1,5 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useContext } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { AuthContext } from "../../../../context/AuthContext";
+import { getMyProfile } from "../../../../services/profileService";
 import { apiFetch } from "../../../../services/apiClient";
 import ThemeToggle from "../../../../components/ThemeToggle/ThemeToggle";
 import styles from "./Plans.module.css";
@@ -26,6 +28,23 @@ const LEVEL_LABELS = {
   4: "🔥 Crusher",  5: "⚡ Athlete",   6: "🥈 Contender",
   7: "🥇 Champion", 8: "🏆 Elite",     9: "💎 Legend", 10: "🚀 GOAT",
 };
+
+// ── Mirrors Dashboard's NavAvatar exactly ────────────────────────────────────
+function NavAvatar({ avatarUrl, initials }) {
+  const [imgError, setImgError] = useState(false);
+  useEffect(() => { setImgError(false); }, [avatarUrl]);
+  if (avatarUrl && !imgError) {
+    return (
+      <img
+        src={avatarUrl}
+        alt="avatar"
+        className={styles.navAvatarImg}
+        onError={() => setImgError(true)}
+      />
+    );
+  }
+  return <div className={styles.navAvatar}>{initials}</div>;
+}
 
 function Section({ children, delay = 0 }) {
   const ref = useRef();
@@ -74,7 +93,6 @@ function shapeBToA(wp, durationWeeks = 4) {
       split: splitName, variation: splitName,
       muscle_groups: muscleGroups.filter(g => !/^rest/i.test(g)),
       exercises, estimated_kcal_burned: exercises.reduce((s, e) => s + (e.est_kcal || 0), 0),
-      // Attach the dayKey so assignWorkoutsToDays can map it correctly
       _dayKey: dayKey,
     };
   }).filter(Boolean);
@@ -95,19 +113,15 @@ function normalizeMealPlan(raw) {
   return Array.isArray(raw) ? raw : [];
 }
 
-// ── FIXED: use actual weekly_plan day-name keys when available ──
 function assignWorkoutsToDays(workouts = [], weeklyPlan = {}) {
   const hasRealDayKeys = Object.keys(weeklyPlan).some(k => DAY_KEYS.includes(k));
 
   if (hasRealDayKeys) {
-    // Map directly from day name → day index using the plan's own keys
     const assigned = {};
     DAY_KEYS.forEach((dayKey, idx) => {
       const muscleGroups = weeklyPlan[dayKey] ?? [];
       const isRest = !muscleGroups.length || muscleGroups.every(g => /^rest/i.test(g));
       if (isRest) return;
-
-      // Find the workout whose _dayKey matches, or fall back to muscle-group overlap
       const match =
         workouts.find(w => w._dayKey === dayKey) ??
         workouts.find(w =>
@@ -120,27 +134,19 @@ function assignWorkoutsToDays(workouts = [], weeklyPlan = {}) {
             w.split?.toLowerCase().includes(pg.toLowerCase())
           )
         );
-
       if (match) assigned[idx] = match;
     });
     return assigned;
   }
 
-  // Fallback: original pattern-based assignment (Shape A plans without day keys)
   const PATTERNS = {
-    1: [1],
-    2: [1, 4],
-    3: [1, 3, 5],
-    4: [1, 2, 4, 5],
-    5: [1, 2, 3, 4, 5],
-    6: [0, 1, 2, 3, 4, 5],
+    1: [1], 2: [1, 4], 3: [1, 3, 5],
+    4: [1, 2, 4, 5], 5: [1, 2, 3, 4, 5], 6: [0, 1, 2, 3, 4, 5],
   };
-  const count  = Math.min(workouts.length, 6);
-  const slots  = PATTERNS[count] ?? PATTERNS[5];
+  const count    = Math.min(workouts.length, 6);
+  const slots    = PATTERNS[count] ?? PATTERNS[5];
   const assigned = {};
-  workouts.forEach((w, i) => {
-    if (slots[i] !== undefined) assigned[slots[i]] = w;
-  });
+  workouts.forEach((w, i) => { if (slots[i] !== undefined) assigned[slots[i]] = w; });
   return assigned;
 }
 
@@ -158,16 +164,14 @@ function resolveMetadata(plan) {
 }
 
 function XPBar({ xp = 0, level = {}, streak = {} }) {
-  const pct = level.progress_pct ?? 0;
+  const pct   = level.progress_pct ?? 0;
   const label = LEVEL_LABELS[level.current] ?? `Level ${level.current}`;
   return (
     <div className={styles.xpBar}>
       <div className={styles.xpMeta}>
         <span className={styles.xpLevel}>{label}</span>
         <div className={styles.xpRight}>
-          {streak.current > 0 && (
-            <span className={styles.xpStreak}>🔥 {streak.current} day streak</span>
-          )}
+          {streak.current > 0 && <span className={styles.xpStreak}>🔥 {streak.current} day streak</span>}
           <span className={styles.xpPoints}>{xp.toLocaleString()} XP</span>
         </div>
       </div>
@@ -186,9 +190,7 @@ function BadgeList({ badges = [] }) {
   if (!badges.length) return null;
   return (
     <div className={styles.badgeList}>
-      {badges.map(b => (
-        <span key={b.id} className={styles.badge}>{b.label}</span>
-      ))}
+      {badges.map(b => <span key={b.id} className={styles.badge}>{b.label}</span>)}
     </div>
   );
 }
@@ -211,8 +213,7 @@ function WarmupBlock({ items = [], type }) {
       <div className={styles.warmupItems}>
         {items.map((item, i) => (
           <span key={i} className={styles.warmupItem}>
-            {item.name}
-            {item.duration_min && ` · ${item.duration_min} min`}
+            {item.name}{item.duration_min && ` · ${item.duration_min} min`}
           </span>
         ))}
       </div>
@@ -227,11 +228,11 @@ function NutritionTargets({ targets }) {
       <div className={styles.nutTargetsTitle}>🎯 Today's Nutrition Targets</div>
       <div className={styles.nutTargetsGrid}>
         {[
-          { label: "Calories",  val: targets.kcal        ? `${targets.kcal} kcal`      : null, color: "#f59e0b" },
-          { label: "Protein",   val: targets.protein_g   ? `${targets.protein_g}g`     : null, color: "#ef4444" },
-          { label: "Carbs",     val: targets.carbs_g     ? `${targets.carbs_g}g`       : null, color: "#3b82f6" },
-          { label: "Fats",      val: targets.fat_g       ? `${targets.fat_g}g`         : null, color: "#10b981" },
-          { label: "Water",     val: targets.hydration_L ? `${targets.hydration_L}L`   : null, color: "#06b6d4" },
+          { label: "Calories", val: targets.kcal        ? `${targets.kcal} kcal`    : null, color: "#f59e0b" },
+          { label: "Protein",  val: targets.protein_g   ? `${targets.protein_g}g`   : null, color: "#ef4444" },
+          { label: "Carbs",    val: targets.carbs_g     ? `${targets.carbs_g}g`     : null, color: "#3b82f6" },
+          { label: "Fats",     val: targets.fat_g       ? `${targets.fat_g}g`       : null, color: "#10b981" },
+          { label: "Water",    val: targets.hydration_L ? `${targets.hydration_L}L` : null, color: "#06b6d4" },
         ].filter(t => t.val).map(t => (
           <div key={t.label} className={styles.nutTargetChip} style={{ borderColor: `${t.color}44`, color: t.color }}>
             <span className={styles.nutTargetVal}>{t.val}</span>
@@ -250,16 +251,12 @@ function WellnessCard({ wellness }) {
       <div className={styles.wellnessTitle}>💧 Daily Wellness</div>
       <div className={styles.wellnessRow}>
         <span className={styles.wellnessItem}>💧 {wellness.water_L}L water daily</span>
-        {wellness.caffeine_advice && (
-          <span className={styles.wellnessItem}>☕ {wellness.caffeine_advice}</span>
-        )}
+        {wellness.caffeine_advice && <span className={styles.wellnessItem}>☕ {wellness.caffeine_advice}</span>}
       </div>
       {wellness.electrolyte_sources?.length > 0 && (
         <div className={styles.electroRow}>
           <span className={styles.electroLabel}>⚡ Electrolytes:</span>
-          {wellness.electrolyte_sources.map(e => (
-            <span key={e} className={styles.electroChip}>{e}</span>
-          ))}
+          {wellness.electrolyte_sources.map(e => <span key={e} className={styles.electroChip}>{e}</span>)}
         </div>
       )}
     </div>
@@ -276,31 +273,19 @@ function RecoveryProtocol({ protocol, isDeload }) {
       </button>
       {open && (
         <div className={styles.recoveryContent}>
-          <div className={styles.recoveryRow}>
-            <span>😴 Sleep target:</span>
-            <strong>{protocol.sleep_hours_target}h</strong>
-          </div>
-          <div className={styles.recoveryRow}>
-            <span>🚶 Rest days:</span>
-            <strong>{protocol.rest_day_activity}</strong>
-          </div>
+          <div className={styles.recoveryRow}><span>😴 Sleep target:</span><strong>{protocol.sleep_hours_target}h</strong></div>
+          <div className={styles.recoveryRow}><span>🚶 Rest days:</span><strong>{protocol.rest_day_activity}</strong></div>
           {protocol.sleep_tips?.length > 0 && (
             <div className={styles.recoveryTips}>
-              {protocol.sleep_tips.map(tip => (
-                <span key={tip} className={styles.recoveryTip}>• {tip}</span>
-              ))}
+              {protocol.sleep_tips.map(tip => <span key={tip} className={styles.recoveryTip}>• {tip}</span>)}
             </div>
           )}
           {protocol.recovery_tools?.length > 0 && (
             <div className={styles.recoveryTools}>
-              {protocol.recovery_tools.map(tool => (
-                <span key={tool} className={styles.recoveryTool}>{tool}</span>
-              ))}
+              {protocol.recovery_tools.map(tool => <span key={tool} className={styles.recoveryTool}>{tool}</span>)}
             </div>
           )}
-          {protocol.protein_timing && (
-            <div className={styles.recoveryProteinNote}>🥩 {protocol.protein_timing}</div>
-          )}
+          {protocol.protein_timing && <div className={styles.recoveryProteinNote}>🥩 {protocol.protein_timing}</div>}
         </div>
       )}
     </div>
@@ -355,9 +340,10 @@ function AdaptiveBanner({ signal }) {
 }
 
 export default function Plans() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const activeTab = NAV_TABS.find(t => t.path === location.pathname)?.key ?? "plans";
+  const navigate   = useNavigate();
+  const location   = useLocation();
+  const { user }   = useContext(AuthContext);
+  const activeTab  = NAV_TABS.find(t => t.path === location.pathname)?.key ?? "plans";
 
   const [plan,         setPlan]         = useState(null);
   const [loading,      setLoading]      = useState(true);
@@ -368,8 +354,26 @@ export default function Plans() {
   const [gamification, setGamification] = useState(null);
   const [adaptSignal,  setAdaptSignal]  = useState(null);
   const [missedInfo,   setMissedInfo]   = useState(null);
+  const [avatarUrl,    setAvatarUrl]    = useState(null);
 
-  useEffect(() => { fetchPlan(); fetchGamification(); }, []);
+  const displayName = user?.name ?? "User";
+  const initials    = displayName.split(" ").map(n => n[0] ?? "").join("").slice(0, 2).toUpperCase();
+
+  useEffect(() => { fetchPlan(); fetchGamification(); fetchProfile(); }, []);
+
+  const fetchProfile = async () => {
+    try {
+      const raw  = await getMyProfile();
+      const data = raw?.data ?? raw;
+      const resolved =
+        data?.avatar_url       ??
+        data?.data?.avatar_url ??
+        data?.url              ??
+        data?.data?.url        ??
+        null;
+      if (resolved) setAvatarUrl(resolved);
+    } catch {}
+  };
 
   const fetchPlan = async () => {
     setLoading(true);
@@ -389,7 +393,7 @@ export default function Plans() {
     try {
       const res = await apiFetch("/plans/gamification");
       setGamification(res?.data ?? res ?? null);
-    } catch { }
+    } catch {}
   };
 
   const fetchMissedRecovery = async (split) => {
@@ -398,7 +402,7 @@ export default function Plans() {
         method: "POST", body: JSON.stringify({ split }),
       });
       setMissedInfo(res?.data ?? res ?? null);
-    } catch { }
+    } catch {}
   };
 
   const generatePlan = async () => {
@@ -424,17 +428,12 @@ export default function Plans() {
   const totalWeeks  = plan?.duration_weeks ?? 4;
   const workoutPlan = normalizeWorkoutPlan(plan?.workout_plan, totalWeeks);
   const mealPlan    = normalizeMealPlan(plan?.meal_plan);
+  const weekData    = workoutPlan.find(w => w.week === activeWeek) ?? workoutPlan[0] ?? null;
+  const weekMeals   = mealPlan.find(w => w.week === activeWeek)    ?? mealPlan[0]    ?? null;
+  const workouts    = weekData?.workouts ?? [];
 
-  const weekData  = workoutPlan.find(w => w.week === activeWeek) ?? workoutPlan[0] ?? null;
-  const weekMeals = mealPlan.find(w => w.week === activeWeek)    ?? mealPlan[0]    ?? null;
-
-  const workouts = weekData?.workouts ?? [];
-
-  // ── KEY FIX: pass the raw weekly_plan so day-name keys are used ──
-  const rawWeeklyPlan = isShapeB(plan?.workout_plan)
-    ? (plan.workout_plan.weekly_plan ?? {})
-    : {};
-  const dayMap = assignWorkoutsToDays(workouts, rawWeeklyPlan);
+  const rawWeeklyPlan = isShapeB(plan?.workout_plan) ? (plan.workout_plan.weekly_plan ?? {}) : {};
+  const dayMap        = assignWorkoutsToDays(workouts, rawWeeklyPlan);
 
   const activeDayWorkout = activeDay != null ? (dayMap[activeDay] ?? null) : null;
   const activeDayMeal    = activeDay != null
@@ -472,7 +471,6 @@ export default function Plans() {
           </span>
           <span className={styles.navLogoWord}>FIT<span>MITRA</span></span>
         </a>
-
         <div className={styles.navTabs}>
           {NAV_TABS.map(t => (
             <button
@@ -484,11 +482,10 @@ export default function Plans() {
             </button>
           ))}
         </div>
-
         <div className={styles.navRight}>
           <ThemeToggle />
-          <a href="/profile" className={styles.navAvatarLink} title="Profile">
-            <div className={styles.navAvatar}>P</div>
+          <a href="/profile" className={styles.navAvatarLink} title="Edit profile">
+            <NavAvatar avatarUrl={avatarUrl} initials={initials} />
           </a>
         </div>
       </nav>
@@ -500,7 +497,6 @@ export default function Plans() {
           </div>
         )}
 
-        {/* GAMIFICATION BAR */}
         {gamification && (
           <Section delay={0}>
             <XPBar xp={gamification.xp} level={gamification.level} streak={gamification.streak} />
@@ -510,7 +506,6 @@ export default function Plans() {
 
         <AdaptiveBanner signal={adaptSignal} />
 
-        {/* HEADER */}
         <Section delay={0}>
           <div className={styles.header}>
             <div>
@@ -547,9 +542,7 @@ export default function Plans() {
                   { icon: "⚡", label: "Intensity",
                     val: weekData?.is_deload ? "Deload"
                       : metaIntensity ? fmt(metaIntensity)
-                      : metaActivity  ? fmt(metaActivity)
-                      : "—"
-                  },
+                      : metaActivity  ? fmt(metaActivity) : "—" },
                   { icon: "📅", label: "Duration",  val: `${totalWeeks} weeks` },
                   { icon: "🏃", label: "Activity",  val: fmt(metaActivity ?? "—") },
                 ].map(m => (
@@ -560,9 +553,7 @@ export default function Plans() {
                   </div>
                 ))}
               </div>
-              {planSummary?.macro_targets && (
-                <MacroSummaryCard macros={planSummary.macro_targets} />
-              )}
+              {planSummary?.macro_targets && <MacroSummaryCard macros={planSummary.macro_targets} />}
             </Section>
 
             <Section delay={80}>
@@ -673,17 +664,12 @@ export default function Plans() {
                           <span className={styles.variationBadge}>{activeDayWorkout.variation}</span>
                         )}
                       </h2>
-                      <p className={styles.dayPanelSub}>
-                        {activeDayWorkout.muscle_groups?.join(" · ")}
-                      </p>
+                      <p className={styles.dayPanelSub}>{activeDayWorkout.muscle_groups?.join(" · ")}</p>
                     </div>
                     <button className={styles.closePanelBtn} onClick={() => setActiveDay(null)}>✕</button>
                   </div>
 
-                  {missedInfo && (
-                    <MissedRecoveryChip suggestion={missedInfo.recovery_suggestion} />
-                  )}
-
+                  {missedInfo && <MissedRecoveryChip suggestion={missedInfo.recovery_suggestion} />}
                   <WarmupBlock items={activeDayWorkout.warmup ?? []} type="warmup" />
 
                   <div className={styles.exerciseList}>
@@ -709,25 +695,18 @@ export default function Plans() {
                           </div>
                           {ex.muscles?.length > 0 && (
                             <div className={styles.exMuscles}>
-                              {ex.muscles.map(m => (
-                                <span key={m} className={styles.muscleChip}>{m}</span>
-                              ))}
+                              {ex.muscles.map(m => <span key={m} className={styles.muscleChip}>{m}</span>)}
                             </div>
                           )}
-                          {ex.progression_note && (
-                            <p className={styles.progressionNote}>📈 {ex.progression_note}</p>
-                          )}
+                          {ex.progression_note && <p className={styles.progressionNote}>📈 {ex.progression_note}</p>}
                         </div>
                       ))
                     )}
                   </div>
 
                   <WarmupBlock items={activeDayWorkout.cooldown ?? []} type="cooldown" />
-
                   {activeDayWorkout.recovery_reminder && (
-                    <div className={styles.recoveryReminder}>
-                      ⚠️ {activeDayWorkout.recovery_reminder}
-                    </div>
+                    <div className={styles.recoveryReminder}>⚠️ {activeDayWorkout.recovery_reminder}</div>
                   )}
 
                   {activeDayMeal && (
@@ -753,28 +732,45 @@ export default function Plans() {
               </Section>
             )}
 
-            {!activeDayWorkout && weekMeals?.meals?.length > 0 && (
-              <Section delay={160}>
-                <h2 className={styles.sectionTitle}>🍽️ Week {activeWeek} Meals</h2>
-                <div className={styles.mealWeekGrid}>
-                  {weekMeals.meals.map((meal, i) => (
-                    <div key={i} className={styles.mealWeekCard}>
-                      <div className={styles.mealWeekDay}>Day {meal.day}</div>
-                      <div className={styles.mealRow}><span className={styles.mealRowLabel}>Breakfast</span><span>{meal.breakfast}</span></div>
-                      <div className={styles.mealRow}><span className={styles.mealRowLabel}>Lunch</span><span>{meal.lunch}</span></div>
-                      <div className={styles.mealRow}><span className={styles.mealRowLabel}>Dinner</span><span>{meal.dinner}</span></div>
-                      <div className={styles.mealRow}><span className={styles.mealRowLabel}>Snack</span><span>{meal.snack}</span></div>
-                      {meal.daily_targets?.protein_g && (
-                        <div className={styles.mealTargetRow}>
-                          <span className={styles.mealTargetChip}>🎯 {meal.daily_targets.kcal} kcal</span>
-                          <span className={styles.mealTargetChip}>🥩 {meal.daily_targets.protein_g}g protein</span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </Section>
-            )}
+            {!activeDayWorkout && (
+  <Section delay={160}>
+    <div style={{
+      background: "#1e293b",
+      border: "1px solid #334155",
+      borderRadius: 16,
+      padding: "24px 20px",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      textAlign: "center",
+      gap: 12,
+    }}>
+      <span style={{ fontSize: 36 }}>🍽️</span>
+      <div style={{ fontSize: 16, fontWeight: 700, color: "#f1f5f9" }}>
+        AI Meal Planner
+      </div>
+      <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.6, maxWidth: 340 }}>
+        Get personalized Nepali meal plans based on your goals, weight, and medical conditions — powered by Groq AI.
+      </div>
+      <button
+        onClick={() => navigate("/meal-plan")}
+        style={{
+          marginTop: 4,
+          padding: "11px 24px",
+          background: "linear-gradient(135deg, #FF5C1A, #FF8A3D)",
+          border: "none",
+          borderRadius: 10,
+          color: "#fff",
+          fontWeight: 700,
+          fontSize: 14,
+          cursor: "pointer",
+        }}
+      >
+        Open Meal Planner →
+      </button>
+    </div>
+  </Section>
+)}
           </>
         )}
       </main>

@@ -1,6 +1,5 @@
-// src/config/env.config.js
 import dotenv from "dotenv";
-dotenv.config();   
+dotenv.config();
 
 export const port = process.env.PORT || 5000;
 
@@ -12,5 +11,3 @@ export const dbConfig = {
   name:     process.env.DB_NAME     || "fitmitra",
   ssl:      process.env.DB_SSL === "true",
 };
-
-export const geminiApiKey = process.env.GEMINI_API_KEY;

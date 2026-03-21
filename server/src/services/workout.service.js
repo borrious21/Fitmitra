@@ -27,14 +27,15 @@ const FOCUS_KCAL_ESTIMATES = {
 };
 
 // Day-slot patterns shared between getWorkoutForDate (Shape A) and Plans.jsx
-// Sun=0, Mon=1 … Sat=6. Always rest on Sun(0), Sat(6) when possible.
+// Sun=0, Mon=1 … Sat=6. Saturday(6) is ALWAYS the rest day.
+// Sunday(0) becomes a workout day as count increases.
 const DAY_PATTERNS = {
-  1: [1],
-  2: [1, 4],
-  3: [1, 3, 5],
-  4: [1, 2, 4, 5],
-  5: [1, 2, 3, 4, 5],
-  6: [1, 2, 3, 4, 5, 6],
+  1: [1],                    // Mon
+  2: [1, 4],                 // Mon, Thu
+  3: [1, 3, 5],              // Mon, Wed, Fri
+  4: [1, 2, 4, 5],           // Mon, Tue, Thu, Fri
+  5: [1, 2, 3, 4, 5],        // Mon–Fri
+  6: [0, 1, 2, 3, 4, 5],     // Sun–Fri  (Sat always rest)
 };
 
 class WorkoutService {
@@ -207,14 +208,15 @@ class WorkoutService {
       const dateStr = date instanceof Date ? toLocalDateStr(date) : date;
 
       const { rows: planRows } = await pool.query(
-        `SELECT workout_plan, mesocycle_week FROM plans
+        `SELECT workout_plan, mesocycle_week, generated_at FROM plans
          WHERE user_id = $1 AND is_active = true LIMIT 1`,
         [numericUserId]
       );
       if (!planRows.length || !planRows[0].workout_plan) return null;
 
-      const rawPlan       = planRows[0].workout_plan;
-      const mesocycleWeek = planRows[0].mesocycle_week || 1;
+      const rawPlan        = planRows[0].workout_plan;
+      const mesocycleWeek  = planRows[0].mesocycle_week || 1;
+      const planGeneratedAt = planRows[0].generated_at ?? null;
 
       // ── Detect which generator produced this plan ──────────────────────
       // Shape A = plan.generator.js  → Array of week objects
@@ -222,15 +224,19 @@ class WorkoutService {
       const isShapeA = Array.isArray(rawPlan);
       const isShapeB = !isShapeA && rawPlan && typeof rawPlan === 'object' && rawPlan.weekly_plan;
 
-      // ── Fetch today's already-logged exercises ─────────────────────────
+      // Only count logs created after the current plan was generated.
+      // This prevents stale logs from a previous plan showing as "done"
+      // on the new plan, while preserving history in the calendar.
       const { rows: logRows } = await pool.query(
         `SELECT exercise_name, sets_completed, reps_completed, weight_used,
                 duration_minutes, perceived_exertion, fatigue_level, notes,
                 all_sets_completed, created_at
          FROM workout_logs
-         WHERE user_id = $1 AND workout_date = $2::date
+         WHERE user_id = $1
+           AND workout_date = $2::date
+           AND ($3::timestamptz IS NULL OR created_at >= $3::timestamptz)
          ORDER BY created_at`,
-        [numericUserId, dateStr]
+        [numericUserId, dateStr, planGeneratedAt]
       );
 
       const exerciseLogs = logRows.map(row => ({
@@ -264,10 +270,13 @@ class WorkoutService {
         const isRestDay    = slotIdx === -1;
         const todayWorkout = isRestDay ? null : (workouts[slotIdx] ?? null);
 
-        // Build exercise list
+        // ── FIX: determine rest day FIRST, only use logs for workout days ──
         let exercises;
-        if (exerciseLogs.length > 0) {
-          // User already logged today — show logged data
+        if (isRestDay) {
+          // Rest day — never show logged exercises as today's workout
+          exercises = [];
+        } else if (exerciseLogs.length > 0) {
+          // Workout day — user already logged today, show logged data
           exercises = exerciseLogs.map(log => ({
             name:               log.exercise_name,
             sets:               log.sets_completed ?? '—',
@@ -276,8 +285,8 @@ class WorkoutService {
             all_sets_completed: log.all_sets_completed,
             done:               true,
           }));
-        } else if (!isRestDay && todayWorkout) {
-          // Show planned exercises for today's split
+        } else if (todayWorkout) {
+          // Workout day — show planned exercises
           exercises = (todayWorkout.exercises ?? []).map(ex => ({
             name:             ex.name,
             sets:             ex.sets,
@@ -316,8 +325,8 @@ class WorkoutService {
           difficulty:     is_deload ? 'Deload' : 'Intermediate',
           muscle_groups:  muscleGroups,
           exercises,
-          completed:      exerciseLogs.length > 0,
-          exercise_logs:  exerciseLogs,
+          completed:      !isRestDay && exerciseLogs.length > 0,
+          exercise_logs:  isRestDay ? [] : exerciseLogs,
           estimated_kcal: estimatedKcal,
           meta:           weekEntry,
           guidelines:     {},
@@ -341,8 +350,12 @@ class WorkoutService {
         const todayMuscleGroups = weeklyPlan[dayKey] ?? [];
         const isRestDay         = this._isRestDay(todayMuscleGroups);
 
+        // ── FIX: determine rest day FIRST, only use logs for workout days ──
         let exercises;
-        if (exerciseLogs.length > 0) {
+        if (isRestDay) {
+          // Rest day — never show logged exercises as today's workout
+          exercises = [];
+        } else if (exerciseLogs.length > 0) {
           exercises = exerciseLogs.map(log => ({
             name:               log.exercise_name,
             sets:               log.sets_completed ?? '—',
@@ -351,7 +364,7 @@ class WorkoutService {
             all_sets_completed: log.all_sets_completed,
             done:               true,
           }));
-        } else if (!isRestDay && dailyExercises[dayKey]?.length) {
+        } else if (dailyExercises[dayKey]?.length) {
           exercises = dailyExercises[dayKey].map(ex => ({
             name:             ex.name,
             sets:             ex.sets,
@@ -365,7 +378,7 @@ class WorkoutService {
             done:             false,
           }));
         } else {
-          exercises = isRestDay ? [] : this._buildExerciseList(todayMuscleGroups, plan.workout_details, []);
+          exercises = this._buildExerciseList(todayMuscleGroups, plan.workout_details, []);
         }
 
         const estimatedSessionKcal = this._estimateSessionKcal(todayMuscleGroups, exercises);
@@ -382,8 +395,8 @@ class WorkoutService {
           difficulty:     this._mapIntensityLabel(plan.meta?.intensity),
           muscle_groups:  todayMuscleGroups,
           exercises,
-          completed:      exerciseLogs.length > 0,
-          exercise_logs:  exerciseLogs,
+          completed:      !isRestDay && exerciseLogs.length > 0,
+          exercise_logs:  isRestDay ? [] : exerciseLogs,
           estimated_kcal: estimatedSessionKcal,
           meta:           plan.meta       || {},
           guidelines:     plan.guidelines || {},
@@ -592,7 +605,7 @@ class WorkoutService {
         total_exercises:       Number(stats.total_exercises || 0),
         total_volume_kg:       toNum(stats.total_volume_kg, 2),
         total_minutes:         Number(stats.total_minutes || 0),
-        avg_rpe:               toNum(stats.avg_exertion, 1),   // ← fixed: was (stats.avg_exertion || 0).toFixed(1)
+        avg_rpe:               toNum(stats.avg_exertion, 1),
         current_streak:        streak,
         volume_by_exercise:    volumeStats,
         weekly_volume_delta:   weeklyDelta,

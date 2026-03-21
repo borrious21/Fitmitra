@@ -1,8 +1,3 @@
-/* ═══════════════════════════════════════════════════════════════
-   FITMITRA — ACTIVITY CALENDAR
-   Aesthetic: Cyberpunk Forge · matches Workout.module.css
-   ═══════════════════════════════════════════════════════════════ */
-
 .wrap {
   background: transparent;
   padding: 0.25rem 0.25rem 0.75rem;
@@ -117,7 +112,6 @@
   padding: 5px 0;
   position: relative;
 }
-/* Subtle bottom tick */
 .dayHeader::after {
   content: '';
   position: absolute;
@@ -158,7 +152,6 @@
               opacity 0.2s;
 }
 
-/* Corner notch decoration on active cells */
 .cell:not(.cellMuted):not(.cellEmpty)::after {
   content: '';
   position: absolute;
@@ -242,6 +235,22 @@
   opacity: 0.9;
 }
 
+/* ── PARTIAL CHIP ─────────────────────────────────────────────── */
+.partialChip {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.45rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #3b82f6;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  border-radius: 999px;
+  padding: 0.1rem 0.35rem;
+  white-space: nowrap;
+  margin-top: auto;
+}
+
 /* ── STATUS DOT ───────────────────────────────────────────────── */
 .statusDot {
   width: 5px;
@@ -254,18 +263,20 @@
 
 /* ── RESPONSIVE ───────────────────────────────────────────────── */
 @media (max-width: 600px) {
-  .cell        { min-height: 54px; padding: 5px 3px; border-radius: 0.5rem; }
-  .cellEmpty   { min-height: 54px; }
-  .workoutLabel{ font-size: 0.46rem; }
-  .dayNum      { font-size: 0.62rem; }
-  .monthTitle  { font-size: 1.2rem; min-width: 160px; }
-  .legend      { gap: 0.625rem; }
-  .legendItem  { font-size: 0.55rem; }
+  .cell         { min-height: 54px; padding: 5px 3px; border-radius: 0.5rem; }
+  .cellEmpty    { min-height: 54px; }
+  .workoutLabel { font-size: 0.46rem; }
+  .dayNum       { font-size: 0.62rem; }
+  .monthTitle   { font-size: 1.2rem; min-width: 160px; }
+  .legend       { gap: 0.625rem; }
+  .legendItem   { font-size: 0.55rem; }
+  .partialChip  { font-size: 0.4rem; }
 }
 
 @media (max-width: 380px) {
-  .cell        { min-height: 44px; padding: 4px 2px; }
-  .cellEmpty   { min-height: 44px; }
-  .workoutLabel{ display: none; }
-  .todayBadge  { width: 18px; height: 18px; font-size: 0.58rem; }
+  .cell         { min-height: 44px; padding: 4px 2px; }
+  .cellEmpty    { min-height: 44px; }
+  .workoutLabel { display: none; }
+  .partialChip  { display: none; }
+  .todayBadge   { width: 18px; height: 18px; font-size: 0.58rem; }
 }

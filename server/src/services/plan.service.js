@@ -131,7 +131,7 @@ const PlanService = {
       targetKcal:        profile.target_kcal ?? null,
     };
 
-    const generated = runPlanGenerator(input); 
+    const generated = runPlanGenerator(input);
 
     if (!generated?.schedule || !Array.isArray(generated.schedule)) {
       const err = new Error("Plan generation failed. Invalid generator output.");
@@ -151,7 +151,7 @@ const PlanService = {
       meals:     week.meals,
       nutrition_targets: week.nutrition_targets,
     }));
-    
+
     await PlanModel.deactivateAllPlans(userId);
 
     const saved = await PlanModel.create({

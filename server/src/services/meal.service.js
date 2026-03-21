@@ -156,7 +156,7 @@ export const logMealService = async (userId, payload) => {
       );
     }
 
-    const validSources = ["custom", "database", "api", "search"];
+    const validSources = ["custom", "database", "api", "search", "ai_planner"];
     const normalizedSource = source?.toString().trim().toLowerCase();
     if (!normalizedSource || !validSources.includes(normalizedSource)) {
       throw new MealLogServiceError(

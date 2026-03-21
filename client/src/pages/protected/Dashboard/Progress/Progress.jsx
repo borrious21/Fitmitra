@@ -1,6 +1,8 @@
 // src/pages/Progress/Progress.jsx
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useContext } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { AuthContext } from "../../../../context/AuthContext";
+import { getMyProfile } from "../../../../services/profileService";
 import { apiFetch } from "../../../../services/apiClient";
 import ThemeToggle from "../../../../components/ThemeToggle/ThemeToggle";
 import styles from "./Progress.module.css";
@@ -12,6 +14,23 @@ const NAV_TABS = [
 ];
 
 const HISTORY_PAGE_SIZE = 7;
+
+// ── Mirrors Dashboard's NavAvatar exactly ────────────────────────────────────
+function NavAvatar({ avatarUrl, initials }) {
+  const [imgError, setImgError] = useState(false);
+  useEffect(() => { setImgError(false); }, [avatarUrl]);
+  if (avatarUrl && !imgError) {
+    return (
+      <img
+        src={avatarUrl}
+        alt="avatar"
+        className={styles.navAvatarImg}
+        onError={() => setImgError(true)}
+      />
+    );
+  }
+  return <div className={styles.navAvatar}>{initials}</div>;
+}
 
 function Section({ children, delay = 0 }) {
   const ref = useRef();
@@ -28,37 +47,51 @@ function Section({ children, delay = 0 }) {
 }
 
 const EMPTY_LOG = {
-  weight_kg: "",
-  body_fat_percentage: "",
-  energy_level: 5,
-  sleep_hours: "",
-  water_intake_liters: "",
-  systolic: "",
-  diastolic: "",
-  heart_rate: "",
-  notes: "",
+  weight_kg: "", body_fat_percentage: "", energy_level: 5,
+  sleep_hours: "", water_intake_liters: "",
+  systolic: "", diastolic: "", heart_rate: "", notes: "",
 };
 
 export default function Progress() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const activeTab = NAV_TABS.find(t => t.path === location.pathname)?.key ?? "progress";
+  const navigate   = useNavigate();
+  const location   = useLocation();
+  const { user }   = useContext(AuthContext);
+  const activeTab  = NAV_TABS.find(t => t.path === location.pathname)?.key ?? "progress";
 
-  const [logs,        setLogs]        = useState([]);
-  const [form,        setForm]        = useState(EMPTY_LOG);
-  const [saving,      setSaving]      = useState(false);
-  const [loading,     setLoading]     = useState(true);
-  const [alert,       setAlert]       = useState(null);
-  const [errors,      setErrors]      = useState({});
-  const [histPage,    setHistPage]    = useState(1);
-  const [activeTab2,  setActiveTab2]  = useState("body"); // body | health | all
+  const [logs,       setLogs]       = useState([]);
+  const [form,       setForm]       = useState(EMPTY_LOG);
+  const [saving,     setSaving]     = useState(false);
+  const [loading,    setLoading]    = useState(true);
+  const [alert,      setAlert]      = useState(null);
+  const [errors,     setErrors]     = useState({});
+  const [histPage,   setHistPage]   = useState(1);
+  const [activeTab2, setActiveTab2] = useState("body");
+  const [avatarUrl,  setAvatarUrl]  = useState(null);
 
-  useEffect(() => { fetchLogs(); }, []);
+  const displayName = user?.name ?? "User";
+  const initials    = displayName.split(" ").map(n => n[0] ?? "").join("").slice(0, 2).toUpperCase();
+
+  useEffect(() => { fetchLogs(); fetchProfile(); }, []);
+
+  const fetchProfile = async () => {
+    try {
+      const raw  = await getMyProfile();
+      const data = raw?.data ?? raw;
+      // Same multi-field resolution as Dashboard
+      const resolved =
+        data?.avatar_url       ??
+        data?.data?.avatar_url ??
+        data?.url              ??
+        data?.data?.url        ??
+        null;
+      if (resolved) setAvatarUrl(resolved);
+    } catch {}
+  };
 
   const fetchLogs = async () => {
     setLoading(true);
     try {
-      const res = await apiFetch("/progress/log");
+      const res  = await apiFetch("/progress/log");
       const data = Array.isArray(res?.data ?? res) ? (res?.data ?? res) : [];
       setLogs(data);
     } catch {
@@ -109,7 +142,6 @@ export default function Progress() {
         payload.blood_pressure_diastolic = Number(form.diastolic);
         payload.blood_pressure = `${form.systolic}/${form.diastolic}`;
       }
-
       await apiFetch("/progress/log", { method: "POST", body: JSON.stringify(payload) });
       showAlert("success", "Progress logged! 📈");
       setForm(EMPTY_LOG);
@@ -127,21 +159,16 @@ export default function Progress() {
     setTimeout(() => setAlert(null), 4000);
   };
 
-  // ── Derived stats ──
   const latest     = logs[0];
   const prev       = logs[1];
   const weightDiff = latest?.weight_kg && prev?.weight_kg
     ? (Number(latest.weight_kg) - Number(prev.weight_kg)).toFixed(1)
     : null;
 
-  // ── Pagination ──
-  const totalPages   = Math.max(1, Math.ceil(logs.length / HISTORY_PAGE_SIZE));
-  const pagedLogs    = logs.slice((histPage - 1) * HISTORY_PAGE_SIZE, histPage * HISTORY_PAGE_SIZE);
-
-  // ── Weight trend (last 7 logs) ──
+  const totalPages = Math.max(1, Math.ceil(logs.length / HISTORY_PAGE_SIZE));
+  const pagedLogs  = logs.slice((histPage - 1) * HISTORY_PAGE_SIZE, histPage * HISTORY_PAGE_SIZE);
   const weightLogs = logs.filter(l => l.weight_kg).slice(0, 7).reverse();
 
-  // ── BP helper ──
   const bpColor = (sys) => {
     if (!sys) return "var(--d-t2)";
     if (sys < 120) return "#10b981";
@@ -173,7 +200,6 @@ export default function Progress() {
           </span>
           <span className={styles.navLogoWord}>FIT<span>MITRA</span></span>
         </a>
-
         <div className={styles.navTabs}>
           {NAV_TABS.map(t => (
             <button
@@ -185,11 +211,10 @@ export default function Progress() {
             </button>
           ))}
         </div>
-
         <div className={styles.navRight}>
           <ThemeToggle />
-          <a href="/profile" className={styles.navAvatarLink} title="Profile">
-            <div className={styles.navAvatar}>P</div>
+          <a href="/profile" className={styles.navAvatarLink} title="Edit profile">
+            <NavAvatar avatarUrl={avatarUrl} initials={initials} />
           </a>
         </div>
       </nav>
@@ -201,13 +226,11 @@ export default function Progress() {
           </div>
         )}
 
-        {/* ── Header ── */}
         <Section delay={0}>
           <h1 className={styles.title}>📈 Progress Tracking</h1>
           <p className={styles.sub}>Log your daily metrics to see trends over time</p>
         </Section>
 
-        {/* ── Latest Snapshot ── */}
         {latest && (
           <Section delay={60}>
             <h2 className={styles.sectionTitle}>Latest Snapshot</h2>
@@ -225,16 +248,8 @@ export default function Progress() {
                   sub: latest.sleep_hours >= 8 ? "Excellent" : latest.sleep_hours >= 7 ? "Good" : latest.sleep_hours ? "Low" : null,
                   color: latest.sleep_hours >= 8 ? "#10b981" : latest.sleep_hours >= 7 ? "#B8F000" : "#f59e0b",
                 },
-                {
-                  icon: "⚡", label: "Energy",
-                  val: latest.energy_level ? `${latest.energy_level}/10` : "—",
-                  sub: null, color: "#FF5C1A",
-                },
-                {
-                  icon: "💧", label: "Water",
-                  val: latest.water_intake_liters ? `${latest.water_intake_liters}L` : "—",
-                  sub: null, color: "#00C8E0",
-                },
+                { icon: "⚡", label: "Energy",  val: latest.energy_level ? `${latest.energy_level}/10` : "—", sub: null, color: "#FF5C1A" },
+                { icon: "💧", label: "Water",   val: latest.water_intake_liters ? `${latest.water_intake_liters}L` : "—", sub: null, color: "#00C8E0" },
                 {
                   icon: "🫀", label: "Blood Pressure",
                   val: (latest.blood_pressure_systolic && latest.blood_pressure_diastolic)
@@ -243,11 +258,7 @@ export default function Progress() {
                   sub: bpLabel(latest.blood_pressure_systolic),
                   color: bpColor(latest.blood_pressure_systolic),
                 },
-                {
-                  icon: "💓", label: "Heart Rate",
-                  val: latest.heart_rate ? `${latest.heart_rate} bpm` : "—",
-                  sub: null, color: "#FF4D6D",
-                },
+                { icon: "💓", label: "Heart Rate", val: latest.heart_rate ? `${latest.heart_rate} bpm` : "—", sub: null, color: "#FF4D6D" },
               ].map(s => (
                 <div key={s.label} className={styles.statCard}>
                   <span className={styles.statIcon}>{s.icon}</span>
@@ -260,7 +271,6 @@ export default function Progress() {
           </Section>
         )}
 
-        {/* ── Weight Trend Mini Chart ── */}
         {weightLogs.length >= 2 && (
           <Section delay={80}>
             <h2 className={styles.sectionTitle}>Weight Trend</h2>
@@ -306,16 +316,13 @@ export default function Progress() {
           </Section>
         )}
 
-        {/* ── Log Form ── */}
         <Section delay={120}>
           <h2 className={styles.sectionTitle}>Log Today</h2>
-
-          {/* Form tab switcher */}
           <div className={styles.formTabs}>
             {[
-              { key: "body",   label: "⚖️ Body" },
+              { key: "body",   label: "⚖️ Body"   },
               { key: "health", label: "🩺 Health" },
-              { key: "all",    label: "📋 All" },
+              { key: "all",    label: "📋 All"    },
             ].map(t => (
               <button
                 key={t.key}
@@ -330,7 +337,6 @@ export default function Progress() {
 
           <form onSubmit={handleSubmit} className={styles.form}>
 
-            {/* Body Metrics */}
             {(activeTab2 === "body" || activeTab2 === "all") && (
               <>
                 <div className={styles.formSectionLabel}>Body Metrics</div>
@@ -351,7 +357,6 @@ export default function Progress() {
                       placeholder="e.g. 18"/>
                   </div>
                 </div>
-
                 <div className={styles.formGroup}>
                   <label className={styles.label}>Energy Level — {form.energy_level}/10</label>
                   <input type="range" min="1" max="10" value={form.energy_level}
@@ -361,12 +366,9 @@ export default function Progress() {
               </>
             )}
 
-            {/* Health Metrics */}
             {(activeTab2 === "health" || activeTab2 === "all") && (
               <>
                 <div className={styles.formSectionLabel}>Health Metrics</div>
-
-                {/* Blood Pressure */}
                 <div className={styles.formGroup}>
                   <label className={styles.label}>🫀 Blood Pressure (mmHg)</label>
                   <div className={styles.bpRow}>
@@ -392,7 +394,6 @@ export default function Progress() {
                     </span>
                   )}
                 </div>
-
                 <div className={styles.formRow}>
                   <div className={styles.formGroup}>
                     <label className={styles.label}>💓 Heart Rate (bpm)</label>
@@ -410,7 +411,6 @@ export default function Progress() {
                       placeholder="e.g. 2.5"/>
                   </div>
                 </div>
-
                 <div className={styles.formGroup}>
                   <label className={styles.label}>😴 Sleep (hrs)</label>
                   <input type="number" step="0.5" min="0" max="24"
@@ -422,7 +422,6 @@ export default function Progress() {
               </>
             )}
 
-            {/* Notes — always visible */}
             <div className={styles.formGroup}>
               <label className={styles.label}>Notes (optional)</label>
               <input className={styles.input} value={form.notes}
@@ -436,14 +435,12 @@ export default function Progress() {
           </form>
         </Section>
 
-        {/* ── History ── */}
         {!loading && logs.length > 0 && (
           <Section delay={180}>
             <div className={styles.historyHeader}>
               <h2 className={styles.sectionTitle}>History</h2>
               <span className={styles.historyCount}>{logs.length} entries</span>
             </div>
-
             <div className={styles.historyList}>
               {pagedLogs.map((log, i) => (
                 <div key={log.id ?? i} className={styles.historyRow}>
@@ -476,32 +473,21 @@ export default function Progress() {
               ))}
             </div>
 
-            {/* Pagination */}
             {totalPages > 1 && (
               <div className={styles.pagination}>
-                <button
-                  className={styles.pageBtn}
+                <button className={styles.pageBtn}
                   onClick={() => setHistPage(p => Math.max(1, p - 1))}
-                  disabled={histPage === 1}
-                >← Prev</button>
-
+                  disabled={histPage === 1}>← Prev</button>
                 <div className={styles.pageNumbers}>
                   {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-                    <button
-                      key={p}
+                    <button key={p}
                       className={`${styles.pageNum}${histPage === p ? " " + styles.pageNumActive : ""}`}
-                      onClick={() => setHistPage(p)}
-                    >
-                      {p}
-                    </button>
+                      onClick={() => setHistPage(p)}>{p}</button>
                   ))}
                 </div>
-
-                <button
-                  className={styles.pageBtn}
+                <button className={styles.pageBtn}
                   onClick={() => setHistPage(p => Math.min(totalPages, p + 1))}
-                  disabled={histPage === totalPages}
-                >Next →</button>
+                  disabled={histPage === totalPages}>Next →</button>
               </div>
             )}
 

@@ -1,8 +1,5 @@
 // src/pages/Workout/Workout.jsx
-// v2 — Wired to upgraded backend: progression notes, RPE feedback, deload banner,
-//       calorie burn per exercise, PR alerts, tier badge, all_sets_completed toggle
-
-import { useState, useEffect, useRef, useContext, useCallback } from "react";
+import { useState, useEffect, useRef, useContext } from "react";
 import { useNavigate }  from "react-router-dom";
 import { apiFetch }     from "../../../../services/apiClient";
 import { AuthContext }  from "../../../../context/AuthContext";
@@ -12,40 +9,46 @@ import styles           from "./Workout.module.css";
 
 const DAYS = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"];
 
-// ─── Progression display map ──────────────────────────────────────────────────
 const PROGRESSION_INFO = {
-  reps_increase:   { label: "📈 +1 Rep next session",    color: "#10b981" },
-  weight_increase: { label: "🏋️ +2.5kg next session",    color: "#f59e0b" },
-  set_increase:    { label: "➕ +1 Set next session",    color: "#6366f1" },
-  deload:          { label: "🔄 Deload — reduced load",  color: "#64748b" },
+  reps_increase:   { label: "📈 +1 Rep next session",   color: "#10b981" },
+  weight_increase: { label: "🏋️ +2.5kg next session",   color: "#f59e0b" },
+  set_increase:    { label: "➕ +1 Set next session",   color: "#6366f1" },
+  deload:          { label: "🔄 Deload — reduced load", color: "#64748b" },
   maintain:        { label: "✓ Maintain current load",  color: "#94a3b8" },
-  maintain_hard:   { label: "💪 Tough — hold this week",  color: "#f97316" },
-  at_ceiling:      { label: "🏆 At peak — well done!",   color: "#eab308" },
+  maintain_hard:   { label: "💪 Tough — hold this week", color: "#f97316" },
+  at_ceiling:      { label: "🏆 At peak — well done!",  color: "#eab308" },
 };
 
-// ─── Section fade-in ──────────────────────────────────────────────────────────
+// ── Inline avatar helpers ─────────────────────────────────────────────────────
+const AVATAR_KEY = "fitmitra_avatar_url";
+const getAvatar  = () => { try { return localStorage.getItem(AVATAR_KEY) || null; } catch { return null; } };
+
+function NavAvatar({ avatarUrl, initials }) {
+  const [imgError, setImgError] = useState(false);
+  useEffect(() => { setImgError(false); }, [avatarUrl]);
+  if (avatarUrl && !imgError) {
+    return (
+      <img src={avatarUrl} alt="avatar" className={styles.navAvatarImg}
+        onError={() => { try { localStorage.removeItem(AVATAR_KEY); } catch {} setImgError(true); }} />
+    );
+  }
+  return <div className={styles.navAvatar}>{initials}</div>;
+}
+
 function Section({ children, delay = 0 }) {
   const ref = useRef();
   const [vis, setVis] = useState(false);
   useEffect(() => {
     const t = setTimeout(() => {
-      const obs = new IntersectionObserver(
-        ([e]) => { if (e.isIntersecting) setVis(true); },
-        { threshold: 0.06 }
-      );
+      const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setVis(true); }, { threshold: 0.06 });
       if (ref.current) obs.observe(ref.current);
       return () => obs.disconnect();
     }, delay);
     return () => clearTimeout(t);
   }, [delay]);
-  return (
-    <div ref={ref} className={`${styles.section}${vis ? " " + styles.vis : ""}`}>
-      {children}
-    </div>
-  );
+  return <div ref={ref} className={`${styles.section}${vis ? " " + styles.vis : ""}`}>{children}</div>;
 }
 
-// ─── Deload Banner ────────────────────────────────────────────────────────────
 function DeloadBanner() {
   return (
     <div className={styles.deloadBanner}>
@@ -58,7 +61,6 @@ function DeloadBanner() {
   );
 }
 
-// ─── PR Alert ─────────────────────────────────────────────────────────────────
 function PRAlert({ exercise_name, new_1rm }) {
   return (
     <div className={styles.prAlert}>
@@ -67,23 +69,20 @@ function PRAlert({ exercise_name, new_1rm }) {
   );
 }
 
-// ─── RPE Difficulty Buttons ───────────────────────────────────────────────────
 function RPESelector({ value, onChange }) {
   return (
     <div className={styles.rpeWrap}>
       <span className={styles.rpeLabel}>How hard was it?</span>
       <div className={styles.rpeBtns}>
         {[
-          { key: "easy",   label: "😊 Easy",   color: "#10b981" },
-          { key: "medium", label: "😤 Medium",  color: "#f59e0b" },
-          { key: "hard",   label: "🔥 Hard",    color: "#ef4444" },
+          { key: "easy",   label: "😊 Easy",  color: "#10b981" },
+          { key: "medium", label: "😤 Medium", color: "#f59e0b" },
+          { key: "hard",   label: "🔥 Hard",   color: "#ef4444" },
         ].map(d => (
-          <button
-            key={d.key}
+          <button key={d.key}
             className={`${styles.rpeBtn} ${value === d.key ? styles.rpeBtnActive : ""}`}
             style={value === d.key ? { borderColor: d.color, background: `${d.color}20`, color: d.color } : {}}
-            onClick={() => onChange(d.key)}
-          >
+            onClick={() => onChange(d.key)}>
             {d.label}
           </button>
         ))}
@@ -92,21 +91,24 @@ function RPESelector({ value, onChange }) {
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
 export default function Workout() {
-  const navigate    = useNavigate();
-  const { user }    = useContext(AuthContext);
+  const navigate  = useNavigate();
+  const { user }  = useContext(AuthContext);
 
-  const [workout,   setWorkout]   = useState(null);
-  const [weekly,    setWeekly]    = useState(null);
-  const [history,   setHistory]   = useState([]);
-  const [loading,   setLoading]   = useState(true);
-  const [logging,   setLogging]   = useState(false);
-  const [alert,     setAlert]     = useState(null);
-  const [logForm,   setLogForm]   = useState(null);
-  const [done,      setDone]      = useState({});
-  const [prAlerts,  setPRAlerts]  = useState([]);  // NEW: { exercise_name, new_1rm }[]
-  const [insights,  setInsights]  = useState([]);  // NEW: workout-specific insights
+  const [workout,  setWorkout]  = useState(null);
+  const [weekly,   setWeekly]   = useState(null);
+  const [history,  setHistory]  = useState([]);
+  const [loading,  setLoading]  = useState(true);
+  const [logging,  setLogging]  = useState(false);
+  const [alert,    setAlert]    = useState(null);
+  const [logForm,  setLogForm]  = useState(null);
+  const [done,     setDone]     = useState({});
+  const [prAlerts, setPRAlerts] = useState([]);
+  const [insights, setInsights] = useState([]);
+
+  const avatarUrl   = getAvatar();
+  const displayName = user?.name ?? "User";
+  const initials    = displayName.split(" ").map(n => n[0] ?? "").join("").slice(0, 2).toUpperCase();
 
   useEffect(() => { fetchAll(); }, []);
 
@@ -117,9 +119,8 @@ export default function Workout() {
         apiFetch("/dashboard/workout/today"),
         apiFetch("/workouts/weekly"),
         apiFetch("/workouts/history?limit=200"),
-        apiFetch("/workouts/insights"),  // NEW: data-driven insights
+        apiFetch("/workouts/insights"),
       ]);
-
       if (w.status === "fulfilled") {
         const d = w.value?.data ?? w.value;
         setWorkout(d);
@@ -128,34 +129,23 @@ export default function Workout() {
         setDone(doneMap);
       }
       if (wk.status   === "fulfilled") setWeekly(wk.value?.data ?? wk.value);
-      if (hist.status === "fulfilled") {
-        const d = hist.value?.data ?? hist.value;
-        setHistory(Array.isArray(d) ? d : []);
-      }
-      if (ins.status === "fulfilled") {
-        const d = ins.value?.data ?? ins.value;
-        setInsights(Array.isArray(d) ? d : []);
-      }
-    } catch (e) {
-      console.error("fetchAll error:", e);
-      showAlert("error", "Failed to load workout.");
-    } finally {
-      setLoading(false);
-    }
+      if (hist.status === "fulfilled") { const d = hist.value?.data ?? hist.value; setHistory(Array.isArray(d) ? d : []); }
+      if (ins.status  === "fulfilled") { const d = ins.value?.data  ?? ins.value;  setInsights(Array.isArray(d) ? d : []); }
+    } catch { showAlert("error", "Failed to load workout."); }
+    finally  { setLoading(false); }
   };
 
-  // Open log modal with pre-filled values from the exercise plan
   const openLog = (ex) => setLogForm({
-    exerciseName:      ex.name,
-    isCardio:          ex.isCardio ?? false,
-    sets:              ex.isCardio ? (ex.rounds ?? ex.sets ?? 4) : (ex.sets ?? 3),
-    reps:              ex.isCardio ? 1 : (ex.reps ?? 10),
-    weight:            ex.weight_kg > 0 ? String(ex.weight_kg) : "",
-    duration:          ex.duration ?? "",
-    allSetsCompleted:  true,       // default: optimistic
-    difficulty:        "medium",   // default RPE
-    progressionNote:   ex.progression_note ?? null,
-    estimatedKcal:     ex.estimated_kcal   ?? 0,
+    exerciseName:     ex.name,
+    isCardio:         ex.isCardio ?? false,
+    sets:             ex.isCardio ? (ex.rounds ?? ex.sets ?? 4) : (ex.sets ?? 3),
+    reps:             ex.isCardio ? 1 : (ex.reps ?? 10),
+    weight:           ex.weight_kg > 0 ? String(ex.weight_kg) : "",
+    duration:         ex.duration ?? "",
+    allSetsCompleted: true,
+    difficulty:       "medium",
+    progressionNote:  ex.progression_note ?? null,
+    estimatedKcal:    ex.estimated_kcal   ?? 0,
   });
 
   const submitLog = async () => {
@@ -163,9 +153,7 @@ export default function Workout() {
     setLogging(true);
     try {
       const RPE_MAP = { easy: 5, medium: 7, hard: 9 };
-      const rpe     = RPE_MAP[logForm.difficulty] ?? 6;
-
-      const response = await apiFetch("/workouts/log", {
+      await apiFetch("/workouts/log", {
         method: "POST",
         body: JSON.stringify({
           exercises: [{
@@ -176,16 +164,14 @@ export default function Workout() {
             notes:  logForm.isCardio && logForm.duration ? `Duration: ${logForm.duration}` : null,
           }],
           all_sets_completed: logForm.allSetsCompleted,
-          rpe,
+          rpe: RPE_MAP[logForm.difficulty] ?? 6,
         }),
       });
 
       setDone(d => ({ ...d, [logForm.exerciseName]: true }));
 
-      // Check for PR in response — v2 logWorkout triggers checkAndUpdatePR async
-      // We also check manually by hitting /workouts/prs for the specific exercise
       try {
-        const prRes = await apiFetch(`/workouts/prs`);
+        const prRes = await apiFetch("/workouts/prs");
         const prs   = prRes?.data ?? prRes ?? [];
         const today = new Date().toISOString().split("T")[0];
         const newPR = Array.isArray(prs)
@@ -199,8 +185,6 @@ export default function Workout() {
 
       setLogForm(null);
       showAlert("success", `${logForm.exerciseName} logged! 💪`);
-
-      // Refresh history
       const hist = await apiFetch("/workouts/history?limit=200");
       const d = hist?.data ?? hist;
       setHistory(Array.isArray(d) ? d : []);
@@ -211,44 +195,32 @@ export default function Workout() {
     }
   };
 
-  const showAlert = (type, msg) => {
-    setAlert({ type, msg });
-    setTimeout(() => setAlert(null), 4000);
-  };
+  const showAlert = (type, msg) => { setAlert({ type, msg }); setTimeout(() => setAlert(null), 4000); };
 
-  const todayKey  = DAYS[new Date().getDay()];
-  const exercises = workout?.exercises ?? [];
-  const doneCount = exercises.filter(e => done[e.name]).length;
-  const pct       = exercises.length ? Math.round((doneCount / exercises.length) * 100) : 0;
-  const isRest    = workout ? workout.isRestDay === true : false;
-  const isDeload  = workout?.is_deload_week === true;
-  const accountCreatedAt = user?.created_at ?? user?.createdAt ?? null;
-
-  // Estimated session kcal
+  const todayKey    = DAYS[new Date().getDay()];
+  const exercises   = workout?.exercises ?? [];
+  const doneCount   = exercises.filter(e => done[e.name]).length;
+  const pct         = exercises.length ? Math.round((doneCount / exercises.length) * 100) : 0;
+  const isRest      = workout ? workout.isRestDay === true : false;
+  const isDeload    = workout?.is_deload_week === true;
   const sessionKcal = workout?.estimated_kcal ?? 0;
+  const accountCreatedAt = user?.created_at ?? user?.createdAt ?? null;
 
   if (loading) return (
     <div className={styles.wrapper}>
-      <div className={styles.loadWrap}>
-        <div className={styles.loadRing}/>
-        <span>Loading workout…</span>
-      </div>
+      <div className={styles.loadWrap}><div className={styles.loadRing}/><span>Loading workout…</span></div>
     </div>
   );
 
   return (
     <div className={styles.wrapper}>
-
-      {/* ── Nav ── */}
       <nav className={styles.nav}>
         <a className={styles.navLogo} href="/dashboard">
           <span className={styles.navLogoIcon}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
               <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
               <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
-              <line x1="6" y1="1" x2="6" y2="4"/>
-              <line x1="10" y1="1" x2="10" y2="4"/>
-              <line x1="14" y1="1" x2="14" y2="4"/>
+              <line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/>
             </svg>
           </span>
           <span className={styles.navLogoWord}>FIT<span>MITRA</span></span>
@@ -256,45 +228,34 @@ export default function Workout() {
         <div className={styles.navRight}>
           <ThemeToggle />
           <button className={styles.backBtn} onClick={() => navigate(-1)}>← Dashboard</button>
+          <a href="/profile" className={styles.navAvatarLink} title="Profile">
+            <NavAvatar avatarUrl={avatarUrl} initials={initials} />
+          </a>
         </div>
       </nav>
 
       <main className={styles.main}>
-
-        {/* ── Toast alert ── */}
         {alert && (
           <div className={alert.type === "success" ? styles.alertSuccess : styles.alertError}>
             {alert.type === "success" ? "✅" : "❌"} {alert.msg}
           </div>
         )}
-
-        {/* ── PR alerts ── */}
-        {prAlerts.map((pr, i) => (
-          <PRAlert key={i} exercise_name={pr.exercise_name} new_1rm={pr.new_1rm} />
-        ))}
-
-        {/* ── Deload banner ── */}
+        {prAlerts.map((pr, i) => <PRAlert key={i} exercise_name={pr.exercise_name} new_1rm={pr.new_1rm} />)}
         {isDeload && <DeloadBanner />}
 
-        {/* ── Hero Card ── */}
         <Section delay={0}>
           <div className={styles.heroCard}>
             <div className={styles.heroBg}/>
             <div className={styles.heroContent}>
               <div className={styles.heroLeft}>
-                <div className={styles.dayLabel}>
-                  {isRest ? "🛌" : "💪"} {todayKey.charAt(0).toUpperCase() + todayKey.slice(1)}'s Workout
-                </div>
+                <div className={styles.dayLabel}>{isRest ? "🛌" : "💪"} {todayKey.charAt(0).toUpperCase() + todayKey.slice(1)}'s Workout</div>
                 <h1 className={styles.heroTitle}>{workout?.name ?? "Rest Day"}</h1>
                 {!isRest && (
                   <div className={styles.heroPills}>
                     {workout?.duration       && <span className={styles.pill}>⏱ {workout.duration}</span>}
                     {workout?.difficulty     && <span className={styles.pill}>📊 {workout.difficulty}</span>}
-                    {/* NEW: calorie estimate pill */}
                     {sessionKcal > 0         && <span className={`${styles.pill} ${styles.pillFire}`}>🔥 ~{sessionKcal} kcal</span>}
-                    {/* NEW: mesocycle week pill */}
                     {workout?.mesocycle_week && <span className={`${styles.pill} ${styles.pillSlate}`}>Week {workout.mesocycle_week}/4</span>}
-                    {/* NEW: rotation tier pill */}
                     {workout?.rotation_tier  && <span className={`${styles.pill} ${styles.pillPurple}`}>Tier {workout.rotation_tier}</span>}
                     {workout?.muscle_groups?.filter(g => !/^rest/i.test(g)).map(g => (
                       <span key={g} className={`${styles.pill} ${styles.pillAccent}`}>{g}</span>
@@ -302,7 +263,6 @@ export default function Workout() {
                   </div>
                 )}
               </div>
-
               {!isRest && (
                 <div className={styles.ringWrap}>
                   <svg viewBox="0 0 100 100" className={styles.ring}>
@@ -315,8 +275,7 @@ export default function Workout() {
                     />
                     <defs>
                       <linearGradient id="wGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#FF5C1A"/>
-                        <stop offset="100%" stopColor="#FF8A3D"/>
+                        <stop offset="0%" stopColor="#FF5C1A"/><stop offset="100%" stopColor="#FF8A3D"/>
                       </linearGradient>
                     </defs>
                   </svg>
@@ -330,21 +289,18 @@ export default function Workout() {
           </div>
         </Section>
 
-        {/* ── Workout-specific insights (NEW) ── */}
         {!isRest && insights.length > 0 && (
           <Section delay={30}>
             <div className={styles.insightStrip}>
               {insights.slice(0, 2).map((ins, i) => (
                 <div key={i} className={styles.insightChip}>
-                  <span>{ins.icon ?? "💡"}</span>
-                  <span>{ins.message ?? ins.text}</span>
+                  <span>{ins.icon ?? "💡"}</span><span>{ins.message ?? ins.text}</span>
                 </div>
               ))}
             </div>
           </Section>
         )}
 
-        {/* ── Rest Day ── */}
         {isRest ? (
           <Section delay={60}>
             <div className={styles.restCard}>
@@ -352,100 +308,68 @@ export default function Workout() {
               <h2>Rest & Recovery</h2>
               <p>Your muscles grow during rest. Take it easy today — stretch, hydrate, and sleep well.</p>
               <div className={styles.restTips}>
-                {[
-                  "💧 Drink at least 2L of water",
-                  "🧘 10 min light stretching",
-                  "😴 Aim for 8h sleep tonight",
-                  "🚶 A light walk is fine",
-                ].map(t => <div key={t} className={styles.restTip}>{t}</div>)}
+                {["💧 Drink at least 2L of water","🧘 10 min light stretching","😴 Aim for 8h sleep tonight","🚶 A light walk is fine"]
+                  .map(t => <div key={t} className={styles.restTip}>{t}</div>)}
               </div>
             </div>
           </Section>
         ) : (
           <>
-            {/* ── Exercise List ── */}
             <Section delay={60}>
               <h2 className={styles.sectionTitle}>Today's Exercises</h2>
               <div className={styles.exerciseList}>
                 {exercises.map((ex, i) => {
-                  const isDone = !!done[ex.name];
+                  const isDone   = !!done[ex.name];
                   const progInfo = ex.progression_note ? PROGRESSION_INFO[ex.progression_note] : null;
-
-                  // Build meta line
                   let metaLine;
                   if (ex.isCardio) {
-                    const rounds = ex.rounds ?? ex.sets;
-                    if (ex.type === "steady") {
-                      metaLine = `${ex.duration ?? ex.reps} · steady state`;
-                    } else {
-                      const workDur = ex.duration ?? ex.reps;
-                      const restDur = ex.rest ?? (ex.rest_seconds ? `${ex.rest_seconds}s` : null);
-                      metaLine = `${rounds} rounds · ${workDur} on`;
-                      if (restDur) metaLine += ` / ${restDur} rest`;
-                    }
+                    const rounds  = ex.rounds ?? ex.sets;
+                    const workDur = ex.duration ?? ex.reps;
+                    const restDur = ex.rest ?? (ex.rest_seconds ? `${ex.rest_seconds}s` : null);
+                    metaLine = ex.type === "steady"
+                      ? `${workDur} · steady state`
+                      : `${rounds} rounds · ${workDur} on${restDur ? ` / ${restDur} rest` : ""}`;
                   } else {
                     metaLine = `${ex.sets} sets × ${ex.reps} reps`;
                     if (ex.weight_kg > 0) metaLine += ` · ${ex.weight_kg}kg`;
                     if (ex.rest_seconds)  metaLine += ` · ${ex.rest_seconds}s rest`;
                   }
-
                   return (
                     <div key={ex.name} className={`${styles.exCard} ${isDone ? styles.exDone : ""} ${isDeload ? styles.exDeload : ""}`}>
                       <div className={styles.exNum}>{isDone ? "✓" : i + 1}</div>
                       <div className={styles.exBody}>
                         <div className={styles.exNameRow}>
                           <div className={styles.exName}>{ex.name}</div>
-                          {/* Tier badge */}
-                          {ex.tier && (
-                            <span className={styles.tierBadge}>Tier {ex.tier}</span>
-                          )}
+                          {ex.tier && <span className={styles.tierBadge}>Tier {ex.tier}</span>}
                         </div>
                         <div className={styles.exMeta}>{metaLine}</div>
-
-                        {/* Progression note — what changes NEXT week */}
                         {progInfo && !isDone && (
                           <div className={styles.progressionNote}
                             style={{ color: progInfo.color, borderColor: `${progInfo.color}33`, background: `${progInfo.color}0D` }}>
                             {progInfo.label}
                           </div>
                         )}
-
-                        {/* Calorie estimate */}
-                        {ex.estimated_kcal > 0 && (
-                          <div className={styles.exKcalLine}>🔥 ~{ex.estimated_kcal} kcal estimated</div>
-                        )}
+                        {ex.estimated_kcal > 0 && <div className={styles.exKcalLine}>🔥 ~{ex.estimated_kcal} kcal estimated</div>}
                       </div>
-                      <button
-                        className={`${styles.logBtn} ${isDone ? styles.logBtnDone : ""}`}
-                        onClick={() => !isDone && openLog(ex)}
-                        disabled={isDone}
-                      >
+                      <button className={`${styles.logBtn} ${isDone ? styles.logBtnDone : ""}`}
+                        onClick={() => !isDone && openLog(ex)} disabled={isDone}>
                         {isDone ? "Logged ✓" : "Log"}
                       </button>
                     </div>
                   );
                 })}
               </div>
-
-              {/* Session total kcal */}
               {sessionKcal > 0 && doneCount === 0 && (
-                <div className={styles.sessionKcalBar}>
-                  🔥 Estimated session burn: <strong>~{sessionKcal} kcal</strong>
-                </div>
+                <div className={styles.sessionKcalBar}>🔥 Estimated session burn: <strong>~{sessionKcal} kcal</strong></div>
               )}
               {doneCount > 0 && doneCount < exercises.length && (
-                <div className={styles.sessionKcalBar}>
-                  ✅ {doneCount} of {exercises.length} exercises logged
-                </div>
+                <div className={styles.sessionKcalBar}>✅ {doneCount} of {exercises.length} exercises logged</div>
               )}
               {doneCount === exercises.length && exercises.length > 0 && (
-                <div className={`${styles.sessionKcalBar} ${styles.sessionComplete}`}>
-                  🎉 Workout complete! Great session.
-                </div>
+                <div className={`${styles.sessionKcalBar} ${styles.sessionComplete}`}>🎉 Workout complete! Great session.</div>
               )}
             </Section>
 
-            {/* ── Guidelines ── */}
             {workout?.guidelines && Object.keys(workout.guidelines).length > 0 && (
               <Section delay={120}>
                 <h2 className={styles.sectionTitle}>Guidelines</h2>
@@ -460,15 +384,12 @@ export default function Workout() {
               </Section>
             )}
 
-            {/* ── Safety Notes ── */}
             {workout?.safety_notes?.length > 0 && (
               <Section delay={160}>
                 <h2 className={styles.sectionTitle}>Safety Notes</h2>
                 <div className={styles.safetyList}>
                   {workout.safety_notes.map((n, i) => (
-                    <div key={i} className={styles.safetyNote}>
-                      <span className={styles.safetyDot}/>{n}
-                    </div>
+                    <div key={i} className={styles.safetyNote}><span className={styles.safetyDot}/>{n}</div>
                   ))}
                 </div>
               </Section>
@@ -476,98 +397,64 @@ export default function Workout() {
           </>
         )}
 
-        {/* ── Activity Calendar ── */}
         <Section delay={220}>
           <div className={styles.calendarSection}>
-            <ActivityCalendar
-              history={history}
-              weeklyPlan={weekly?.weekly_plan}
-              accountCreatedAt={accountCreatedAt}
-            />
+            <ActivityCalendar history={history} weeklyPlan={weekly?.weekly_plan} accountCreatedAt={accountCreatedAt} />
           </div>
         </Section>
-
       </main>
 
-      {/* ── LOG MODAL ─────────────────────────────────────────── */}
       {logForm && (
         <div className={styles.modalOverlay} onClick={() => setLogForm(null)}>
           <div className={styles.modal} onClick={e => e.stopPropagation()}>
             <h3 className={styles.modalTitle}>Log: {logForm.exerciseName}</h3>
-
-            {/* Prior progression note at top of modal */}
             {logForm.progressionNote && PROGRESSION_INFO[logForm.progressionNote] && (
-              <div className={styles.modalProgNote}
-                style={{
-                  color:      PROGRESSION_INFO[logForm.progressionNote].color,
-                  background: `${PROGRESSION_INFO[logForm.progressionNote].color}15`,
-                  borderColor:`${PROGRESSION_INFO[logForm.progressionNote].color}40`,
-                }}>
+              <div className={styles.modalProgNote} style={{
+                color:       PROGRESSION_INFO[logForm.progressionNote].color,
+                background:  `${PROGRESSION_INFO[logForm.progressionNote].color}15`,
+                borderColor: `${PROGRESSION_INFO[logForm.progressionNote].color}40`,
+              }}>
                 Target next session: {PROGRESSION_INFO[logForm.progressionNote].label}
               </div>
             )}
-
             <div className={styles.modalFields}>
               {logForm.isCardio ? (
                 <>
-                  <label className={styles.modalLabel}>
-                    Rounds completed
+                  <label className={styles.modalLabel}>Rounds completed
                     <input type="number" className={styles.modalInput} value={logForm.sets}
                       onChange={e => setLogForm(f => ({ ...f, sets: e.target.value }))} min="1"/>
                   </label>
-                  <label className={styles.modalLabel}>
-                    Duration per round
+                  <label className={styles.modalLabel}>Duration per round
                     <input type="text" className={styles.modalInput} value={logForm.duration}
-                      onChange={e => setLogForm(f => ({ ...f, duration: e.target.value }))}
-                      placeholder="e.g. 45 sec"/>
+                      onChange={e => setLogForm(f => ({ ...f, duration: e.target.value }))} placeholder="e.g. 45 sec"/>
                   </label>
                 </>
               ) : (
                 <>
-                  <label className={styles.modalLabel}>
-                    Sets
+                  <label className={styles.modalLabel}>Sets
                     <input type="number" className={styles.modalInput} value={logForm.sets}
                       onChange={e => setLogForm(f => ({ ...f, sets: e.target.value }))} min="1"/>
                   </label>
-                  <label className={styles.modalLabel}>
-                    Reps
+                  <label className={styles.modalLabel}>Reps
                     <input type="number" className={styles.modalInput} value={logForm.reps}
                       onChange={e => setLogForm(f => ({ ...f, reps: e.target.value }))} min="1"/>
                   </label>
-                  <label className={styles.modalLabel}>
-                    Weight (kg) — optional
+                  <label className={styles.modalLabel}>Weight (kg) — optional
                     <input type="number" className={styles.modalInput} value={logForm.weight}
-                      onChange={e => setLogForm(f => ({ ...f, weight: e.target.value }))}
-                      min="0" step="0.5" placeholder="0"/>
+                      onChange={e => setLogForm(f => ({ ...f, weight: e.target.value }))} min="0" step="0.5" placeholder="0"/>
                   </label>
                 </>
               )}
             </div>
-
-            {/* ── All Sets Completed toggle (NEW) ── */}
             <div className={styles.modalToggleRow}>
               <span className={styles.modalToggleLabel}>Completed all sets?</span>
-              <button
-                className={`${styles.toggleBtn} ${logForm.allSetsCompleted ? styles.toggleOn : styles.toggleOff}`}
-                onClick={() => setLogForm(f => ({ ...f, allSetsCompleted: !f.allSetsCompleted }))}
-              >
+              <button className={`${styles.toggleBtn} ${logForm.allSetsCompleted ? styles.toggleOn : styles.toggleOff}`}
+                onClick={() => setLogForm(f => ({ ...f, allSetsCompleted: !f.allSetsCompleted }))}>
                 {logForm.allSetsCompleted ? "✓ Yes" : "✗ No"}
               </button>
             </div>
-
-            {/* ── RPE / Difficulty (NEW) ── */}
-            <RPESelector
-              value={logForm.difficulty}
-              onChange={d => setLogForm(f => ({ ...f, difficulty: d }))}
-            />
-
-            {/* Calorie estimate for this exercise */}
-            {logForm.estimatedKcal > 0 && (
-              <div className={styles.modalKcal}>
-                🔥 Estimated burn: ~{logForm.estimatedKcal} kcal
-              </div>
-            )}
-
+            <RPESelector value={logForm.difficulty} onChange={d => setLogForm(f => ({ ...f, difficulty: d }))} />
+            {logForm.estimatedKcal > 0 && <div className={styles.modalKcal}>🔥 Estimated burn: ~{logForm.estimatedKcal} kcal</div>}
             <div className={styles.modalActions}>
               <button className={styles.modalCancel} onClick={() => setLogForm(null)}>Cancel</button>
               <button className={styles.modalConfirm} onClick={submitLog} disabled={logging}>

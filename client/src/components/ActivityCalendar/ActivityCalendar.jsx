@@ -40,13 +40,28 @@ function extractDateStr(historyItem) {
   if (!raw) return null;
 
   if (typeof raw === "string" && /^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
-
   if (typeof raw === "string" && raw.includes("T")) return raw.slice(0, 10);
 
   const d = new Date(typeof raw === "number" && raw < 1e12 ? raw * 1000 : raw);
   if (isNaN(d.getTime())) return null;
   return toLocalDateStr(d);
 }
+
+// ── Check if a single log entry counts as "completed" ──────────
+function isLogCompleted(log) {
+  return (
+    log?.all_sets_completed === true ||
+    log?.completed          === true ||
+    log?.is_completed       === true ||
+    log?.workout_completed  === true ||
+    log?.status             === "completed"
+  );
+}
+
+// ── Minimum exercises required to consider a day "done" ────────
+// A full workout session is typically 4+ exercises.
+// Adjust this if your plans have more or fewer exercises per day.
+const MIN_EXERCISES_FOR_DONE = 4;
 
 export default function ActivityCalendar({ history, weeklyPlan, accountCreatedAt }) {
   const today = new Date();
@@ -59,9 +74,14 @@ export default function ActivityCalendar({ history, weeklyPlan, accountCreatedAt
     ? new Date(new Date(accountCreatedAt).toDateString())
     : new Date(today);
 
-  const completedDates = new Set(
-    (history ?? []).map(extractDateStr).filter(Boolean)
-  );
+  // ── Group all logs by date ──────────────────────────────────────
+  const logsByDate = (history ?? []).reduce((acc, item) => {
+    const dateStr = extractDateStr(item);
+    if (!dateStr) return acc;
+    if (!acc[dateStr]) acc[dateStr] = [];
+    acc[dateStr].push(item);
+    return acc;
+  }, {});
 
   const prevMonth = () => {
     if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
@@ -84,14 +104,14 @@ export default function ActivityCalendar({ history, weeklyPlan, accountCreatedAt
 
   const getCellData = (day) => {
     if (!day) return null;
-    const date   = new Date(viewYear, viewMonth, day);
+    const date = new Date(viewYear, viewMonth, day);
     date.setHours(0, 0, 0, 0);
-   
-    const dateStr    = toLocalDateStr(date);
-    const dayIdx     = date.getDay();
-    const dayKey     = DAYS_KEY[dayIdx];
-    const isFuture   = date > today;
-    const isToday    = date.getTime() === today.getTime();
+
+    const dateStr     = toLocalDateStr(date);
+    const dayIdx      = date.getDay();
+    const dayKey      = DAYS_KEY[dayIdx];
+    const isFuture    = date > today;
+    const isToday     = date.getTime() === today.getTime();
     const isPreSignup = date < accountDate;
 
     const planGroups    = weeklyPlan?.[dayKey] ?? [];
@@ -101,29 +121,44 @@ export default function ActivityCalendar({ history, weeklyPlan, accountCreatedAt
     const isScheduledRest = isSat || isRestInPlan;
 
     let label = "";
-    if (isScheduledRest)         label = "🛌 Rest";
-    else if (planGroups.length)  label = shortenLabel(planGroups);
+    if (isScheduledRest)        label = "🛌 Rest";
+    else if (planGroups.length) label = shortenLabel(planGroups);
+
+    const logsForDay     = logsByDate[dateStr] ?? [];
+    const logCount       = logsForDay.length;
+    const completedCount = logsForDay.filter(isLogCompleted).length;
+
+    // ── "Done" = met the minimum exercise count AND every logged
+    //    exercise has its sets completed
+    const isFullyDone =
+      logCount >= MIN_EXERCISES_FOR_DONE &&
+      logsForDay.every(isLogCompleted);
+
+    // ── "Partial" = something was logged but not fully done yet
+    const isPartial = logCount > 0 && !isFullyDone;
 
     let status;
-    if (isPreSignup)                       status = "presignup";
-    else if (isScheduledRest)              status = isFuture ? "rest-future" : "rest";
-    else if (isFuture)                     status = "upcoming";
-    else if (completedDates.has(dateStr))  status = "done";
-    else                                   status = "missed";
+    if (isPreSignup)          status = "presignup";
+    else if (isScheduledRest) status = isFuture ? "rest-future" : "rest";
+    else if (isFuture)        status = "upcoming";
+    else if (isFullyDone)     status = "done";
+    else if (isPartial)       status = "partial";
+    else                      status = "missed";
 
-    return { dateStr, status, isToday, isPreSignup, isFuture, label };
+    return { dateStr, status, isToday, isPreSignup, isFuture, label, logCount, completedCount };
   };
 
   const weeks = [];
   for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
 
   const STYLE = {
-    done:          { bg: "#22c55e18", border: "#22c55e55", numColor: "#22c55e", dot: "#22c55e" },
-    missed:        { bg: "#eab30818", border: "#eab30855", numColor: "#eab308", dot: "#eab308" },
-    rest:          { bg: "#ef444418", border: "#ef444455", numColor: "#ef4444", dot: "#ef4444" },
-    "rest-future": { bg: "#ef444408", border: "#ef444428", numColor: "#ef444488", dot: null },
+    done:          { bg: "#22c55e18", border: "#22c55e55", numColor: "#22c55e",   dot: "#22c55e"  },
+    partial:       { bg: "#3b82f618", border: "#3b82f655", numColor: "#3b82f6",   dot: "#3b82f6"  },
+    missed:        { bg: "#eab30818", border: "#eab30855", numColor: "#eab308",   dot: "#eab308"  },
+    rest:          { bg: "#ef444418", border: "#ef444455", numColor: "#ef4444",   dot: "#ef4444"  },
+    "rest-future": { bg: "#ef444408", border: "#ef444428", numColor: "#ef444488", dot: null       },
     upcoming:      { bg: "transparent", border: "rgba(255,255,255,0.06)", numColor: null, dot: null },
-    presignup:     { bg: "transparent", border: "transparent", numColor: null, dot: null },
+    presignup:     { bg: "transparent", border: "transparent", numColor: null,    dot: null       },
   };
 
   return (
@@ -140,9 +175,14 @@ export default function ActivityCalendar({ history, weeklyPlan, accountCreatedAt
           >›</button>
         </div>
         <div className={styles.legend}>
-          {[["done","#22c55e","Completed"],["missed","#eab308","Missed"],["rest","#ef4444","Rest"]].map(([s,c,l]) => (
+          {[
+            ["done",    "#22c55e", "Completed"],
+            ["partial", "#3b82f6", "Partial"],
+            ["missed",  "#eab308", "Missed"],
+            ["rest",    "#ef4444", "Rest"],
+          ].map(([s, c, l]) => (
             <span key={s} className={styles.legendItem}>
-              <span className={styles.legendDot} style={{ background: c }}/>{l}
+              <span className={styles.legendDot} style={{ background: c }} />{l}
             </span>
           ))}
         </div>
@@ -159,10 +199,10 @@ export default function ActivityCalendar({ history, weeklyPlan, accountCreatedAt
           <div key={wi} className={styles.weekRow}>
             {week.map((day, di) => {
               const data = getCellData(day);
-              if (!day) return <div key={di} className={styles.cellEmpty}/>;
+              if (!day) return <div key={di} className={styles.cellEmpty} />;
 
-              const s = data.status;
-              const st = STYLE[s];
+              const s     = data.status;
+              const st    = STYLE[s];
               const muted = s === "presignup" || s === "upcoming" || s === "rest-future";
 
               return (
@@ -170,6 +210,11 @@ export default function ActivityCalendar({ history, weeklyPlan, accountCreatedAt
                   key={di}
                   className={`${styles.cell} ${muted ? styles.cellMuted : ""} ${data.isToday ? styles.cellToday : ""}`}
                   style={{ background: st.bg, borderColor: st.border }}
+                  title={
+                    data.logCount > 0
+                      ? `${data.completedCount}/${data.logCount} exercises completed`
+                      : undefined
+                  }
                 >
                   <div className={styles.dayNum} style={st.numColor ? { color: st.numColor } : {}}>
                     {data.isToday
@@ -178,12 +223,20 @@ export default function ActivityCalendar({ history, weeklyPlan, accountCreatedAt
                     }
                   </div>
                   {data.label && (
-                    <div className={styles.workoutLabel} style={st.numColor ? { color: st.numColor } : {}}>
+                    <div
+                      className={styles.workoutLabel}
+                      style={st.numColor ? { color: st.numColor } : {}}
+                    >
                       {data.label}
                     </div>
                   )}
+                  {s === "partial" && data.logCount > 0 && (
+                    <div className={styles.partialChip}>
+                      {data.completedCount}/{data.logCount}
+                    </div>
+                  )}
                   {st.dot && !muted && (
-                    <div className={styles.statusDot} style={{ background: st.dot }}/>
+                    <div className={styles.statusDot} style={{ background: st.dot }} />
                   )}
                 </div>
               );

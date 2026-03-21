@@ -8,12 +8,21 @@ const authenticate = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    if (!authHeader?.startsWith("Bearer ")) {
       throw new AuthError("Authorization denied. No token provided.", 401);
     }
 
     const token = authHeader.split(" ")[1];
-    const decoded = jwt.verify(token, jwtSecret);
+
+    let decoded;
+    try {
+      decoded = jwt.verify(token, jwtSecret);
+    } catch (err) {
+      if (err.name === "TokenExpiredError") {
+        throw new AuthError("Session expired. Please login again.", 401);
+      }
+      throw new AuthError("Invalid token.", 401);
+    }
 
     const user = await UserModel.findById(decoded.id);
 
@@ -24,27 +33,12 @@ const authenticate = async (req, res, next) => {
     if (!user.is_active) {
       throw new AuthError("Account is deactivated.", 403);
     }
-
-    req.user = {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      has_completed_onboarding: user.has_completed_onboarding,
-      is_verified: user.is_verified,
-      is_active: user.is_active,
-    };
+ 
+    const { password_hash, ...safeUser } = user;
+    req.user = safeUser; 
 
     next();
   } catch (error) {
-    if (error.name === "TokenExpiredError") {
-      return next(new AuthError("Session expired. Please login again.", 401));
-    }
-
-    if (error.name === "JsonWebTokenError") {
-      return next(new AuthError("Invalid token.", 401));
-    }
-
     next(error);
   }
 };

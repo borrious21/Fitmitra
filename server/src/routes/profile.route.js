@@ -7,7 +7,7 @@ const router = Router();
 
 router.use(fileUpload({ useTempFiles: true }));
 
-// URL: /api/profile/avatar  ← avatar upload (was wrong method + wrong path)
+// URL: /api/profile/avatar
 router.post("/avatar", authMiddleware, ProfileController.uploadProfilePicture);
 
 // URL: /api/profile/me
