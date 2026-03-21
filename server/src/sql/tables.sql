@@ -15,6 +15,7 @@ DROP TABLE IF EXISTS user_achievements CASCADE;
 DROP TABLE IF EXISTS user_streaks CASCADE;
 DROP TABLE IF EXISTS user_preferences CASCADE;
 DROP TABLE IF EXISTS notifications CASCADE;
+DROP TABLE IF EXISTS ai_meal_plans CASCADE;
 
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
@@ -273,6 +274,17 @@ CREATE TABLE admin_logs (
     ip_address INET,
     created_at TIMESTAMP DEFAULT NOW()
 );
+
+CREATE TABLE ai_meal_plans (
+    id        SERIAL PRIMARY KEY,
+    user_id   INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    plan_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    plan_data JSONB NOT NULL,
+    tdee INT, protein_g INT, carbs_g INT, fats_g INT,
+    created_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(user_id, plan_date)
+);
+CREATE INDEX idx_ai_meal_plans_user_date ON ai_meal_plans(user_id, plan_date DESC);
 CREATE INDEX idx_admin_logs_admin ON admin_logs(admin_id, created_at DESC);
 CREATE INDEX idx_admin_logs_target ON admin_logs(target_user_id, created_at DESC);
 

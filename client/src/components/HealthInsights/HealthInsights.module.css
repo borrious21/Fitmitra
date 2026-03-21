@@ -1,0 +1,118 @@
+/* HealthInsights.module.css */
+
+.card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ─── Header ─────────────────────────────────────────────────────────────────── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.iconWrap {
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(255,92,26,.2), rgba(255,138,61,.1));
+  border: 1px solid rgba(255,92,26,.3);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+}
+.title { font-size: 14px; font-weight: 700; color: #f1f5f9; }
+.sub   { font-size: 11px; color: #475569; margin-top: 2px; }
+
+.headerRight { display: flex; align-items: center; gap: 8px; }
+
+.liveBadge {
+  display: flex; align-items: center; gap: 5px;
+  padding: 3px 10px; border-radius: 50px; font-size: 11px; font-weight: 700;
+  background: rgba(16,185,129,.1); border: 1px solid rgba(16,185,129,.3); color: #4ade80;
+}
+.liveDot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #4ade80;
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+.refreshBtn {
+  width: 28px; height: 28px;
+  background: transparent; border: 1px solid #334155;
+  border-radius: 8px; color: #475569; font-size: 14px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+}
+.refreshBtn:hover { background: #334155; color: #f1f5f9; }
+
+/* ─── Insight rows ───────────────────────────────────────────────────────────── */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.insightRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 14px;
+  border-radius: 12px;
+  border: 1px solid;
+  cursor: default;
+  transition: filter .15s;
+  animation: fadeUp .3s ease both;
+}
+.insightRow:hover { filter: brightness(1.15); }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.insightIcon {
+  font-size: 16px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  line-height: 1;
+}
+.insightText {
+  font-size: 13px;
+  color: #e2e8f0;
+  line-height: 1.55;
+}
+
+/* ─── Footer ─────────────────────────────────────────────────────────────────── */
+.footer {
+  font-size: 11px;
+  color: #334155;
+  text-align: right;
+  border-top: 1px solid #1e293b;
+  padding-top: 10px;
+  margin-top: -4px;
+}
+
+/* ─── Skeleton ───────────────────────────────────────────────────────────────── */
+.skeletonList { display: flex; flex-direction: column; gap: 8px; }
+.skeletonRow  { display: flex; align-items: center; gap: 10px; }
+.skeletonDot  {
+  width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0;
+  background: #334155;
+}
+.skeleton {
+  height: 13px; border-radius: 6px;
+  background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+}
+@keyframes shimmer { 0%{background-position:200%} 100%{background-position:-200%} }

@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import styles from "./Dashboard.module.css";
 import ThemeToggle from "../../../components/ThemeToggle/ThemeToggle";
 import AiCoach from "../../../components/AiCoach/AiCoach";
+import SmartRecommendations from "../../../components/Smartrecommendation/Smartrecommendation.jsx";
 import { AuthContext } from "../../../context/AuthContext";
 import { getMyProfile } from "../../../services/profileService";
 import {
@@ -11,6 +12,8 @@ import {
 } from "../../../services/dashboardService";
 import { apiFetch } from "../../../services/apiClient";
 import { buildFitnessData } from "../../../utils/buildFitnessData";
+import HealthInsights from "../../../components/HealthInsights/HealthInsights.jsx";
+
 
 const GOAL_LABELS = {
   weight_loss: "Weight Loss", maintain_fitness: "Maintain Fitness",
@@ -544,7 +547,6 @@ export default function Dashboard() {
     return () => { cancelled = true; };
   }, []);
 
-  // ── Build fitnessData for AI Coach ──────────────────────────────────────────
   const fitnessData = !loading
     ? buildFitnessData({ nutrition, workout, health, streak, weight, goalLabel })
     : null;
@@ -571,7 +573,6 @@ export default function Dashboard() {
   const workoutWarmup = workout?.warmup ?? [];
   const bpLogged      = !!(health?.bp && health.bp !== "—" && health.bp !== "Not logged");
 
-  // ── ✅ UPDATED: Added Meal Plan quick action ─────────────────────────────────
   const QUICK_ACTIONS = [
     { icon: "⚖️", label: "Log Weight",  action: () => navigate("/progress")  },
     { icon: "🩺", label: "Log BP",      action: () => navigate("/progress")  },
@@ -584,7 +585,7 @@ export default function Dashboard() {
 
   return (
     <div className={styles.wrapper}>
-      {/* ── NAV ─────────────────────────────────────────────────────────────── */}
+      {/* NAV */}
       <nav className={styles.nav}>
         <a className={styles.navLogo} href="#">
           <span className={styles.navLogoIcon}>
@@ -617,7 +618,7 @@ export default function Dashboard() {
         </div>
       </nav>
 
-      {/* ── MAIN ────────────────────────────────────────────────────────────── */}
+      {/* MAIN */}
       <main className={styles.main}>
         {error && (
           <div className={styles.alertBanner} style={{ marginBottom: "1rem" }}>
@@ -942,6 +943,13 @@ export default function Dashboard() {
           </div>
         </Section>
 
+        {/* ── 🧠 Smart Recommendations ──────────────────────────────────────── */}
+        {!loading && (
+          <Section delay={70}>
+            <SmartRecommendations />
+          </Section>
+        )}
+
         {/* Weekly Progress */}
         <Section>
           <div className={`${styles.card} ${styles.accent}`}>
@@ -1020,7 +1028,7 @@ export default function Dashboard() {
         </Section>
       </main>
 
-      {/* ── AI COACH FLOATING WIDGET ─────────────────────────────────────────── */}
+      {/* AI COACH FLOATING WIDGET */}
       {!loading && <AiCoach fitnessData={fitnessData} />}
     </div>
   );
