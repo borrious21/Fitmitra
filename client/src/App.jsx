@@ -32,7 +32,7 @@ import AdminExercises  from "./pages/protected/Admin/Sections/AdminExercises/Adm
 import AdminPlans      from "./pages/protected/Admin/Sections/AdminPlans/AdminPlans";
 import AdminLogs       from "./pages/protected/Admin/Sections/AdminLogs/AdminLogs";
 import AdminAnalytics  from "./pages/protected/Admin/Sections/AdminAnalytics/AdminAnalytics";
-// import AdminNotifications from "./pages/protected/Admin/AdminNotifications";
+import AdminNotifications from "./pages/protected/Admin/Sections/AdminNotification/AdminNotfications";
 
 function App() {
   return (
@@ -68,7 +68,7 @@ function App() {
               {<Route path="plans"         element={<AdminPlans />} /> }
               {<Route path="logs"          element={<AdminLogs />} /> }
               {<Route path="analytics"     element={<AdminAnalytics />} /> }
-              {/* <Route path="notifications" element={<AdminNotifications />} /> */}
+              {<Route path="notifications" element={<AdminNotifications />} /> }
             </Route>
 
             {/* ── Protected user routes ───────────────────────────────────── */}

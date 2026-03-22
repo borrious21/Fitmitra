@@ -1,0 +1,170 @@
+/* AdminNotifications.module.css */
+
+.page { padding: 28px 28px 60px; min-height: 100%; background: #0f172a; }
+
+/* ─── Alerts ──────────────────────────────────────────────────────────────── */
+.alertOk, .alertErr { padding: 11px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; margin-bottom: 18px; }
+.alertOk  { background: rgba(16,185,129,.1);  border: 1px solid rgba(16,185,129,.3); color: #4ade80; }
+.alertErr { background: rgba(239,68,68,.1);   border: 1px solid rgba(239,68,68,.3);  color: #f87171; }
+
+/* ─── Header ──────────────────────────────────────────────────────────────── */
+.pageHeader { margin-bottom: 24px; }
+.pageTitle  { font-size: 24px; font-weight: 800; color: #f1f5f9; margin: 0 0 4px; letter-spacing: -.02em; }
+.pageSub    { font-size: 13px; color: #475569; margin: 0; }
+
+/* ─── Forms grid ──────────────────────────────────────────────────────────── */
+.formsGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+
+.formCard {
+  background: #1e293b; border: 1px solid #334155; border-top: 2px solid;
+  border-radius: 16px; padding: 22px; display: flex; flex-direction: column; gap: 16px;
+}
+.formCardOrange { border-top-color: rgba(255,92,26,.5); }
+.formCardBlue   { border-top-color: rgba(59,130,246,.5); }
+
+.formCardTitle  { font-size: 15px; font-weight: 800; color: #f1f5f9; margin: 0; }
+
+.formFields { display: flex; flex-direction: column; gap: 14px; }
+.formRow    { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.formField  { display: flex; flex-direction: column; gap: 6px; }
+.formLabel  { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: #475569; }
+
+.formInput, .formTextarea, .formSelect {
+  background: rgba(255,255,255,.04); border: 1px solid #334155; border-radius: 9px;
+  padding: 10px 12px; color: #f1f5f9; font-size: 13px; outline: none;
+  transition: border-color .15s; font-family: inherit; width: 100%; box-sizing: border-box;
+}
+.formInput:focus, .formTextarea:focus, .formSelect:focus { border-color: #FF5C1A; }
+.formTextarea { resize: vertical; min-height: 80px; }
+.formSelect   { background: #0f172a; cursor: pointer; }
+.inputErr     { border-color: rgba(239,68,68,.5) !important; }
+.fieldErr     { font-size: 11px; color: #f87171; }
+
+.targetPreview {
+  padding: 10px 14px; border-radius: 9px; border: 1px solid;
+  font-size: 12px; font-weight: 600;
+}
+
+/* ─── Form buttons ────────────────────────────────────────────────────────── */
+.btnSendUser, .btnBroadcast {
+  width: 100%; padding: 12px; border: none; border-radius: 10px; font-size: 13px;
+  font-weight: 700; cursor: pointer; display: flex; align-items: center;
+  justify-content: center; gap: 7px; transition: filter .15s;
+}
+.btnSendUser  { background: linear-gradient(135deg,#FF5C1A,#FF8A3D); color: #fff; }
+.btnBroadcast { background: linear-gradient(135deg,#2563eb,#3b82f6); color: #fff; }
+.btnSendUser:hover:not(:disabled),
+.btnBroadcast:hover:not(:disabled)  { filter: brightness(1.1); }
+.btnSendUser:disabled,
+.btnBroadcast:disabled  { opacity: .4; cursor: not-allowed; }
+
+/* ─── Log card ────────────────────────────────────────────────────────────── */
+.logCard   { background: #1e293b; border: 1px solid #334155; border-radius: 16px; overflow: hidden; }
+.logHeader {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  padding: 20px 20px 16px; border-bottom: 1px solid #334155; gap: 12px; flex-wrap: wrap;
+}
+.logTitle { font-size: 15px; font-weight: 800; color: #f1f5f9; margin: 0 0 3px; }
+.logCount { color: #FF5C1A; }
+.logSub   { font-size: 11px; color: #475569; margin: 0; }
+.logFilters { display: flex; gap: 8px; align-items: center; }
+
+.filterInput {
+  width: 100px; background: #0f172a; border: 1px solid #334155; border-radius: 8px;
+  padding: 8px 10px; color: #f1f5f9; font-size: 12px; outline: none; font-family: inherit;
+  transition: border-color .15s;
+}
+.filterInput:focus { border-color: #FF5C1A; }
+.filterInput::placeholder { color: #334155; }
+
+.filterSelect {
+  background: #0f172a; border: 1px solid #334155; border-radius: 8px;
+  padding: 8px 10px; color: #f1f5f9; font-size: 12px; outline: none; cursor: pointer;
+}
+
+.refreshBtn {
+  width: 34px; height: 34px; background: #0f172a; border: 1px solid #334155;
+  border-radius: 8px; color: #64748b; font-size: 14px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; transition: all .15s;
+}
+.refreshBtn:hover { background: #334155; color: #f1f5f9; }
+
+/* ─── Table ───────────────────────────────────────────────────────────────── */
+.tableWrap { overflow-x: auto; }
+.table     { width: 100%; border-collapse: collapse; min-width: 600px; }
+.th {
+  padding: 10px 14px; text-align: left; font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .08em; color: #334155;
+  background: #0f172a; border-bottom: 1px solid #334155;
+}
+.td   { padding: 11px 14px; font-size: 13px; color: #94a3b8; vertical-align: middle; }
+.tr   { border-bottom: 1px solid #172032; transition: background .1s; }
+.tr:last-child { border-bottom: none; }
+.tr:hover { background: rgba(255,255,255,.02); }
+
+.userId    { font-size: 12px; color: #64748b; font-weight: 600; }
+.titleCell { font-weight: 600; color: #f1f5f9; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.msgCell   { color: #64748b; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.dateVal   { font-size: 11px; color: #475569; white-space: nowrap; }
+
+.typeBadge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: 700;
+  letter-spacing: .05em; text-transform: uppercase; white-space: nowrap;
+}
+
+.delBtn {
+  padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700;
+  border: 1px solid rgba(239,68,68,.3); background: transparent;
+  color: #f87171; cursor: pointer; transition: all .12s;
+}
+.delBtn:hover { background: rgba(239,68,68,.1); }
+
+/* ─── Skeleton ────────────────────────────────────────────────────────────── */
+.skRow { border-bottom: 1px solid #172032; }
+.sk    { height: 13px; border-radius: 5px; background: linear-gradient(90deg,#1e293b 25%,#2d3f5a 50%,#1e293b 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
+@keyframes shimmer { 0%{background-position:200%} 100%{background-position:-200%} }
+
+/* ─── Empty ───────────────────────────────────────────────────────────────── */
+.emptyCell  { text-align: center; padding: 48px 20px; }
+.emptyIcon  { font-size: 36px; opacity: .3; margin-bottom: 10px; }
+.emptyTitle { font-size: 14px; font-weight: 700; color: #334155; margin-bottom: 5px; }
+.emptySub   { font-size: 12px; color: #1e293b; }
+
+/* ─── Pagination ──────────────────────────────────────────────────────────── */
+.pagination { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; padding: 12px 16px; border-top: 1px solid #334155; }
+.pgInfo     { font-size: 12px; color: #475569; }
+.pgBtns     { display: flex; align-items: center; gap: 4px; }
+.pgBtn      { width: 32px; height: 32px; background: #0f172a; border: 1px solid #334155; border-radius: 7px; color: #64748b; font-size: 13px; cursor: pointer; transition: all .12s; display: flex; align-items: center; justify-content: center; }
+.pgBtn:hover:not(:disabled) { background: #334155; color: #f1f5f9; }
+.pgBtn:disabled { opacity: .3; cursor: not-allowed; }
+.pgCurrent  { padding: 4px 12px; background: rgba(255,92,26,.12); border: 1px solid rgba(255,92,26,.25); border-radius: 7px; font-size: 12px; font-weight: 700; color: #FF5C1A; }
+
+/* ─── Overlay / confirm ───────────────────────────────────────────────────── */
+.overlay    { position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 300; display: flex; align-items: center; justify-content: center; animation: fadeIn .2s ease; backdrop-filter: blur(4px); }
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+.bcConfirm  { background: #111827; border: 1px solid #1e293b; border-radius: 20px; padding: 28px; width: 420px; max-width: 92vw; animation: popIn .25s cubic-bezier(.22,1,.36,1); }
+@keyframes popIn { from{opacity:0;transform:scale(.92)} to{opacity:1;transform:scale(1)} }
+.bcConfirmIcon  { font-size: 32px; text-align: center; margin-bottom: 10px; }
+.bcConfirmTitle { font-size: 17px; font-weight: 800; color: #f1f5f9; text-align: center; margin: 0 0 18px; }
+.bcPreview  { background: rgba(255,255,255,.03); border: 1px solid; border-radius: 12px; padding: 14px; margin-bottom: 18px; }
+.bcPreviewMeta  { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.bcTarget   { font-size: 12px; font-weight: 700; }
+.bcPreviewTitle { font-size: 14px; font-weight: 700; color: #f1f5f9; margin-bottom: 5px; }
+.bcPreviewMsg   { font-size: 13px; color: #64748b; line-height: 1.5; }
+.bcConfirmRow   { display: flex; gap: 10px; justify-content: center; }
+.btnCancel  { padding: 10px 22px; background: #1e293b; border: 1px solid #334155; border-radius: 9px; color: #64748b; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .12s; }
+.btnCancel:hover { background: #334155; color: #f1f5f9; }
+.btnSend    { padding: 10px 22px; background: linear-gradient(135deg,#2563eb,#3b82f6); border: none; border-radius: 9px; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 7px; transition: filter .15s; }
+.btnSend:hover:not(:disabled) { filter: brightness(1.1); }
+.btnSend:disabled, .btnCancel:disabled { opacity: .4; cursor: not-allowed; }
+
+.spinner { width: 13px; height: 13px; border-radius: 50%; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; animation: spin .7s linear infinite; display: inline-block; }
+@keyframes spin { to{transform:rotate(360deg)} }
+
+/* ─── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .page      { padding: 16px; }
+  .formsGrid { grid-template-columns: 1fr; }
+  .formRow   { grid-template-columns: 1fr; }
+}
