@@ -443,3 +443,296 @@
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: var(--d-bg); }
 ::-webkit-scrollbar-thumb { background: rgba(255,92,26,0.3); border-radius: 2px; }
+
+/* LogMeal.module.css */
+
+/* ─── Wrapper ────────────────────────────────────────────────────────────── */
+.wrapper {
+  min-height: 100vh;
+  background: #0f172a;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ─── Nav ─────────────────────────────────────────────────────────────────── */
+.nav {
+  height: 58px;
+  background: #0b1120;
+  border-bottom: 1px solid #1e293b;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.navLogo {
+  display: flex; align-items: center; gap: 8px;
+  text-decoration: none; user-select: none;
+}
+.navLogoIcon {
+  width: 28px; height: 28px; border-radius: 8px;
+  background: linear-gradient(135deg, #FF5C1A, #FF8A3D);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.navLogoIcon svg { width: 14px; height: 14px; color: #fff; }
+.navLogoWord {
+  font-size: 15px; font-weight: 900; color: #f1f5f9;
+  letter-spacing: .06em;
+}
+.navLogoWord span { color: #FF5C1A; }
+.backBtn {
+  margin-left: auto;
+  padding: 7px 14px; background: #1e293b; border: 1px solid #334155;
+  border-radius: 8px; color: #64748b; font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: all .15s;
+}
+.backBtn:hover { background: #334155; color: #f1f5f9; }
+.navAvatarLink { display: flex; align-items: center; text-decoration: none; margin-left: 10px; }
+.navAvatar {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: linear-gradient(135deg, #FF5C1A, #FF8A3D);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; color: #fff; cursor: pointer;
+}
+.navAvatarImg {
+  width: 34px; height: 34px; border-radius: 50%; object-fit: cover; cursor: pointer;
+}
+
+/* ─── Main ────────────────────────────────────────────────────────────────── */
+.main {
+  flex: 1;
+  max-width: 600px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 32px 20px 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ─── Alerts ──────────────────────────────────────────────────────────────── */
+.alertSuccess, .alertError {
+  padding: 12px 16px; border-radius: 12px;
+  font-size: 13px; font-weight: 600;
+  display: flex; align-items: center; gap: 8px;
+}
+.alertSuccess { background: rgba(16,185,129,.1); border: 1px solid rgba(16,185,129,.3); color: #4ade80; }
+.alertError   { background: rgba(239,68,68,.1);  border: 1px solid rgba(239,68,68,.3);  color: #f87171; }
+
+/* ─── Header ──────────────────────────────────────────────────────────────── */
+.header  { text-align: center; }
+.title   { font-size: 26px; font-weight: 800; color: #f1f5f9; margin: 0 0 6px; letter-spacing: -.02em; }
+.sub     { font-size: 14px; color: #475569; margin: 0; }
+
+/* ─── Meal type tabs ──────────────────────────────────────────────────────── */
+.mealTabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.mealTab {
+  padding: 10px 8px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.mealTab:hover { border-color: #475569; color: #94a3b8; }
+.mealTabActive {
+  background: rgba(255,92,26,.12) !important;
+  border-color: #FF5C1A !important;
+  color: #FF5C1A !important;
+}
+
+/* ─── Search box ──────────────────────────────────────────────────────────── */
+.searchBox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 0 14px;
+  transition: border-color .15s;
+}
+.searchBox:focus-within { border-color: #FF5C1A; }
+.searchIcon  { font-size: 15px; flex-shrink: 0; }
+.searchInput {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #f1f5f9;
+  font-size: 13px;
+  padding: 12px 0;
+  /* ✅ ensure pointer events work */
+  pointer-events: auto;
+  cursor: text;
+}
+.searchInput::placeholder { color: #334155; }
+
+/* ─── Suggestions ─────────────────────────────────────────────────────────── */
+.suggestions {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-top: -12px;
+}
+.suggestion {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 16px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #0f172a;
+  cursor: pointer;
+  transition: background .12s;
+  text-align: left;
+  gap: 12px;
+}
+.suggestion:last-child { border-bottom: none; }
+.suggestion:hover { background: rgba(255,92,26,.05); }
+.suggName { font-size: 13px; font-weight: 600; color: #f1f5f9; }
+.suggMeta { font-size: 11px; color: #475569; white-space: nowrap; }
+
+/* ─── Form ────────────────────────────────────────────────────────────────── */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.req { color: #FF5C1A; }
+
+/* ✅ Key fix — inputs must have pointer-events and cursor */
+.input {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 12px 14px;
+  color: #f1f5f9;
+  font-size: 14px;
+  outline: none;
+  transition: border-color .15s;
+  font-family: inherit;
+  width: 100%;
+  box-sizing: border-box;
+  /* ✅ critical */
+  pointer-events: auto;
+  cursor: text;
+  position: relative;
+  z-index: 1;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.input:focus    { border-color: #FF5C1A; background: #1e293b; }
+.input:hover    { border-color: #475569; }
+.inputErr       { border-color: rgba(239,68,68,.5) !important; }
+.inputErr:focus { border-color: #ef4444 !important; }
+.input::placeholder { color: #334155; }
+
+/* Number input spinner hide */
+.input[type="number"]::-webkit-inner-spin-button,
+.input[type="number"]::-webkit-outer-spin-button { opacity: 0.4; }
+
+.errMsg { font-size: 11px; color: #f87171; margin-top: -3px; }
+
+/* ─── Macro grid ──────────────────────────────────────────────────────────── */
+.macroGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 12px;
+}
+
+/* ─── Macro preview ───────────────────────────────────────────────────────── */
+.macroPreview {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  padding: 16px;
+  background: rgba(255,92,26,.06);
+  border: 1px solid rgba(255,92,26,.15);
+  border-radius: 14px;
+  animation: fadeIn .2s ease;
+}
+@keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
+.macroPreviewItem { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.macroPreviewVal  { font-size: 18px; font-weight: 800; letter-spacing: -.01em; }
+.macroPreviewKey  { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: #475569; }
+
+/* ─── Submit ──────────────────────────────────────────────────────────────── */
+.submitBtn {
+  padding: 14px;
+  background: linear-gradient(135deg, #FF5C1A, #FF8A3D);
+  border: none;
+  border-radius: 14px;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter .15s;
+  letter-spacing: .02em;
+}
+.submitBtn:hover:not(:disabled) { filter: brightness(1.1); }
+.submitBtn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ─── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 520px) {
+  .macroGrid  { grid-template-columns: 1fr 1fr; }
+  .mealTab    { font-size: 11px; padding: 9px 4px; }
+  .macroPreview { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ─── DB badge in suggestions ─────────────────────────────────────────────── */
+.suggLeft {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+.suggDbBadge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: rgba(255,92,26,.12);
+  color: #FF8A3D;
+  border: 1px solid rgba(255,92,26,.2);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.clearBtn {
+  background: none;
+  border: none;
+  color: #475569;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0 2px;
+  flex-shrink: 0;
+}

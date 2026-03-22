@@ -1,5 +1,5 @@
-// src/pages/LogMeal/LogMeal.jsx
-import { useState, useEffect, useContext } from "react";
+// src/pages/protected/Dashboard/Logmeal/Logmeal.jsx
+import { useState, useEffect, useContext, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../../../../context/AuthContext";
 import { getMyProfile } from "../../../../services/profileService";
@@ -35,32 +35,27 @@ const EMPTY = {
   protein_g: "", carbs_g: "", fats_g: "", notes: "",
 };
 
-// ── Mirrors Dashboard's NavAvatar exactly ────────────────────────────────────
 function NavAvatar({ avatarUrl, initials }) {
   const [imgError, setImgError] = useState(false);
   useEffect(() => { setImgError(false); }, [avatarUrl]);
-  if (avatarUrl && !imgError) {
-    return (
-      <img
-        src={avatarUrl}
-        alt="avatar"
-        className={styles.navAvatarImg}
-        onError={() => setImgError(true)}
-      />
-    );
-  }
+  if (avatarUrl && !imgError)
+    return <img src={avatarUrl} alt="avatar" className={styles.navAvatarImg} onError={() => setImgError(true)} />;
   return <div className={styles.navAvatar}>{initials}</div>;
 }
 
 export default function LogMeal() {
   const navigate        = useNavigate();
   const { user }        = useContext(AuthContext);
-  const [form,    setForm]      = useState(EMPTY);
-  const [saving,  setSaving]    = useState(false);
-  const [alert,   setAlert]     = useState(null);
-  const [errors,  setErrors]    = useState({});
-  const [search,  setSearch]    = useState("");
+  const [form,      setForm]      = useState(EMPTY);
+  const [saving,    setSaving]    = useState(false);
+  const [alert,     setAlert]     = useState(null);
+  const [errors,    setErrors]    = useState({});
+  const [search,    setSearch]    = useState("");
+  const [dbResults, setDbResults] = useState([]); // ✅ from database
+  const [searching, setSearching] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState(null);
+
+  const searchTimer = useRef(null);
 
   const displayName = user?.name ?? "User";
   const initials    = displayName.split(" ").map(n => n[0] ?? "").join("").slice(0, 2).toUpperCase();
@@ -70,18 +65,39 @@ export default function LogMeal() {
       try {
         const raw  = await getMyProfile();
         const data = raw?.data ?? raw;
-        // Same multi-field resolution as Dashboard
-        const resolved =
-          data?.avatar_url       ??
-          data?.data?.avatar_url ??
-          data?.url              ??
-          data?.data?.url        ??
-          null;
+        const resolved = data?.avatar_url ?? data?.data?.avatar_url ?? data?.url ?? data?.data?.url ?? null;
         if (resolved) setAvatarUrl(resolved);
       } catch {}
     };
     fetchProfile();
   }, []);
+
+  // ✅ Search the actual meals database
+  const searchDb = useCallback(async (q) => {
+    if (!q.trim()) { setDbResults([]); return; }
+    setSearching(true);
+    try {
+      const res  = await apiFetch(`/meals/browse?search=${encodeURIComponent(q)}&limit=10`);
+      const data = res?.data ?? res;
+      const meals = (data?.meals ?? []).map(m => ({
+        name:      m.name,
+        calories:  m.calories,
+        protein_g: m.macros?.protein_g ?? m.macros?.protein ?? 0,
+        carbs_g:   m.macros?.carbs_g   ?? m.macros?.carbs   ?? 0,
+        fats_g:    m.macros?.fats_g    ?? m.macros?.fats    ?? 0,
+        fromDb:    true,
+      }));
+      setDbResults(meals);
+    } catch { setDbResults([]); }
+    finally   { setSearching(false); }
+  }, []);
+
+  const handleSearch = (val) => {
+    setSearch(val);
+    clearTimeout(searchTimer.current);
+    if (!val.trim()) { setDbResults([]); return; }
+    searchTimer.current = setTimeout(() => searchDb(val), 350);
+  };
 
   const set = (field, val) => {
     setForm(f => ({ ...f, [field]: val }));
@@ -93,11 +109,12 @@ export default function LogMeal() {
       ...f,
       meal_name:         meal.name,
       calories_consumed: String(meal.calories),
-      protein_g:         String(meal.protein_g),
-      carbs_g:           String(meal.carbs_g),
-      fats_g:            String(meal.fats_g),
+      protein_g:         String(meal.protein_g ?? 0),
+      carbs_g:           String(meal.carbs_g   ?? 0),
+      fats_g:            String(meal.fats_g    ?? 0),
     }));
     setSearch("");
+    setDbResults([]);
   };
 
   const validate = () => {
@@ -145,10 +162,16 @@ export default function LogMeal() {
     setTimeout(() => setAlert(null), 4000);
   };
 
+  // ✅ Merge DB results + local hardcoded list, DB results shown first
   const allMeals = [...QUICK_MEALS.veg, ...QUICK_MEALS.non_veg];
-  const filtered = search.trim()
+  const localFiltered = search.trim()
     ? allMeals.filter(m => m.name.toLowerCase().includes(search.toLowerCase()))
     : [];
+  const dbNames  = new Set(dbResults.map(m => m.name.toLowerCase()));
+  const filtered = [
+    ...dbResults,
+    ...localFiltered.filter(m => !dbNames.has(m.name.toLowerCase())),
+  ];
 
   return (
     <div className={styles.wrapper}>
@@ -183,42 +206,48 @@ export default function LogMeal() {
           <p className={styles.sub}>Track what you eat to hit your nutrition goals</p>
         </div>
 
-        {/* MEAL TYPE TABS */}
+        {/* Meal type tabs */}
         <div className={styles.mealTabs}>
           {MEAL_TYPES.map(t => (
-            <button
-              key={t}
+            <button key={t} type="button"
               className={`${styles.mealTab} ${form.meal_type === t ? styles.mealTabActive : ""}`}
-              onClick={() => set("meal_type", t)}
-              type="button"
-            >
+              onClick={() => set("meal_type", t)}>
               {MEAL_EMOJI[t]} {t.charAt(0).toUpperCase() + t.slice(1)}
             </button>
           ))}
         </div>
 
-        {/* QUICK SEARCH */}
+        {/* Search — now hits database */}
         <div className={styles.searchBox}>
-          <span className={styles.searchIcon}>🔍</span>
+          <span className={styles.searchIcon}>{searching ? "⏳" : "🔍"}</span>
           <input
             className={styles.searchInput}
-            placeholder="Search common meals to autofill…"
+            placeholder={searching ? "Searching database…" : "Search meals from database or quick list…"}
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={e => handleSearch(e.target.value)}
           />
+          {search && (
+            <button className={styles.clearBtn} onClick={() => { handleSearch(""); setDbResults([]); }}>✕</button>
+          )}
         </div>
+
         {filtered.length > 0 && (
           <div className={styles.suggestions}>
             {filtered.map(m => (
               <button key={m.name} className={styles.suggestion} onClick={() => fillFromQuick(m)} type="button">
-                <span className={styles.suggName}>{m.name}</span>
-                <span className={styles.suggMeta}>{m.calories} kcal · P{m.protein_g}g · C{m.carbs_g}g · F{m.fats_g}g</span>
+                <div className={styles.suggLeft}>
+                  <span className={styles.suggName}>{m.name}</span>
+                  {m.fromDb && <span className={styles.suggDbBadge}>Database</span>}
+                </div>
+                <span className={styles.suggMeta}>
+                  {m.calories} kcal · P{m.protein_g}g · C{m.carbs_g}g · F{m.fats_g}g
+                </span>
               </button>
             ))}
           </div>
         )}
 
-        {/* FORM */}
+        {/* Form */}
         <form onSubmit={handleSubmit} className={styles.form}>
           <div className={styles.formGroup}>
             <label className={styles.label}>Meal Name <span className={styles.req}>*</span></label>
@@ -234,59 +263,52 @@ export default function LogMeal() {
           <div className={styles.macroGrid}>
             <div className={styles.formGroup}>
               <label className={styles.label}>Calories <span className={styles.req}>*</span></label>
-              <input
-                type="number" min="0"
+              <input type="number" min="0"
                 className={`${styles.input} ${errors.calories_consumed ? styles.inputErr : ""}`}
                 value={form.calories_consumed}
                 onChange={e => set("calories_consumed", e.target.value)}
-                placeholder="kcal"
-              />
+                placeholder="kcal" />
               {errors.calories_consumed && <span className={styles.errMsg}>{errors.calories_consumed}</span>}
             </div>
             <div className={styles.formGroup}>
               <label className={styles.label}>Protein (g)</label>
               <input type="number" min="0" step="0.1"
                 className={`${styles.input} ${errors.protein_g ? styles.inputErr : ""}`}
-                value={form.protein_g} onChange={e => set("protein_g", e.target.value)} placeholder="0"/>
+                value={form.protein_g} onChange={e => set("protein_g", e.target.value)} placeholder="0" />
             </div>
             <div className={styles.formGroup}>
               <label className={styles.label}>Carbs (g)</label>
               <input type="number" min="0" step="0.1"
                 className={`${styles.input} ${errors.carbs_g ? styles.inputErr : ""}`}
-                value={form.carbs_g} onChange={e => set("carbs_g", e.target.value)} placeholder="0"/>
+                value={form.carbs_g} onChange={e => set("carbs_g", e.target.value)} placeholder="0" />
             </div>
             <div className={styles.formGroup}>
               <label className={styles.label}>Fats (g)</label>
               <input type="number" min="0" step="0.1"
                 className={`${styles.input} ${errors.fats_g ? styles.inputErr : ""}`}
-                value={form.fats_g} onChange={e => set("fats_g", e.target.value)} placeholder="0"/>
+                value={form.fats_g} onChange={e => set("fats_g", e.target.value)} placeholder="0" />
             </div>
           </div>
 
           <div className={styles.formGroup}>
             <label className={styles.label}>Notes (optional)</label>
             <input className={styles.input} value={form.notes}
-              onChange={e => set("notes", e.target.value)} placeholder="e.g. Home cooked, no oil"/>
+              onChange={e => set("notes", e.target.value)} placeholder="e.g. Home cooked, no oil" />
           </div>
 
           {form.calories_consumed && (
             <div className={styles.macroPreview}>
-              <div className={styles.macroPreviewItem} style={{ color: "#FF5C1A" }}>
-                <span className={styles.macroPreviewVal}>{form.calories_consumed || 0}</span>
-                <span className={styles.macroPreviewKey}>kcal</span>
-              </div>
-              <div className={styles.macroPreviewItem} style={{ color: "#FF5C1A" }}>
-                <span className={styles.macroPreviewVal}>{form.protein_g || 0}g</span>
-                <span className={styles.macroPreviewKey}>protein</span>
-              </div>
-              <div className={styles.macroPreviewItem} style={{ color: "#00C8E0" }}>
-                <span className={styles.macroPreviewVal}>{form.carbs_g || 0}g</span>
-                <span className={styles.macroPreviewKey}>carbs</span>
-              </div>
-              <div className={styles.macroPreviewItem} style={{ color: "#B8F000" }}>
-                <span className={styles.macroPreviewVal}>{form.fats_g || 0}g</span>
-                <span className={styles.macroPreviewKey}>fats</span>
-              </div>
+              {[
+                { val: form.calories_consumed || 0, key: "kcal",    color: "#FF5C1A" },
+                { val: `${form.protein_g || 0}g`,   key: "protein", color: "#FF5C1A" },
+                { val: `${form.carbs_g   || 0}g`,   key: "carbs",   color: "#00C8E0" },
+                { val: `${form.fats_g    || 0}g`,   key: "fats",    color: "#B8F000" },
+              ].map(({ val, key, color }) => (
+                <div key={key} className={styles.macroPreviewItem} style={{ color }}>
+                  <span className={styles.macroPreviewVal}>{val}</span>
+                  <span className={styles.macroPreviewKey}>{key}</span>
+                </div>
+              ))}
             </div>
           )}
 

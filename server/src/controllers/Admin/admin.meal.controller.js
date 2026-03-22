@@ -8,13 +8,22 @@ class MealsController {
 
   static async getAllMeals(req, res, next) {
     try {
-      const { limit = 50, offset = 0, search = "", diet_type = "" } = req.query;
+      const {
+        limit    = 50,
+        offset   = 0,
+        search   = "",
+        diet_type = "",
+        tag      = "",   
+      } = req.query;
+
       const data = await MealsService.getAllMeals({
-        limit: Math.min(Number(limit), 100),
-        offset: Number(offset),
+        limit:     Math.min(Number(limit), 100),
+        offset:    Number(offset),
         search,
         diet_type,
+        tag,             
       });
+
       return response(res, 200, true, "Meals retrieved", {
         ...data,
         pagination: { limit: Number(limit), offset: Number(offset), total: data.total },
@@ -29,7 +38,7 @@ class MealsController {
       return response(res, 200, true, "Meal retrieved", meal);
     } catch (err) { next(err); }
   }
-  
+
   static async createMeal(req, res, next) {
     try {
       validateMeal(req.body, false);
@@ -37,9 +46,8 @@ class MealsController {
       await logAdminAction(req.user.id, "CREATE_MEAL", { meal_id: meal.id, name: meal.name });
       return response(res, 201, true, "Meal created successfully", meal);
     } catch (err) {
-      if (err.name === "ValidationError") {
+      if (err.name === "ValidationError")
         return response(res, 400, false, err.message, { errors: err.details });
-      }
       next(err);
     }
   }
@@ -52,9 +60,8 @@ class MealsController {
       await logAdminAction(req.user.id, "UPDATE_MEAL", { meal_id: Number(req.params.id) });
       return response(res, 200, true, "Meal updated successfully", meal);
     } catch (err) {
-      if (err.name === "ValidationError") {
+      if (err.name === "ValidationError")
         return response(res, 400, false, err.message, { errors: err.details });
-      }
       next(err);
     }
   }

@@ -28,8 +28,7 @@ import MealPlanner        from "./pages/protected/Dashboard/MealPlanner/Mealplan
 import AdminLayout        from "./pages/protected/Admin/AdminLayout/AdminLayout";  
 import AdminDashboard     from "./pages/protected/Admin/AdminDashboard";
 import AdminUsers         from "./pages/protected/Admin/Sections/AdminUsers/AdminUsers";
-// Uncomment as you build these:
-// import AdminMeals      from "./pages/protected/Admin/AdminMeals";
+import AdminMeals      from "./pages/protected/Admin/Sections/AdminMeals/AdminMeals";
 // import AdminExercises  from "./pages/protected/Admin/AdminExercises";
 // import AdminPlans      from "./pages/protected/Admin/AdminPlans";
 // import AdminLogs       from "./pages/protected/Admin/AdminLogs";
@@ -65,8 +64,7 @@ function App() {
             >
               <Route index          element={<AdminDashboard />} />
               <Route path="users"   element={<AdminUsers />} />
-              {/* Add more as you build them: */}
-              {/* <Route path="meals"         element={<AdminMeals />} /> */}
+              {<Route path="meals"         element={<AdminMeals />} /> }
               {/* <Route path="exercises"     element={<AdminExercises />} /> */}
               {/* <Route path="plans"         element={<AdminPlans />} /> */}
               {/* <Route path="logs"          element={<AdminLogs />} /> */}
