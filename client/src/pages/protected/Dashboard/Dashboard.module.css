@@ -401,6 +401,9 @@
   padding: 0.875rem 1rem;
   margin-top: 0.875rem;
 }
+
+.navRight > * { flex-shrink: 0; }
+
 .xpBarMeta { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }
 .xpLabel   { font-family: var(--font-display); font-weight: 900; font-size: 0.95rem; letter-spacing: 0.04em; text-transform: uppercase; }
 .xpRight   { display: flex; align-items: center; gap: 0.75rem; }

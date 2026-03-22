@@ -5,12 +5,12 @@ import ThemeToggle from "../../../components/ThemeToggle/ThemeToggle";
 import AiCoach from "../../../components/AiCoach/AiCoach";
 import SmartRecommendations from "../../../components/Smartrecommendation/Smartrecommendation.jsx";
 import HealthInsights from "../../../components/HealthInsights/HealthInsights.jsx";
+import NotificationBell from "../../../components/NotificationBell/NotificationBell.jsx";
 import { AuthContext } from "../../../context/AuthContext";
 import { getMyProfile } from "../../../services/profileService";
 import {
   getDashboardNutrition, getDashboardWorkout, getDashboardMeals,
   getDashboardHealth, getDashboardWeekly, getDashboardStreak,
-  // ✅ removed getDashboardInsights — HealthInsights fetches its own data
 } from "../../../services/dashboardService";
 import { apiFetch } from "../../../services/apiClient";
 import { buildFitnessData } from "../../../utils/buildFitnessData";
@@ -477,7 +477,7 @@ export default function Dashboard() {
           getDashboardMeals(),
           getDashboardHealth(),
           getDashboardWeekly(),
-          getDashboardStreak(),           // ✅ index shifted — insights removed
+          getDashboardStreak(),
           apiFetch("/workouts/prs"),
           apiFetch("/workouts/volume"),
           apiFetch("/workouts/dashboard?days=30"),
@@ -604,7 +604,9 @@ export default function Dashboard() {
             </button>
           ))}
         </div>
+        {/* ✅ NotificationBell added here */}
         <div className={styles.navRight}>
+          <NotificationBell />
           <ThemeToggle />
           <a href="/profile" className={styles.navAvatarLink} title="Edit profile">
             <NavAvatar avatarUrl={avatarUrl} initials={initials} />
@@ -903,14 +905,12 @@ export default function Dashboard() {
           )}
         </Section>
 
-        {/* ── 🧠 Real-Time Health Insights (replaces old inline AI Insights) ── */}
         {!loading && (
           <Section delay={60}>
             <HealthInsights />
           </Section>
         )}
 
-        {/* ── 🧠 Smart Recommendations ────────────────────────────────────── */}
         {!loading && (
           <Section delay={70}>
             <SmartRecommendations />
@@ -995,7 +995,6 @@ export default function Dashboard() {
         </Section>
       </main>
 
-      {/* AI COACH FLOATING WIDGET */}
       {!loading && <AiCoach fitnessData={fitnessData} />}
     </div>
   );
