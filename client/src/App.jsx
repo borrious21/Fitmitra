@@ -29,9 +29,9 @@ import AdminDashboard     from "./pages/protected/Admin/AdminDashboard";
 import AdminUsers         from "./pages/protected/Admin/Sections/AdminUsers/AdminUsers";
 import AdminMeals      from "./pages/protected/Admin/Sections/AdminMeals/AdminMeals";
 import AdminExercises  from "./pages/protected/Admin/Sections/AdminExercises/AdminExercises";
-// import AdminPlans      from "./pages/protected/Admin/AdminPlans";
+import AdminPlans      from "./pages/protected/Admin/Sections/AdminPlans/AdminPlans";
 // import AdminLogs       from "./pages/protected/Admin/AdminLogs";
-// import AdminAnalytics  from "./pages/protected/Admin/AdminAnalytics";
+import AdminAnalytics  from "./pages/protected/Admin/Sections/AdminAnalytics/AdminAnalytics";
 // import AdminNotifications from "./pages/protected/Admin/AdminNotifications";
 
 function App() {
@@ -65,9 +65,9 @@ function App() {
               <Route path="users"   element={<AdminUsers />} />
               {<Route path="meals"         element={<AdminMeals />} /> }
               {<Route path="exercises"     element={<AdminExercises />} /> }
-              {/* <Route path="plans"         element={<AdminPlans />} /> */}
+              {<Route path="plans"         element={<AdminPlans />} /> }
               {/* <Route path="logs"          element={<AdminLogs />} /> */}
-              {/* <Route path="analytics"     element={<AdminAnalytics />} /> */}
+              {<Route path="analytics"     element={<AdminAnalytics />} /> }
               {/* <Route path="notifications" element={<AdminNotifications />} /> */}
             </Route>
 

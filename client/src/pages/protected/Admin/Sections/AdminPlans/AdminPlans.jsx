@@ -1,6 +1,6 @@
 // ── src/pages/protected/Admin/Sections/AdminPlans.jsx ─────────
 import { useState, useEffect, useCallback } from "react";
-import { apiFetch } from "../../../../services/apiClient";
+import { apiFetch } from "../../../../../services/apiClient";
 
 const LIMIT = 20;
 
