@@ -4,16 +4,16 @@ import styles from "./Dashboard.module.css";
 import ThemeToggle from "../../../components/ThemeToggle/ThemeToggle";
 import AiCoach from "../../../components/AiCoach/AiCoach";
 import SmartRecommendations from "../../../components/Smartrecommendation/Smartrecommendation.jsx";
+import HealthInsights from "../../../components/HealthInsights/HealthInsights.jsx";
 import { AuthContext } from "../../../context/AuthContext";
 import { getMyProfile } from "../../../services/profileService";
 import {
   getDashboardNutrition, getDashboardWorkout, getDashboardMeals,
-  getDashboardHealth, getDashboardWeekly, getDashboardInsights, getDashboardStreak,
+  getDashboardHealth, getDashboardWeekly, getDashboardStreak,
+  // ✅ removed getDashboardInsights — HealthInsights fetches its own data
 } from "../../../services/dashboardService";
 import { apiFetch } from "../../../services/apiClient";
 import { buildFitnessData } from "../../../utils/buildFitnessData";
-import HealthInsights from "../../../components/HealthInsights/HealthInsights.jsx";
-
 
 const GOAL_LABELS = {
   weight_loss: "Weight Loss", maintain_fitness: "Maintain Fitness",
@@ -455,7 +455,6 @@ export default function Dashboard() {
   const [meals,           setMeals]           = useState([]);
   const [health,          setHealth]          = useState(null);
   const [weekly,          setWeekly]          = useState(null);
-  const [insights,        setInsights]        = useState([]);
   const [streak,          setStreak]          = useState(0);
   const [prs,             setPRs]             = useState([]);
   const [volumeDelta,     setVolumeDelta]     = useState([]);
@@ -478,8 +477,7 @@ export default function Dashboard() {
           getDashboardMeals(),
           getDashboardHealth(),
           getDashboardWeekly(),
-          getDashboardInsights(),
-          getDashboardStreak(),
+          getDashboardStreak(),           // ✅ index shifted — insights removed
           apiFetch("/workouts/prs"),
           apiFetch("/workouts/volume"),
           apiFetch("/workouts/dashboard?days=30"),
@@ -509,23 +507,19 @@ export default function Dashboard() {
         if (results[5].status === "fulfilled") setWeekly(results[5].value?.data ?? results[5].value ?? null);
         if (results[6].status === "fulfilled") {
           const d = results[6].value?.data ?? results[6].value;
-          setInsights(Array.isArray(d) ? d : []);
+          setStreak(d?.streak ?? d?.current_streak ?? (typeof d === "number" ? d : 0));
         }
         if (results[7].status === "fulfilled") {
           const d = results[7].value?.data ?? results[7].value;
-          setStreak(d?.streak ?? d?.current_streak ?? (typeof d === "number" ? d : 0));
+          setPRs(Array.isArray(d) ? d : []);
         }
         if (results[8].status === "fulfilled") {
           const d = results[8].value?.data ?? results[8].value;
-          setPRs(Array.isArray(d) ? d : []);
-        }
-        if (results[9].status === "fulfilled") {
-          const d = results[9].value?.data ?? results[9].value;
           setVolumeDelta(d?.weekly_delta ?? []);
         }
-        if (results[10].status === "fulfilled") setDashboard(results[10].value?.data ?? results[10].value ?? null);
-        if (results[11].status === "fulfilled") setGamification(results[11].value?.data ?? results[11].value ?? null);
-        if (results[12].status === "fulfilled") setActivePlan(results[12].value?.data ?? results[12].value ?? null);
+        if (results[9].status === "fulfilled")  setDashboard(results[9].value?.data   ?? results[9].value   ?? null);
+        if (results[10].status === "fulfilled") setGamification(results[10].value?.data ?? results[10].value ?? null);
+        if (results[11].status === "fulfilled") setActivePlan(results[11].value?.data   ?? results[11].value ?? null);
 
         try {
           const sigRes = await apiFetch("/plans/adaptive-difficulty", { method: "POST", body: JSON.stringify({ recent_logs: [] }) });
@@ -909,41 +903,14 @@ export default function Dashboard() {
           )}
         </Section>
 
-        {/* AI Insights */}
-        <Section hidden={!loading && insights.length === 0}>
-          <div className={`${styles.card} ${styles.accent}`}>
-            <div className={styles.aiHeader}>
-              <div className={styles.aiIconWrap}>🧠</div>
-              <div>
-                <span className={styles.aiTitle}>Today's AI Insights</span>
-                <span className={styles.aiSub}>Based on your actual data</span>
-              </div>
-              <span className={styles.aiBadge}>Live Data</span>
-            </div>
-            {loading ? <p style={{ opacity: 0.4, marginTop: "1rem" }}>Loading insights...</p> : (
-              <div className={styles.insightList}>
-                {insights.map((ins, i) => {
-                  const icon  = ins.icon ?? "💡";
-                  const text  = ins.message ?? ins.text ?? "";
-                  const color = ins.color ?? "#FF5C1A";
-                  return (
-                    <div key={i} className={styles.insightRow}
-                      style={{ background: `${color}0D`, border: `1px solid ${color}30` }}
-                      onMouseEnter={e => { e.currentTarget.style.background = `${color}1A`; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = `${color}0D`; }}>
-                      <div className={styles.insightInner}>
-                        <span className={styles.insightIcon}>{icon}</span>
-                        <span className={styles.insightText}>{text}</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </Section>
+        {/* ── 🧠 Real-Time Health Insights (replaces old inline AI Insights) ── */}
+        {!loading && (
+          <Section delay={60}>
+            <HealthInsights />
+          </Section>
+        )}
 
-        {/* ── 🧠 Smart Recommendations ──────────────────────────────────────── */}
+        {/* ── 🧠 Smart Recommendations ────────────────────────────────────── */}
         {!loading && (
           <Section delay={70}>
             <SmartRecommendations />

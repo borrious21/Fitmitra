@@ -1,395 +1,236 @@
-// ── src/pages/protected/Admin/AdminDashboard.jsx 
-import { useState, Suspense, lazy, useEffect, useRef } from "react";
-import { Toast, Spinner } from "./AdminComponents";
-import "./AdminDashboard.css";
+// src/pages/protected/Admin/AdminDashboard.jsx
+import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { apiFetch } from "../../../services/apiClient";
+import styles from "./AdminDashboard.module.css";
 
-const IC = {
-  dashboard: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>,
-  users:     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
-  meals:     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>,
-  exercise:  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 4v16M18 4v16M6 12h12M3 8h3m12 0h3M3 16h3m12 0h3"/></svg>,
-  plans:     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>,
-  logs:      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
-  analytics: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
-  bell:      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>,
-};
-
-const AdminOverview  = lazy(() => import("./Sections/AdminOverview"));
-const AdminUsers     = lazy(() => import("./Sections/AdminUsers"));
-const AdminMeals     = lazy(() => import("./Sections/AdminMeals"));
-const AdminExercises = lazy(() => import("./Sections/AdminExercises"));
-const AdminPlans     = lazy(() => import("./Sections/AdminPlans"));
-const AdminLogs      = lazy(() => import("./Sections/AdminLogs"));
-const AdminAnalytics = lazy(() => import("./Sections/AdminAnalytics"));
-const AdminNotifications = lazy(() => import("./Sections/AdminNotfications"));
-
-const ComingSoon = ({ label }) => (
-  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 300, gap: "0.75rem", color: "#525D72" }}>
-    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-    <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: "1rem", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase" }}>
-      {label} — Coming Soon
-    </span>
-  </div>
-);
-
-const NAV = [
-  { key: "overview",      label: "Dashboard",     icon: IC.dashboard },
-  { key: "users",         label: "Users",         icon: IC.users     },
-  { key: "meals",         label: "Meals",         icon: IC.meals     },
-  { key: "exercises",     label: "Exercises",     icon: IC.exercise  },
-  { key: "plans",         label: "Plans",         icon: IC.plans     },
-  { key: "logs",          label: "Logs",          icon: IC.logs      },
-  { key: "analytics",     label: "Analytics",     icon: IC.analytics },
-  { key: "notifications", label: "Notifications", icon: IC.bell      },
-];
-
-function initials(name) {
-  if (!name) return "AD";
-  return name.trim().split(" ").filter(Boolean).map(n => n[0]).join("").slice(0, 2).toUpperCase();
-}
-
-function Toggle({ on, onClick }) {
+// ─── Stat card ────────────────────────────────────────────────────────────────
+function StatCard({ icon, label, value, sub, color, loading }) {
   return (
-    <button
-      onClick={e => { e.stopPropagation(); onClick?.(); }}
-      style={{
-        position: "relative", width: 36, height: 20,
-        background: on ? "#FF5C1A" : "rgba(255,255,255,0.1)",
-        borderRadius: 10, border: "none", cursor: "pointer",
-        transition: "background 0.25s",
-        boxShadow: on ? "0 0 10px rgba(255,92,26,0.4)" : "none",
-        flexShrink: 0,
-      }}
-    >
-      <span style={{
-        position: "absolute", top: 2, left: 2,
-        width: 16, height: 16, borderRadius: "50%",
-        background: "#fff", boxShadow: "0 1px 4px rgba(0,0,0,0.3)",
-        transition: "transform 0.25s cubic-bezier(0.22,1,0.36,1)",
-        transform: on ? "translateX(16px)" : "translateX(0)",
-        display: "block",
-      }} />
-    </button>
-  );
-}
-
-function SettingsRow({ icon, iconBg, iconBorder, title, sub, right, onClick }) {
-  const [hover, setHover] = useState(false);
-  return (
-    <div
-      onClick={onClick}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      style={{
-        display: "flex", alignItems: "center", gap: "0.875rem",
-        padding: "0.875rem 1rem",
-        borderBottom: "1px solid rgba(255,255,255,0.05)",
-        cursor: onClick ? "pointer" : "default",
-        background: hover && onClick ? "rgba(255,255,255,0.025)" : "transparent",
-        transition: "background 0.15s",
-      }}
-    >
-      <div style={{
-        width: 34, height: 34, borderRadius: 9,
-        background: iconBg, border: `1px solid ${iconBorder}`,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: "1rem", flexShrink: 0,
-      }}>
-        {icon}
+    <div className={styles.statCard} style={{ borderTopColor: color }}>
+      <div className={styles.statTop}>
+        <span className={styles.statIcon}>{icon}</span>
+        {loading
+          ? <div className={styles.skeleton} style={{ height: 32, width: 80 }} />
+          : <span className={styles.statValue}>{value ?? "—"}</span>
+        }
       </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: "0.8rem", fontWeight: 600, color: "#F0F2F5" }}>{title}</div>
-        <div style={{ fontSize: "0.65rem", color: "rgba(255,255,255,0.3)", marginTop: 1 }}>{sub}</div>
-      </div>
-      {right}
+      <div className={styles.statLabel}>{label}</div>
+      {sub && <div className={styles.statSub}>{sub}</div>}
     </div>
   );
 }
 
-function AdminSettingsPanel({ authUser, onClose }) {
-  const name       = authUser?.name        ?? "Admin";
-  const email      = authUser?.email       ?? "";
-  const role       = authUser?.role        ?? "admin";
-  const isVerified = authUser?.is_verified ?? false;
-  const avatarUrl  = authUser?.avatar_url  ?? null;
-
-  const [notifs,    setNotifs]    = useState(true);
-  const [reminders, setReminders] = useState(false);
-  const [darkMode,  setDarkMode]  = useState(true);
-  const [tab,       setTab]       = useState("profile");
-
-  useEffect(() => {
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
-  }, []);
-
-  const handleSignOut = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("accessToken");
-    window.location.href = "/login";
-  };
-
-  const tabs = [
-    { key: "profile",  label: "Profile"  },
-    { key: "settings", label: "Settings" },
-    { key: "security", label: "Security" },
-  ];
-
+// ─── Nav card — links to sub-pages ───────────────────────────────────────────
+function NavCard({ icon, label, desc, path, color, badge }) {
+  const navigate = useNavigate();
   return (
-    <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)", zIndex: 500, animation: "fadeIn 0.2s ease" }} />
-      <div
-        onClick={e => e.stopPropagation()}
-        style={{
-          position: "fixed", top: 0, right: 0,
-          width: 360, height: "100vh",
-          background: "#0F1217",
-          borderLeft: "1px solid rgba(255,255,255,0.08)",
-          zIndex: 600,
-          display: "flex", flexDirection: "column",
-          animation: "slideInRight 0.28s cubic-bezier(0.22,1,0.36,1)",
-          overflowY: "auto",
-          boxShadow: "-24px 0 80px rgba(0,0,0,0.6)",
-        }}
-      >
-        {/* Header */}
-        <div style={{ padding: "1.25rem 1.25rem 0", borderBottom: "1px solid rgba(255,255,255,0.07)", background: "#0F1217", position: "sticky", top: 0, zIndex: 10 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem" }}>
-            <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: "1.1rem", fontWeight: 900, letterSpacing: "0.1em", textTransform: "uppercase", color: "#F0F2F5" }}>
-              Admin Profile
-            </span>
-            <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)", color: "#9AA3B4", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.9rem", transition: "all 0.15s" }}
-              onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "#F0F2F5"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.color = "#9AA3B4"; }}>✕</button>
-          </div>
-          <div style={{ display: "flex", gap: "0.25rem", paddingBottom: "0.125rem" }}>
-            {tabs.map(t => (
-              <button key={t.key} onClick={() => setTab(t.key)} style={{ flex: 1, padding: "0.55rem 0.5rem", border: "none", background: "transparent", cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif", fontSize: "0.7rem", fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: tab === t.key ? "#FF5C1A" : "#525D72", borderBottom: tab === t.key ? "2px solid #FF5C1A" : "2px solid transparent", transition: "all 0.2s" }}>
-                {t.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Profile Tab */}
-        {tab === "profile" && (
-          <div style={{ flex: 1 }}>
-            <div style={{ padding: "1.75rem 1.25rem 1.25rem", textAlign: "center", borderBottom: "1px solid rgba(255,255,255,0.06)", background: "linear-gradient(180deg, rgba(255,92,26,0.04) 0%, transparent 100%)", position: "relative", overflow: "hidden" }}>
-              <div style={{ position: "absolute", top: -60, left: "50%", transform: "translateX(-50%)", width: 200, height: 200, borderRadius: "50%", background: "radial-gradient(circle, rgba(255,92,26,0.12) 0%, transparent 70%)", pointerEvents: "none" }} />
-              <div style={{ width: 80, height: 80, borderRadius: "50%", margin: "0 auto 1rem", background: avatarUrl ? "transparent" : "linear-gradient(135deg,#FF5C1A,#FF8A3D)", border: "3px solid rgba(255,92,26,0.5)", boxShadow: "0 0 0 4px rgba(255,92,26,0.12), 0 8px 32px rgba(255,92,26,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", fontWeight: 900, color: "#fff", overflow: "hidden" }}>
-                {avatarUrl ? <img src={avatarUrl} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : initials(name)}
-              </div>
-              <div style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: "1.5rem", fontWeight: 900, color: "#F0F2F5", letterSpacing: "0.04em" }}>{name}</div>
-              <div style={{ fontSize: "0.72rem", color: "#525D72", margin: "0.25rem 0 0.75rem" }}>{email}</div>
-              <div style={{ display: "flex", justifyContent: "center", gap: "0.4rem", flexWrap: "wrap" }}>
-                <span style={{ padding: "0.22rem 0.75rem", borderRadius: 6, fontSize: "0.6rem", fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", background: "rgba(255,92,26,0.12)", color: "#FF5C1A", border: "1px solid rgba(255,92,26,0.22)" }}>{role}</span>
-                {isVerified && <span style={{ padding: "0.22rem 0.75rem", borderRadius: 6, fontSize: "0.6rem", fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", background: "rgba(34,197,94,0.1)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.2)" }}>✓ Verified</span>}
-              </div>
-            </div>
-            <div style={{ padding: "0.75rem 0" }}>
-              <div style={{ padding: "0.25rem 1rem 0.5rem", fontSize: "0.55rem", fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(255,255,255,0.2)" }}>Account</div>
-              <SettingsRow icon="👤" iconBg="rgba(255,92,26,0.08)" iconBorder="rgba(255,92,26,0.2)" title="Profile & Settings" sub="Edit profile, goals, health data" right={<span style={{ color: "rgba(255,255,255,0.2)", fontSize: "0.7rem" }}>→</span>} onClick={() => { window.location.href = "/profile"; onClose?.(); }} />
-              <SettingsRow icon="📊" iconBg="rgba(0,200,224,0.08)" iconBorder="rgba(0,200,224,0.2)" title="View as User" sub="Switch to the user-facing dashboard" right={<span style={{ color: "rgba(255,255,255,0.2)", fontSize: "0.7rem" }}>→</span>} onClick={() => { window.location.href = "/dashboard"; onClose?.(); }} />
-            </div>
-            <div style={{ padding: "0.75rem 1rem", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-              <button onClick={handleSignOut} style={{ width: "100%", padding: "0.75rem 1rem", borderRadius: 10, border: "1px solid rgba(239,68,68,0.2)", background: "rgba(239,68,68,0.07)", color: "#ef4444", cursor: "pointer", fontSize: "0.7rem", fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", transition: "background 0.2s" }}
-                onMouseEnter={e => e.currentTarget.style.background = "rgba(239,68,68,0.14)"}
-                onMouseLeave={e => e.currentTarget.style.background = "rgba(239,68,68,0.07)"}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                Sign Out
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Settings Tab */}
-        {tab === "settings" && (
-          <div style={{ flex: 1 }}>
-            <div style={{ padding: "1rem 0" }}>
-              <div style={{ padding: "0.5rem 1rem 0.5rem", fontSize: "0.55rem", fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(255,255,255,0.2)" }}>Notifications</div>
-              <SettingsRow icon="🔔" iconBg="rgba(0,200,224,0.08)" iconBorder="rgba(0,200,224,0.2)" title="Push Notifications" sub="System alerts and activity updates" right={<Toggle on={notifs} onClick={() => setNotifs(v => !v)} />} onClick={() => setNotifs(v => !v)} />
-              <SettingsRow icon="⏰" iconBg="rgba(255,92,26,0.08)" iconBorder="rgba(255,92,26,0.2)" title="Daily Reminders" sub="Morning check-in prompts" right={<Toggle on={reminders} onClick={() => setReminders(v => !v)} />} onClick={() => setReminders(v => !v)} />
-              <div style={{ padding: "1rem 1rem 0.5rem", fontSize: "0.55rem", fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(255,255,255,0.2)" }}>Appearance</div>
-              <SettingsRow icon="🌙" iconBg="rgba(184,240,0,0.06)" iconBorder="rgba(184,240,0,0.18)" title="Dark Mode" sub="Toggle light / dark theme" right={<Toggle on={darkMode} onClick={() => setDarkMode(v => !v)} />} onClick={() => setDarkMode(v => !v)} />
-              <div style={{ padding: "1rem 1rem 0.5rem", fontSize: "0.55rem", fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(255,255,255,0.2)" }}>Admin</div>
-              <SettingsRow icon="📋" iconBg="rgba(168,85,247,0.08)" iconBorder="rgba(168,85,247,0.2)" title="Audit Logs" sub="View admin action history" right={<span style={{ color: "rgba(255,255,255,0.2)", fontSize: "0.7rem" }}>→</span>} onClick={() => {}} />
-              <SettingsRow icon="⚙️" iconBg="rgba(255,92,26,0.08)" iconBorder="rgba(255,92,26,0.2)" title="System Settings" sub="App configuration & feature flags" right={<span style={{ color: "rgba(255,255,255,0.2)", fontSize: "0.7rem" }}>→</span>} onClick={() => {}} />
-              <SettingsRow icon="ℹ️" iconBg="rgba(0,200,224,0.08)" iconBorder="rgba(0,200,224,0.2)" title="About FitMitra" sub="Version 2.0 · Admin Build" right={<span style={{ fontSize: "0.65rem", color: "#525D72" }}>v2.0</span>} />
-            </div>
-          </div>
-        )}
-
-        {/* Security Tab */}
-        {tab === "security" && (
-          <div style={{ flex: 1 }}>
-            <div style={{ padding: "1rem 0" }}>
-              <div style={{ padding: "0.5rem 1rem 0.5rem", fontSize: "0.55rem", fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(255,255,255,0.2)" }}>Authentication</div>
-              <SettingsRow icon="🔑" iconBg="rgba(184,240,0,0.06)" iconBorder="rgba(184,240,0,0.18)" title="Change Password" sub="Update your login credentials" right={<span style={{ color: "rgba(255,255,255,0.2)", fontSize: "0.7rem" }}>→</span>} onClick={() => { window.location.href = "/profile#security"; onClose?.(); }} />
-              <SettingsRow icon="🛡️" iconBg="rgba(0,200,224,0.08)" iconBorder="rgba(0,200,224,0.2)" title="Two-Factor Auth" sub="Add an extra layer of protection" right={<span style={{ padding: "0.15rem 0.5rem", borderRadius: 5, fontSize: "0.55rem", fontWeight: 700, background: "rgba(255,92,26,0.1)", color: "#FF5C1A", border: "1px solid rgba(255,92,26,0.2)", letterSpacing: "0.08em", textTransform: "uppercase" }}>Off</span>} onClick={() => {}} />
-              <div style={{ padding: "1rem 1rem 0.5rem", fontSize: "0.55rem", fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(255,255,255,0.2)" }}>Privacy</div>
-              <SettingsRow icon="🔒" iconBg="rgba(255,92,26,0.08)" iconBorder="rgba(255,92,26,0.2)" title="Privacy & Permissions" sub="Manage your data and access" right={<span style={{ color: "rgba(255,255,255,0.2)", fontSize: "0.7rem" }}>→</span>} onClick={() => {}} />
-              <SettingsRow icon="📱" iconBg="rgba(168,85,247,0.08)" iconBorder="rgba(168,85,247,0.2)" title="Active Sessions" sub="Devices currently logged in" right={<span style={{ fontSize: "0.65rem", color: "#525D72" }}>1 active</span>} onClick={() => {}} />
-              <div style={{ margin: "1.5rem 1rem 0" }}>
-                <div style={{ borderRadius: 12, border: "1px solid rgba(239,68,68,0.18)", background: "rgba(239,68,68,0.04)", overflow: "hidden" }}>
-                  <div style={{ padding: "0.875rem 1rem 0.5rem", fontSize: "0.6rem", fontWeight: 800, letterSpacing: "0.15em", textTransform: "uppercase", color: "#ef4444" }}>⚠️ Danger Zone</div>
-                  <div style={{ padding: "0 1rem 0.75rem", fontSize: "0.72rem", color: "rgba(255,255,255,0.3)", lineHeight: 1.55 }}>Permanently delete your admin account. This cannot be undone.</div>
-                  <div style={{ padding: "0 1rem 1rem" }}>
-                    <button style={{ width: "100%", padding: "0.625rem 1rem", borderRadius: 8, border: "1px solid rgba(239,68,68,0.3)", background: "rgba(239,68,68,0.08)", color: "#ef4444", cursor: "pointer", fontSize: "0.68rem", fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", transition: "background 0.2s" }}
-                      onMouseEnter={e => e.currentTarget.style.background = "rgba(239,68,68,0.14)"}
-                      onMouseLeave={e => e.currentTarget.style.background = "rgba(239,68,68,0.08)"}>🗑️ Delete Admin Account</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+    <div className={styles.navCard} onClick={() => navigate(path)} style={{ "--card-accent": color }}>
+      <div className={styles.navCardIcon} style={{ background: `${color}1a`, color }}>
+        {icon}
       </div>
-
-      <style>{`
-        @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-      `}</style>
-    </>
+      <div className={styles.navCardBody}>
+        <div className={styles.navCardLabel}>{label}</div>
+        <div className={styles.navCardDesc}>{desc}</div>
+      </div>
+      {badge != null && <span className={styles.navCardBadge} style={{ background: `${color}22`, color }}>{badge}</span>}
+      <span className={styles.navCardArrow}>→</span>
+    </div>
   );
 }
 
-function TopbarUser() {
-  const [authUser, setAuthUser] = useState(null);
-  const [open,     setOpen]     = useState(false);
-  const [loading,  setLoading]  = useState(true);
-
-  useEffect(() => {
-    const token = localStorage.getItem("token") ?? localStorage.getItem("accessToken");
-    if (!token) { setLoading(false); return; }
-    try {
-      const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g,"+").replace(/_/g,"/")));
-      setAuthUser({
-        name:        payload.name        ?? payload.username ?? null,
-        email:       payload.email       ?? null,
-        role:        payload.role        ?? "admin",
-        is_verified: payload.is_verified ?? payload.verified ?? false,
-        avatar_url:  payload.avatar_url  ?? null,
-      });
-    } catch {}
-    setLoading(false);
-  }, []);
-
+// ─── Top user row ─────────────────────────────────────────────────────────────
+function TopUserRow({ user, rank }) {
+  const [imgErr, setImgErr] = useState(false);
   return (
-    <>
-      <div style={{ position: "relative", display: "flex", alignItems: "center", gap: "0.75rem" }}>
-        {authUser && (
-          <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: "0.78rem", fontWeight: 600, color: "#F0F2F5", whiteSpace: "nowrap", lineHeight: 1.2 }}>{authUser.name ?? "Admin"}</div>
-            <div style={{ fontSize: "0.58rem", fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "#FF5C1A" }}>{authUser.role}</div>
-          </div>
-        )}
-        <button onClick={() => setOpen(o => !o)} title="Profile & Settings" style={{ width: 38, height: 38, borderRadius: "50%", border: "2px solid", borderColor: open ? "#FF5C1A" : "rgba(255,92,26,0.35)", background: authUser?.avatar_url ? "transparent" : "linear-gradient(135deg,#FF5C1A,#FF8A3D)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0, overflow: "hidden", flexShrink: 0, boxShadow: open ? "0 0 0 3px rgba(255,92,26,0.2)" : "0 0 12px rgba(255,92,26,0.3)", transition: "border-color 0.2s, box-shadow 0.2s" }}>
-          {loading
-            ? <div style={{ width: 14, height: 14, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.75s linear infinite" }} />
-            : authUser?.avatar_url
-              ? <img src={authUser.avatar_url} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-              : <span style={{ fontSize: "0.65rem", fontWeight: 800, color: "#fff" }}>{initials(authUser?.name)}</span>
-          }
-        </button>
+    <div className={styles.topUserRow}>
+      <span className={styles.topRank}>#{rank}</span>
+      <div className={styles.topAvatar}>
+        {user.avatar_url && !imgErr
+          ? <img src={user.avatar_url} alt={user.name} onError={() => setImgErr(true)} />
+          : <span>{user.name?.charAt(0).toUpperCase()}</span>
+        }
       </div>
-      {open && <AdminSettingsPanel authUser={authUser} onClose={() => setOpen(false)} />}
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes riseIn { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
-      `}</style>
-    </>
+      <div className={styles.topInfo}>
+        <span className={styles.topName}>{user.name}</span>
+        <span className={styles.topEmail}>{user.email}</span>
+      </div>
+      <div className={styles.topStats}>
+        {user.total_workouts != null && (
+          <span className={styles.topStat}>💪 {user.total_workouts}</span>
+        )}
+        {user.current_streak != null && user.current_streak > 0 && (
+          <span className={styles.topStat}>🔥 {user.current_streak}d</span>
+        )}
+      </div>
+    </div>
   );
 }
 
+// ─── At-risk user row ─────────────────────────────────────────────────────────
+function AtRiskRow({ user }) {
+  return (
+    <div className={styles.atRiskRow}>
+      <div className={styles.atRiskDot} />
+      <div className={styles.atRiskInfo}>
+        <span className={styles.atRiskName}>{user.name}</span>
+        <span className={styles.atRiskReason}>{user.reason ?? `No activity in ${user.days_inactive ?? "?"} days`}</span>
+      </div>
+      <span className={styles.atRiskBadge}>⚠ At Risk</span>
+    </div>
+  );
+}
+
+// ─── Main ─────────────────────────────────────────────────────────────────────
 export default function AdminDashboard() {
-  const [section,  setSection]  = useState("overview");
-  const [toast,    setToast]    = useState(null);
-  const [sideOpen, setSideOpen] = useState(true);
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    const id = "fitmitra-fonts";
-    if (document.getElementById(id)) return;
-    const link = document.createElement("link");
-    link.id = id; link.rel = "stylesheet";
-    link.href = "https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Outfit:wght@400;500;600;700&display=swap";
-    document.head.appendChild(link);
+  const [stats,     setStats]     = useState(null);
+  const [overview,  setOverview]  = useState(null);
+  const [topUsers,  setTopUsers]  = useState([]);
+  const [atRisk,    setAtRisk]    = useState([]);
+  const [loading,   setLoading]   = useState(true);
+  const [alert,     setAlert]     = useState(null);
+  const [lastSync,  setLastSync]  = useState(null);
+
+  const fetchAll = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [statsRes, overviewRes, topRes, atRiskRes] = await Promise.allSettled([
+        apiFetch("/admin/dashboard"),
+        apiFetch("/admin/analytics/overview"),
+        apiFetch("/admin/analytics/top-users"),
+        apiFetch("/admin/analytics/at-risk"),
+      ]);
+
+      if (statsRes.status    === "fulfilled") setStats(statsRes.value?.data    ?? statsRes.value    ?? null);
+      if (overviewRes.status === "fulfilled") setOverview(overviewRes.value?.data ?? overviewRes.value ?? null);
+      if (topRes.status      === "fulfilled") {
+        const d = topRes.value?.data ?? topRes.value;
+        setTopUsers(Array.isArray(d) ? d : d?.users ?? []);
+      }
+      if (atRiskRes.status   === "fulfilled") {
+        const d = atRiskRes.value?.data ?? atRiskRes.value;
+        setAtRisk(Array.isArray(d) ? d : d?.users ?? []);
+      }
+
+      setLastSync(new Date());
+    } catch {
+      setAlert("Failed to load some dashboard data.");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const showToast = (msg, type = "success") => setToast({ msg, type });
+  useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  const activeNav = NAV.find(n => n.key === section);
+  // ── Derive numbers ─────────────────────────────────────────────────────────
+  const s  = stats    ?? {};
+  const ov = overview ?? {};
 
-  const SectionComponent = {
-    overview:      <AdminOverview  showToast={showToast} />,
-    users:         <AdminUsers     toast={showToast} />,   
-    meals:         <AdminMeals    toast={showToast} />,
-    exercises:     <AdminExercises toast={showToast} />,
-    plans:         <AdminPlans    toast={showToast} />,
-    logs:          <AdminLogs     toast={showToast} />,
-    analytics:     <AdminAnalytics toast={showToast} />,
-    notifications: <AdminNotifications toast={showToast} />,
-  }[section];
+  const totalUsers      = s.total_users      ?? ov.total_users      ?? "—";
+  const activeUsers     = s.active_users     ?? ov.active_users     ?? "—";
+  const totalWorkouts   = s.total_workouts   ?? ov.total_workouts   ?? "—";
+  const totalMealLogs   = s.total_meal_logs  ?? ov.total_meal_logs  ?? "—";
+  const newToday        = s.new_today        ?? ov.new_users_today  ?? null;
+  const bannedUsers     = s.banned_users     ?? ov.banned_users     ?? null;
+  const plansGenerated  = s.plans_generated  ?? ov.total_plans      ?? "—";
+  const verifiedUsers   = s.verified_users   ?? ov.verified_users   ?? "—";
 
   return (
-    <div className="admin-shell">
-      <aside className={`admin-sidebar ${sideOpen ? "admin-sidebar--open" : "admin-sidebar--collapsed"}`}>
-        <div className={`sidebar-logo ${!sideOpen ? "sidebar-logo--collapsed" : ""}`}>
-          <div className="sidebar-logo__icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
-              <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
-              <line x1="6" y1="1" x2="6" y2="4"/>
-              <line x1="10" y1="1" x2="10" y2="4"/>
-              <line x1="14" y1="1" x2="14" y2="4"/>
-            </svg>
-          </div>
-          {sideOpen && <span className="sidebar-logo__wordmark">FIT<span>MITRA</span></span>}
+    <div className={styles.wrapper}>
+
+      {/* ── Top bar ────────────────────────────────────────────────────────── */}
+      <div className={styles.topBar}>
+        <div>
+          <h1 className={styles.title}>🛡️ Admin Dashboard</h1>
+          <p className={styles.sub}>
+            {lastSync
+              ? `Last synced ${lastSync.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}`
+              : "Loading…"}
+          </p>
         </div>
-        {sideOpen && <div className="sidebar-panel-label">Admin Panel</div>}
-        <nav className="sidebar-nav">
-          {NAV.map(n => {
-            const active = section === n.key;
-            return (
-              <button key={n.key} onClick={() => setSection(n.key)}
-                className={["sidebar-nav__btn", active ? "sidebar-nav__btn--active" : "", !sideOpen ? "sidebar-nav__btn--collapsed" : ""].join(" ")}>
-                {active && <div className="sidebar-nav__active-bar" />}
-                <div className="sidebar-nav__icon">{n.icon}</div>
-                {sideOpen && <span className="sidebar-nav__label">{n.label}</span>}
-              </button>
-            );
-          })}
-        </nav>
-        <div className="sidebar-toggle">
-          <button className="sidebar-toggle__btn" onClick={() => setSideOpen(o => !o)}>
-            <span className={`sidebar-toggle__arrow ${!sideOpen ? "sidebar-toggle__arrow--flipped" : ""}`}>◀</span>
+        <div className={styles.topBarRight}>
+          <button className={styles.refreshBtn} onClick={fetchAll} disabled={loading}>
+            {loading ? "⟳" : "↺"} Refresh
+          </button>
+          <button className={styles.logoutArea} onClick={() => navigate("/dashboard")}>
+            ← Back to App
           </button>
         </div>
-      </aside>
-
-      <div className="admin-main">
-        <header className="admin-topbar">
-          <div className="admin-topbar__left">
-            <div className="admin-topbar__icon">{activeNav?.icon}</div>
-            <h1 className="admin-topbar__title">{activeNav?.label}</h1>
-          </div>
-          <div className="admin-topbar__right">
-            <span className="admin-topbar__date">
-              {new Date().toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "short", day: "numeric" })}
-            </span>
-            <TopbarUser />
-          </div>
-        </header>
-
-        <main className="admin-content">
-          <Suspense fallback={<div className="admin-suspense-fallback"><Spinner /></div>}>
-            <div className="admin-content__inner" key={section}>
-              {SectionComponent}
-            </div>
-          </Suspense>
-        </main>
       </div>
 
-      {toast && <Toast msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
+      {alert && (
+        <div className={styles.alertBanner}>{alert}</div>
+      )}
+
+      {/* ── KPI Stats ──────────────────────────────────────────────────────── */}
+      <div className={styles.statsGrid}>
+        <StatCard icon="👥" label="Total Users"     value={totalUsers}    sub={newToday != null ? `+${newToday} today` : null} color="#3b82f6" loading={loading} />
+        <StatCard icon="✅" label="Active Users"    value={activeUsers}   sub={bannedUsers != null ? `${bannedUsers} banned` : null} color="#10b981" loading={loading} />
+        <StatCard icon="✔️" label="Verified"         value={verifiedUsers} color="#6366f1" loading={loading} />
+        <StatCard icon="💪" label="Workout Sessions" value={totalWorkouts} color="#f59e0b" loading={loading} />
+        <StatCard icon="🍽️" label="Meal Logs"        value={totalMealLogs} color="#FF5C1A" loading={loading} />
+        <StatCard icon="📋" label="Plans Generated"  value={plansGenerated} color="#8b5cf6" loading={loading} />
+      </div>
+
+      {/* ── Navigation cards ───────────────────────────────────────────────── */}
+      <div className={styles.sectionTitle}>⚡ Quick Access</div>
+      <div className={styles.navGrid}>
+        <NavCard icon="👥" label="User Management"   desc="View, search, ban, delete users"     path="/admin/users"       color="#3b82f6" badge={totalUsers} />
+        <NavCard icon="📊" label="Analytics"          desc="Retention, activity, growth stats"   path="/admin/analytics"   color="#10b981" />
+        <NavCard icon="🍽️" label="Meal Database"      desc="Manage food items and macros"        path="/admin/meals"       color="#FF5C1A" />
+        <NavCard icon="💪" label="Exercise Database"  desc="Add and edit exercise library"       path="/admin/exercises"   color="#f59e0b" />
+        <NavCard icon="📋" label="User Plans"         desc="View and manage workout plans"       path="/admin/plans"       color="#8b5cf6" />
+        <NavCard icon="📝" label="Logs"               desc="Workout, meal and admin audit logs"  path="/admin/logs"        color="#64748b" />
+        <NavCard icon="🔔" label="Notifications"      desc="Send and broadcast notifications"    path="/admin/notifications" color="#06b6d4" />
+        <NavCard icon="⚠️" label="At-Risk Users"      desc="Users with no recent activity"       path="/admin/analytics"   color="#ef4444" badge={atRisk.length || null} />
+      </div>
+
+      {/* ── Bottom two panels ──────────────────────────────────────────────── */}
+      <div className={styles.bottomGrid}>
+
+        {/* Top active users */}
+        <div className={styles.panel}>
+          <div className={styles.panelHeader}>
+            <span className={styles.panelTitle}>🏆 Top Active Users</span>
+            <button className={styles.panelLink} onClick={() => navigate("/admin/users")}>
+              View All →
+            </button>
+          </div>
+          {loading ? (
+            <div className={styles.skeletonList}>
+              {[1,2,3].map(i => <div key={i} className={styles.skeleton} style={{ height: 48 }} />)}
+            </div>
+          ) : topUsers.length === 0 ? (
+            <div className={styles.emptyPanel}>No data yet</div>
+          ) : (
+            topUsers.slice(0, 5).map((u, i) => <TopUserRow key={u.id ?? i} user={u} rank={i + 1} />)
+          )}
+        </div>
+
+        {/* At-risk users */}
+        <div className={styles.panel}>
+          <div className={styles.panelHeader}>
+            <span className={styles.panelTitle}>⚠️ At-Risk Users</span>
+            <span className={styles.panelBadge}>{atRisk.length} users</span>
+          </div>
+          {loading ? (
+            <div className={styles.skeletonList}>
+              {[1,2,3].map(i => <div key={i} className={styles.skeleton} style={{ height: 48 }} />)}
+            </div>
+          ) : atRisk.length === 0 ? (
+            <div className={styles.emptyPanel}>✅ No at-risk users right now</div>
+          ) : (
+            atRisk.slice(0, 5).map((u, i) => <AtRiskRow key={u.id ?? i} user={u} />)
+          )}
+        </div>
+      </div>
+
+      {/* ── Footer ─────────────────────────────────────────────────────────── */}
+      <div className={styles.footer}>
+        FitMitra Admin Panel · {new Date().getFullYear()}
+      </div>
     </div>
   );
 }

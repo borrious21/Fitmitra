@@ -21,7 +21,6 @@ const validateNumericId = (req, res, next) => {
 router.post("/generate", PlanController.generatePlan);
 
 // GET    /api/plans/active
-//   ← FIX: was after /:id in old file, so "active" matched /:id and blew up
 router.get("/active", PlanController.getActivePlan);
 
 // GET    /api/plans/history
@@ -32,10 +31,10 @@ router.get("/stats", PlanController.getPlanStats);
 
 router.get("/gamification", PlanController.getGamification);
 
-// POST   /api/plans/missed-workout    body: { split }
+// POST   /api/plans/missed-workout    
 router.post("/missed-workout", PlanController.missedWorkout);
 
-// POST   /api/plans/adaptive-difficulty    body: { recent_logs }
+// POST   /api/plans/adaptive-difficulty
 router.post("/adaptive-difficulty", PlanController.adaptiveDifficulty);
 
 // POST   /api/plans/insights

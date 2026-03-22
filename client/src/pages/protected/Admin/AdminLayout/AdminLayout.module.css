@@ -1,0 +1,300 @@
+/* AdminLayout.module.css */
+
+/* ─── Shell ──────────────────────────────────────────────────────────────── */
+.shell {
+  display: flex;
+  min-height: 100vh;
+  background: #0f172a;
+  overflow: hidden;
+}
+
+/* ─── Sidebar ────────────────────────────────────────────────────────────── */
+.sidebar {
+  width: 220px;
+  min-height: 100vh;
+  background: #0b1120;
+  border-right: 1px solid #1e293b;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  transition: width .25s cubic-bezier(.22,1,.36,1);
+  z-index: 100;
+}
+.collapsed { width: 64px; }
+
+/* ─── Logo ───────────────────────────────────────────────────────────────── */
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 20px 16px 12px;
+  cursor: pointer;
+  text-decoration: none;
+  user-select: none;
+}
+.logoIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #FF5C1A, #FF8A3D);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 0 16px rgba(255,92,26,.35);
+}
+.logoIcon svg { width: 16px; height: 16px; color: #fff; }
+.logoText {
+  font-size: 16px;
+  font-weight: 900;
+  color: #f1f5f9;
+  letter-spacing: .08em;
+  white-space: nowrap;
+}
+.logoText span { color: #FF5C1A; }
+
+/* ─── Admin badge ────────────────────────────────────────────────────────── */
+.adminBadge {
+  margin: 0 12px 16px;
+  padding: 3px 10px;
+  background: rgba(255,92,26,.1);
+  border: 1px solid rgba(255,92,26,.2);
+  border-radius: 6px;
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  color: #FF5C1A;
+  text-align: center;
+}
+
+/* ─── Nav ────────────────────────────────────────────────────────────────── */
+.nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 8px;
+}
+
+.navBtn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 10px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+  width: 100%;
+  text-align: left;
+  position: relative;
+  transition: all .15s;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.navBtn:hover {
+  background: rgba(255,255,255,.05);
+  color: #94a3b8;
+}
+.navBtnActive {
+  background: rgba(255,92,26,.12) !important;
+  color: #FF5C1A !important;
+}
+.navIcon  { font-size: 16px; flex-shrink: 0; width: 20px; text-align: center; }
+.navLabel { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+
+.activeBar {
+  position: absolute;
+  left: 0;
+  top: 25%;
+  height: 50%;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: #FF5C1A;
+  box-shadow: 0 0 8px #FF5C1A88;
+}
+
+/* ─── Sidebar bottom ─────────────────────────────────────────────────────── */
+.sidebarBottom {
+  padding: 8px 8px 12px;
+  border-top: 1px solid #1e293b;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.backBtn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+  width: 100%;
+  text-align: left;
+  transition: all .15s;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.backBtn:hover { background: rgba(255,255,255,.04); color: #64748b; }
+
+.userInfo {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255,255,255,.03);
+  border: 1px solid #1e293b;
+  overflow: hidden;
+}
+.userMeta { flex: 1; min-width: 0; }
+.userName {
+  font-size: 12px;
+  font-weight: 700;
+  color: #f1f5f9;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.userRole {
+  font-size: 10px;
+  color: #FF5C1A;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
+.signOutBtn {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  border: 1px solid rgba(239,68,68,.2);
+  background: rgba(239,68,68,.07);
+  color: #ef4444;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all .15s;
+}
+.signOutBtn:hover { background: rgba(239,68,68,.18); }
+
+.collapseBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #1e293b;
+  background: transparent;
+  color: #334155;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all .15s;
+}
+.collapseBtn:hover { background: #1e293b; color: #64748b; }
+
+/* ─── Main ───────────────────────────────────────────────────────────────── */
+.main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  transition: margin-left .25s;
+}
+
+/* ─── Topbar ─────────────────────────────────────────────────────────────── */
+.topbar {
+  height: 56px;
+  background: #0b1120;
+  border-bottom: 1px solid #1e293b;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.topbarTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: #f1f5f9;
+  flex: 1;
+}
+.topbarRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.topbarDate {
+  font-size: 12px;
+  color: #334155;
+}
+
+/* ─── Content ────────────────────────────────────────────────────────────── */
+.content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* ─── Hamburger (mobile only) ────────────────────────────────────────────── */
+.hamburger {
+  display: none;
+  background: transparent;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  color: #64748b;
+  font-size: 16px;
+  width: 34px;
+  height: 34px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ─── Mobile overlay ─────────────────────────────────────────────────────── */
+.mobileOverlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.6);
+  z-index: 99;
+}
+
+/* ─── Responsive ─────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    transform: translateX(-100%);
+    transition: transform .25s cubic-bezier(.22,1,.36,1), width .25s;
+    z-index: 200;
+  }
+  .mobileOpen {
+    transform: translateX(0) !important;
+    width: 220px !important;
+  }
+  .mobileOverlay { display: block; }
+  .hamburger     { display: flex; }
+  .main          { margin-left: 0 !important; }
+}
