@@ -1,37 +1,35 @@
-// Controllers/Admin/admin.dashboard.controller.js
-import { getPlatformOverview } from "../../services/Admin/analytic.service.js";
+// controllers/Admin/admin.dashboard.controller.js
+import {
+  getPlatformOverview,
+  getPopularWorkouts,
+  getUserGrowth,
+  getGoalDistribution,
+} from "../../services/Admin/analytic.service.js";
 import pool from "../../db/pool.js";
 import response from "../../utils/response.util.js";
 
 class DashboardController {
   static async getStats(req, res, next) {
     try {
-      const overview = await getPlatformOverview();
-
-      const { rows: goalDist } = await pool.query(
-        `SELECT goal, COUNT(*) AS count
-         FROM profiles
-         GROUP BY goal ORDER BY count DESC`
-      );
-
-      const { rows: dailySignups } = await pool.query(
-        `SELECT DATE_TRUNC('day', created_at) AS day, COUNT(*) AS count
-         FROM users
-         WHERE created_at >= NOW() - INTERVAL '14 days'
-         GROUP BY day ORDER BY day ASC`
-      );
-
-      const { rows: recentUsers } = await pool.query(
-        `SELECT id, name, email, role, is_verified, created_at
-         FROM users
-         ORDER BY created_at DESC LIMIT 5`
-      );
+      const [overview, popularWorkouts, userGrowth, goalDist, recentUsersRes] = await Promise.all([
+        getPlatformOverview(),
+        getPopularWorkouts(8),
+        getUserGrowth(),
+        getGoalDistribution(),
+        pool.query(
+          `SELECT u.id, u.name, u.email, u.role, u.is_verified, u.created_at, up.avatar_url
+           FROM users u
+           LEFT JOIN user_preferences up ON up.user_id = u.id
+           ORDER BY u.created_at DESC LIMIT 5`
+        ),
+      ]);
 
       return response(res, 200, true, "Dashboard stats retrieved", {
         overview,
-        goal_distribution:  goalDist,
-        daily_signups:      dailySignups,
-        recent_users:       recentUsers,
+        popular_workouts:  popularWorkouts,
+        user_growth:       userGrowth,
+        goal_distribution: goalDist,
+        recent_users:      recentUsersRes.rows,
       });
     } catch (err) {
       next(err);
