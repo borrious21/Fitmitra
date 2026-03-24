@@ -20,7 +20,7 @@ import adminRoutes     from "./routes/admin.routes.js";
 import aiCoachRoutes from "./routes/ai.coach.routes.js"
 import mealPlannerRoutes from "./routes/meal.planner.routes.js";
 import recommendationRoutes from "./routes/smart.recommendation.routes.js";
-
+import notificationRoutes from "./routes/notification.routes.js"
 
 const app = express();
 
@@ -45,6 +45,7 @@ app.use("/api/admin",     adminRoutes);
 app.use("/api/ai", aiCoachRoutes);
 app.use("/api/meal-planner", mealPlannerRoutes);
 app.use("/api/recommendations", recommendationRoutes);
+app.use("/api/notifications", notificationRoutes)
 
 app.use((req, res, next) => {
   const error = new Error(`Not Found - ${req.originalUrl}`);

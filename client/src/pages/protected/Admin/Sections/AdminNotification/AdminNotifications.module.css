@@ -168,3 +168,63 @@
   .formsGrid { grid-template-columns: 1fr; }
   .formRow   { grid-template-columns: 1fr; }
 }
+
+/* ─── User search (send form) ─────────────────────────────────────────────── */
+.userSearchWrap    { position: relative; display: flex; flex-direction: column; gap: 6px; }
+
+.userSearchBox {
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(255,255,255,.04); border: 1px solid #334155; border-radius: 9px;
+  padding: 0 12px; transition: border-color .15s;
+}
+.userSearchBox:focus-within { border-color: #FF5C1A; }
+.userSearchIco   { width: 14px; height: 14px; color: #475569; flex-shrink: 0; }
+.userSearchInput {
+  flex: 1; background: transparent; border: none; outline: none;
+  color: #f1f5f9; font-size: 13px; padding: 10px 0; font-family: inherit;
+}
+.userSearchInput::placeholder { color: #334155; }
+.searchSpinner   { display: flex; align-items: center; }
+.clearUserBtn    {
+  background: none; border: none; color: #475569; cursor: pointer;
+  font-size: 12px; padding: 0 2px; transition: color .12s;
+}
+.clearUserBtn:hover { color: #f87171; }
+
+/* Dropdown */
+.userDropdown {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+  background: #111827; border: 1px solid #1e293b; border-radius: 12px;
+  z-index: 100; overflow: hidden;
+  box-shadow: 0 16px 40px rgba(0,0,0,.6);
+  animation: fadeIn .15s ease;
+}
+.userDropdownItem {
+  width: 100%; display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; background: transparent; border: none;
+  border-bottom: 1px solid #0f172a; cursor: pointer; text-align: left;
+  transition: background .1s;
+}
+.userDropdownItem:last-child { border-bottom: none; }
+.userDropdownItem:hover { background: rgba(255,92,26,.06); }
+
+.userDropAv {
+  width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
+  background: linear-gradient(135deg,#FF5C1A,#FF8A3D);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 800; color: #fff;
+}
+.userDropInfo  { flex: 1; min-width: 0; }
+.userDropName  { font-size: 13px; font-weight: 600; color: #f1f5f9; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.userDropEmail { font-size: 11px; color: #475569; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.userDropRole  { font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .04em; flex-shrink: 0; }
+
+/* Selected chip */
+.selectedUserChip {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; background: rgba(255,92,26,.08);
+  border: 1px solid rgba(255,92,26,.2); border-radius: 9px;
+}
+.selectedUserName  { font-size: 13px; font-weight: 600; color: #f1f5f9; flex: 1; }
+.selectedUserEmail { font-size: 11px; color: #64748b; }
+.selectedUserId    { font-size: 10px; color: #FF5C1A; font-weight: 700; flex-shrink: 0; }

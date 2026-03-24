@@ -1,5 +1,5 @@
 // src/pages/protected/Admin/AdminNotifications/AdminNotifications.jsx
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { apiFetch } from "../../../../../services/apiClient";
 import styles from "./AdminNotifications.module.css";
 
@@ -78,6 +78,11 @@ export default function AdminNotifications() {
   const [sendForm,     setSendForm]     = useState(EMPTY_SEND);
   const [sendErrors,   setSendErrors]   = useState({});
   const [sending,      setSending]      = useState(false);
+  const [userSearch,   setUserSearch]   = useState("");
+  const [userResults,  setUserResults]  = useState([]);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [searching,    setSearching]    = useState(false);
+  const searchRef = useRef(null);
   const [bcForm,       setBcForm]       = useState(EMPTY_BC);
   const [bcErrors,     setBcErrors]     = useState({});
   const [bcConfirm,    setBcConfirm]    = useState(false);
@@ -85,6 +90,38 @@ export default function AdminNotifications() {
   const [alert,        setAlert]        = useState(null);
 
   const flash = (msg, type = "success") => { setAlert({ msg, type }); setTimeout(() => setAlert(null), 4000); };
+
+  // ── User search by name/email ─────────────────────────────────────────────
+  const searchUsers = useCallback(async (q) => {
+    if (!q.trim()) { setUserResults([]); return; }
+    setSearching(true);
+    try {
+      const res = await apiFetch(`/admin/users?search=${encodeURIComponent(q)}&limit=6`);
+      const d   = res?.data ?? res;
+      setUserResults(d?.users ?? []);
+    } catch { setUserResults([]); }
+    finally   { setSearching(false); }
+  }, []);
+
+  useEffect(() => {
+    clearTimeout(searchRef.current);
+    searchRef.current = setTimeout(() => searchUsers(userSearch), 350);
+  }, [userSearch, searchUsers]);
+
+  const selectUser = (u) => {
+    setSelectedUser(u);
+    setSendForm(f => ({ ...f, user_id: u.id }));
+    setUserSearch(`${u.name} (${u.email})`);
+    setUserResults([]);
+    setSendErrors(e => ({ ...e, user_id: "" }));
+  };
+
+  const clearUser = () => {
+    setSelectedUser(null);
+    setSendForm(f => ({ ...f, user_id: "" }));
+    setUserSearch("");
+    setUserResults([]);
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -206,11 +243,48 @@ export default function AdminNotifications() {
 
           <div className={styles.formFields}>
             <div className={styles.formField}>
-              <label className={styles.formLabel}>User ID *</label>
-              <input className={`${styles.formInput} ${sendErrors.user_id ? styles.inputErr : ""}`}
-                type="number" min="1" value={sendForm.user_id}
-                onChange={e => setSendField("user_id", e.target.value)}
-                placeholder="e.g. 42" />
+              <label className={styles.formLabel}>Search User *</label>
+              <div className={styles.userSearchWrap}>
+                <div className={styles.userSearchBox}>
+                  <svg className={styles.userSearchIco} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                  <input
+                    className={`${styles.userSearchInput} ${sendErrors.user_id ? styles.inputErr : ""}`}
+                    value={userSearch}
+                    onChange={e => { setUserSearch(e.target.value); if (selectedUser) clearUser(); }}
+                    placeholder="Type name or email…"
+                  />
+                  {searching && <span className={styles.searchSpinner}><span className={styles.spinner} /></span>}
+                  {selectedUser && <button className={styles.clearUserBtn} onClick={clearUser} type="button">✕</button>}
+                </div>
+
+                {/* Dropdown results */}
+                {userResults.length > 0 && (
+                  <div className={styles.userDropdown}>
+                    {userResults.map(u => (
+                      <button key={u.id} className={styles.userDropdownItem} type="button" onClick={() => selectUser(u)}>
+                        <div className={styles.userDropAv}>{u.name?.charAt(0).toUpperCase()}</div>
+                        <div className={styles.userDropInfo}>
+                          <span className={styles.userDropName}>{u.name}</span>
+                          <span className={styles.userDropEmail}>{u.email}</span>
+                        </div>
+                        <span className={styles.userDropRole}>{u.role}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Selected user chip */}
+                {selectedUser && (
+                  <div className={styles.selectedUserChip}>
+                    <div className={styles.userDropAv} style={{ width: 24, height: 24, fontSize: 10 }}>
+                      {selectedUser.name?.charAt(0).toUpperCase()}
+                    </div>
+                    <span className={styles.selectedUserName}>{selectedUser.name}</span>
+                    <span className={styles.selectedUserEmail}>{selectedUser.email}</span>
+                    <span className={styles.selectedUserId}>#{selectedUser.id}</span>
+                  </div>
+                )}
+              </div>
               {sendErrors.user_id && <span className={styles.fieldErr}>{sendErrors.user_id}</span>}
             </div>
 
