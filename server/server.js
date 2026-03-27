@@ -9,12 +9,8 @@ const PORT = port || 5000;
 let server;
 let isShuttingDown = false;
 
-/**
- * Start server with DB check
- */
 const startServer = async () => {
   try {
-    // Test DB connection
     const client = await pool.connect();
     console.log("Database connected successfully");
     client.release();
