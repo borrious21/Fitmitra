@@ -1,5 +1,5 @@
 // admin/services/meal.service.js
-import pool from "../../db/pool.js";
+import pool from "../../config/db.config.js";
 
 export const getAllMeals = async ({ limit = 50, offset = 0, search = "", diet_type = "", tag = "" }) => {
   const params = [];

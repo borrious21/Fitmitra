@@ -1,5 +1,5 @@
 // admin/utils/adminLogger.js
-import pool from "../../db/pool.js";
+import pool from "../../config/db.config.js";
 
 const logAdminAction = async (adminId, action, payload = {}) => {
   try {

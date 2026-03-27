@@ -5,7 +5,7 @@ import {
   getUserGrowth,
   getGoalDistribution,
 } from "../../services/Admin/analytic.service.js";
-import pool from "../../db/pool.js";
+import pool from "../../config/db.config.js";
 import response from "../../utils/response.util.js";
 
 class DashboardController {

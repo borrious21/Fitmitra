@@ -1,5 +1,5 @@
 // src/services/Admin/plan.service.js
-import pool from "../../db/pool.js";
+import pool from "../../config/db.config.js";
 
 export const getAllPlans = async ({ limit = 50, offset = 0, is_active = null }) => {
   const params = [];

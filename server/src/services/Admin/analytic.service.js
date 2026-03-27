@@ -1,5 +1,5 @@
 // admin/services/analytic.service.js
-import pool from "../../db/pool.js";
+import pool from "../../config/db.config.js";
 
 export const getPlatformOverview = async () => {
   const [users, workouts, meals, plans, activeToday, banned, verified] = await Promise.all([

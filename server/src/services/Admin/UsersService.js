@@ -1,5 +1,5 @@
 // admin/services/usersService.js
-import pool from "../../db/pool.js";
+import pool from "../../config/db.config.js";
 
 export const getAllUsers = async ({ limit = 50, offset = 0, search = "", role = "" }) => {
   const params = [];

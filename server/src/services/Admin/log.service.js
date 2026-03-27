@@ -1,5 +1,5 @@
 // admin/services/logsService.js
-import pool from "../../db/pool.js";
+import pool from "../../config/db.config.js";
 
 export const getWorkoutLogs = async ({ limit = 50, offset = 0, user_id = null, start_date = null, end_date = null }) => {
   const params = [];

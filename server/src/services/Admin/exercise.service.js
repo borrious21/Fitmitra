@@ -1,5 +1,5 @@
 // admin/services/exercise.service.js
-import pool from "../../db/pool.js";
+import pool from "../../config/db.config.js";
 
 export const getAllExercises = async ({ limit = 50, offset = 0, search = "", muscle_group = "", equipment = "" }) => {
   const params = [];
