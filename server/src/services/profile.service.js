@@ -1,5 +1,5 @@
 import ProfileModel from "../models/profile.model.js";
-import pool from "../db/pool.js";
+import pool from "../config/db.config.js";
 import { calculateRecommendedCalories, calculateMacroSplit, calculateMealWiseMacros }
   from "../domain/nutrition.rules.js";
 import { generateMealSuggestions } from "../domain/meal.generator.js";
