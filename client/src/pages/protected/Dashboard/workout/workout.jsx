@@ -5,7 +5,7 @@ import { apiFetch }     from "../../../../services/apiClient";
 import { AuthContext }  from "../../../../context/AuthContext";
 import ActivityCalendar from "../../../../components/ActivityCalendar/ActivityCalendar";
 import ThemeToggle      from "../../../../components/ThemeToggle/ThemeToggle";
-import styles           from "./Workout.module.css";
+import styles           from "./workout.module.css";
 
 const DAYS = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"];
 
