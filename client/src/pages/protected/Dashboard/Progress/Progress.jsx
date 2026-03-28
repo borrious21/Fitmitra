@@ -5,7 +5,7 @@ import { AuthContext } from "../../../../context/AuthContext";
 import { getMyProfile } from "../../../../services/profileService";
 import { apiFetch } from "../../../../services/apiClient";
 import ThemeToggle from "../../../../components/ThemeToggle/ThemeToggle";
-import styles from "./Progress.module.css";
+import styles from "./progress.module.css";
 
 const NAV_TABS = [
   { key: "today",    label: "today",    path: "/dashboard" },
