@@ -19,7 +19,6 @@ const PROGRESSION_INFO = {
   at_ceiling:      { label: "🏆 At peak — well done!",  color: "#eab308" },
 };
 
-// ── Inline avatar helpers ─────────────────────────────────────────────────────
 const AVATAR_KEY = "fitmitra_avatar_url";
 const getAvatar  = () => { try { return localStorage.getItem(AVATAR_KEY) || null; } catch { return null; } };
 
