@@ -4,7 +4,7 @@ import { verifyEmailService, resendVerificationService } from "../../../services
 import { Loader2, CheckCircle, AlertCircle, Activity, Heart, Mail, ArrowLeft } from "lucide-react";
 import OtpInput from "../../../components/Otp/OtpInput";
 import ThemeToggle from "../../../components/ThemeToggle/ThemeToggle";
-import styles from "./Verifyemail.module.css";
+import styles from "./VerifyEmail.module.css";
 
 const VerifyEmail = () => {
   const navigate = useNavigate();
