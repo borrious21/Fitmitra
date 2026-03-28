@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../../../../context/AuthContext";
 import { apiFetch } from "../../../../services/apiClient";
 import { getMyProfile } from "../../../../services/profileService";
-import styles from "./MealPlanner.module.css";
+import styles from "./Mealplanner.module.css";
 
 const MEAL_EMOJIS = { breakfast: "🌅", lunch: "☀️", dinner: "🌙", snack: "🍎" };
 const MEAL_ORDER  = ["breakfast", "lunch", "dinner", "snack"];
