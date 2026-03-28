@@ -17,3 +17,13 @@
   for = "*.mjs"
   [headers.values]
     Content-Type = "application/javascript"
+
+    [[redirects]]
+  from = "/assets/*"
+  to = "/assets/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
