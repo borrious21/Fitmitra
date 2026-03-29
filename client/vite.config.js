@@ -9,7 +9,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'https://fitmitra-fyp.netlify.app',
+        target: 'https://fitmitra-f6moul5up-borrious21s-projects.vercel.app/',
         changeOrigin: true,
       }
     }
