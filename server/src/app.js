@@ -26,6 +26,7 @@ const app = express();
 
 app.use(helmet());
 app.use(cors(corsOptions));
+app.options(/.*/, cors(corsOptions));
 
 if (process.env.NODE_ENV !== "production") {
   app.use(morgan("dev"));
@@ -33,9 +34,6 @@ if (process.env.NODE_ENV !== "production") {
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-app.use(cors(corsOptions));
-app.options("*", cors(corsOptions));
 
 // Health check
 app.get("/", (req, res) => {
