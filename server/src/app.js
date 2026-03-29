@@ -34,6 +34,9 @@ if (process.env.NODE_ENV !== "production") {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
+
 // Health check
 app.get("/", (req, res) => {
   res.json({ status: "ok", message: "API is running" });
