@@ -6,7 +6,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'https://fitmitra-f6moul5up-borrious21s-projects.vercel.app/', 
+        target: 'https://fitmitra-mpzczktlg-borrious21s-projects.vercel.app/', 
         changeOrigin: true,
         secure: false,
       }
