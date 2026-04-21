@@ -1,9 +1,9 @@
-// ── src/pages/protected/Admin/Sections/AdminOverview.jsx ─────
+//  src/pages/protected/Admin/Sections/AdminOverview.jsx 
 import { useState, useEffect, useCallback } from "react";
 import { apiFetch, extractArray, extractObject } from "../AdminUtils";
 import { Spinner, Badge, SectionCard, Table } from "../AdminComponents";
 
-/* ── helpers ─────────────────────────────────────────────── */
+/* helpers */
 function fmt(n) {
   const num = Number(n);
   if (n == null || isNaN(num)) return null;
@@ -12,7 +12,7 @@ function fmt(n) {
   return String(num);
 }
 
-/* ── animated count-up ───────────────────────────────────── */
+/*  animated count-up  */
 function CountUp({ to, duration = 900 }) {
   const [cur, setCur] = useState(0);
   useEffect(() => {
@@ -31,7 +31,7 @@ function CountUp({ to, duration = 900 }) {
   return <>{fmt(cur)}</>;
 }
 
-/* ── sparkline bars ──────────────────────────────────────── */
+/*  sparkline bars  */
 function SparkBars({ values = [], color = "#FF5C1A" }) {
   if (!values.length) return null;
   const max = Math.max(...values, 1);
@@ -49,7 +49,7 @@ function SparkBars({ values = [], color = "#FF5C1A" }) {
   );
 }
 
-/* ── ring ────────────────────────────────────────────────── */
+/* ring  */
 function Ring({ pct = 0, size = 52, stroke = 5, color = "#FF5C1A", children }) {
   const r = (size - stroke) / 2;
   const circ = 2 * Math.PI * r;
@@ -71,7 +71,7 @@ function Ring({ pct = 0, size = 52, stroke = 5, color = "#FF5C1A", children }) {
   );
 }
 
-/* ── stat card ───────────────────────────────────────────── */
+/*  stat card  */
 function StatCard({ icon, label, value, sub, color = "#FF5C1A", loading, spark }) {
   return (
     <div style={{
@@ -106,7 +106,7 @@ function StatCard({ icon, label, value, sub, color = "#FF5C1A", loading, spark }
   );
 }
 
-/* ── quick metric row ────────────────────────────────────── */
+/* quick metric row  */
 function QuickMetric({ label, value, color = "#FF5C1A", icon }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "0.625rem", padding: "0.625rem 0", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
@@ -119,8 +119,7 @@ function QuickMetric({ label, value, color = "#FF5C1A", icon }) {
   );
 }
 
-/* ── goal distribution ───────────────────────────────────── */
-// Backend returns: [{ goal, count }]  — convert to display
+/* goal distribution */
 const GOAL_META = {
   weight_loss:      { label: "Weight Loss",  color: "#FF5C1A", emoji: "⚖️" },
   muscle_gain:      { label: "Muscle Gain",  color: "#B8F000", emoji: "💪" },
@@ -161,8 +160,7 @@ function GoalDistribution({ rows }) {
   );
 }
 
-/* ── daily signups chart ─────────────────────────────────── */
-// Backend returns: [{ day: "2025-01-01T00:00:00Z", count: "3" }]
+/* daily signups chart */
 function GrowthChart({ data = [] }) {
   if (!data.length) return (
     <div style={{ padding: "2rem", textAlign: "center", color: "#525D72", fontSize: "0.8rem" }}>No signup data yet.</div>
@@ -205,9 +203,7 @@ function GrowthChart({ data = [] }) {
   );
 }
 
-/* ── retention ───────────────────────────────────────────── */
-// Backend returns: [{ cohort_week, new_users, retained_last_7d }]
-// Show the most recent 3 cohorts as rings
+/* retention */
 function RetentionCard({ rows }) {
   const recent = (rows ?? []).slice(0, 3);
   if (!recent.length) return (
@@ -235,7 +231,7 @@ function RetentionCard({ rows }) {
   );
 }
 
-/* ── recent users table ──────────────────────────────────── */
+/* recent users table  */
 function RecentUsers({ rows, loading }) {
   return (
     <Table
@@ -274,14 +270,12 @@ function RecentUsers({ rows, loading }) {
   );
 }
 
-/* ═══════════════════════════════════════════════════════════
-   MAIN COMPONENT
-   ═══════════════════════════════════════════════════════════ */
+// MAIN COMPONENT
 export default function AdminOverview() {
-  const [ov,          setOv]          = useState(null);   // overview KPIs
-  const [goalDist,    setGoalDist]    = useState([]);      // [{ goal, count }]
-  const [dailySignups,setDailySignups]= useState([]);      // [{ day, count }]
-  const [recentUsers, setRecentUsers] = useState([]);      // [{ id, name, email, ... }]
+  const [ov,          setOv]          = useState(null);
+  const [goalDist,    setGoalDist]    = useState([]);      
+  const [dailySignups,setDailySignups]= useState([]);      
+  const [recentUsers, setRecentUsers] = useState([]);      
   const [topUsers,    setTopUsers]    = useState([]);
   const [atRisk,      setAtRisk]      = useState([]);
   const [retention,   setRetention]   = useState([]);
@@ -291,14 +285,13 @@ export default function AdminOverview() {
   const load = useCallback(() => {
     setLoading(true);
     Promise.allSettled([
-      apiFetch("/dashboard"),              // 0 — overview + goal_distribution + daily_signups + recent_users
-      apiFetch("/analytics/top-users"),    // 1
-      apiFetch("/analytics/at-risk"),      // 2
-      apiFetch("/analytics/retention"),    // 3
+      apiFetch("/dashboard"),              
+      apiFetch("/analytics/top-users"),    
+      apiFetch("/analytics/at-risk"),      
+      apiFetch("/analytics/retention"),    
     ]).then(([dash, top, risk, ret]) => {
 
       if (dash.status === "fulfilled") {
-        // response.data = { overview, goal_distribution, daily_signups, recent_users }
         const d = extractObject(dash.value);
         setOv(d.overview ?? {});
         setGoalDist(Array.isArray(d.goal_distribution) ? d.goal_distribution : []);
@@ -317,7 +310,6 @@ export default function AdminOverview() {
 
   useEffect(() => { load(); }, [load]);
 
-  // KPI shorthands — all come from /dashboard → data.overview
   const totalUsers  = ov?.total_users;
   const activeToday = ov?.active_today;
   const workouts    = ov?.total_workouts;
@@ -334,7 +326,6 @@ export default function AdminOverview() {
     { label: "New This Week", value: newWeek,     icon: "🚀", color: "#6366f1", sub: "Signups last 7 days" },
   ];
 
-  // Verified count from recent_users is not reliable — derive from goal_dist total if needed
   const goalTotal = goalDist.reduce((s, r) => s + Number(r.count ?? r.user_count ?? 0), 0);
 
   return (

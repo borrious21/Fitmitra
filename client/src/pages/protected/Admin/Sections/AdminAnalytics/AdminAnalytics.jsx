@@ -11,7 +11,7 @@ const MEAL_COLORS = {
   other:     "#94a3b8",
 };
 
-// ─── Sparkline ────────────────────────────────────────────────────────────────
+// Sparkline 
 function Sparkline({ data, color = "#FF5C1A", height = 36, width = 120 }) {
   if (!data || data.length < 2) return null;
   const vals  = data.map(Number);

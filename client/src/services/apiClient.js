@@ -1,6 +1,6 @@
 // src/services/apiClient.js
 
-const BASE_URL = 'https://fitmitra-mpzczktlg-borrious21s-projects.vercel.app/api';
+const BASE_URL = 'https://fitmitra-server.onrender.com/api';
 
 export const tokenStore = {
   getToken:        () => localStorage.getItem('token'),
@@ -13,6 +13,21 @@ export const tokenStore = {
     localStorage.removeItem('user');
   },
 };
+
+const AUTH_ROUTES = [
+  '/auth/login',
+  '/auth/signup',
+  '/auth/register',
+  '/auth/refresh',
+  '/auth/verify-email',
+  '/auth/verify-reset-otp',
+  '/auth/resend-verification',
+  '/auth/forgot-password',
+  '/auth/reset-password',
+];
+
+const isAuthRoute = (endpoint) =>
+  AUTH_ROUTES.some((route) => endpoint.includes(route));
 
 let refreshPromise = null;
 
@@ -46,14 +61,22 @@ const attemptTokenRefresh = async () => {
   return refreshPromise;
 };
 
+import { getMockResponse } from './mockApi';
+
 export const apiFetch = async (endpoint, options = {}, _retry = true) => {
   const token = tokenStore.getToken();
+
+  if (token === 'mock-jwt-token') {
+    return getMockResponse(endpoint, options);
+  }
+
+  const skipAuth = isAuthRoute(endpoint);
 
   const config = {
     ...options,
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(token && !skipAuth ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
   };
@@ -61,7 +84,7 @@ export const apiFetch = async (endpoint, options = {}, _retry = true) => {
   const url = endpoint.startsWith('http') ? endpoint : `${BASE_URL}${endpoint}`;
   const res = await fetch(url, config);
 
-  if (res.status === 401 && _retry) {
+  if (res.status === 401 && _retry && !skipAuth) {
     try {
       const newToken = await attemptTokenRefresh();
       return apiFetch(endpoint, {

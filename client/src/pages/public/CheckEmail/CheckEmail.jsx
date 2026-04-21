@@ -1,77 +1,28 @@
 import { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
+import {
+  Mail, ArrowLeft, ArrowRight, CheckCircle2,
+  AlertCircle, RefreshCw, Loader2, ShieldCheck,
+  Info, Clock
+} from "lucide-react";
 import styles from "./CheckEmail.module.css";
 
-const IcoPulse = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-  </svg>
-);
-const IcoMail = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="2" y="4" width="20" height="16" rx="2" /><polyline points="2,4 12,13 22,4" />
-  </svg>
-);
-const IcoArrowLeft = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" />
-  </svg>
-);
-const IcoArrowRight = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
-  </svg>
-);
-const IcoCheck = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="20 6 9 17 4 12" />
-  </svg>
-);
-const IcoAlert = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-    <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
-  </svg>
-);
-const IcoInfo = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
-  </svg>
-);
-const IcoLoader = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={styles.spinIcon}>
-    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-  </svg>
-);
-const IcoRefresh = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" />
-    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-  </svg>
-);
-
-// ── Component ─────────────────────────────────────────────────────────────────
 const CheckEmail = () => {
   const location = useLocation();
   const navigate = useNavigate();
-
   const email = location.state?.email || "your email";
 
-  const [resendLoading, setResendLoading] = useState(false);
-  const [resendSuccess, setResendSuccess] = useState(false);
+  const [resendLoading,  setResendLoading]  = useState(false);
+  const [resendSuccess,  setResendSuccess]  = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
 
-  // Resend verification email
   const handleResend = async () => {
     if (resendCooldown > 0 || resendLoading) return;
     setResendLoading(true);
     setResendSuccess(false);
     try {
-      // Replace with your actual resend service call
-      // await resendVerificationEmailService(email);
-      await new Promise((r) => setTimeout(r, 1200)); // mock
+      await new Promise((r) => setTimeout(r, 1200));
       setResendSuccess(true);
-      // 60s cooldown
       let t = 60;
       setResendCooldown(t);
       const interval = setInterval(() => {
@@ -79,8 +30,6 @@ const CheckEmail = () => {
         setResendCooldown(t);
         if (t <= 0) clearInterval(interval);
       }, 1000);
-    } catch {
-      // handle silently — user can retry
     } finally {
       setResendLoading(false);
     }
@@ -88,50 +37,37 @@ const CheckEmail = () => {
 
   return (
     <div className={styles.page}>
-      {/* bg */}
-      <div className={styles.glow1} />
-      <div className={styles.glow2} />
-      <div className={styles.grid} />
+      {/* Back button */}
+      <Link to="/login" className={styles.backBtn}>
+        <ArrowLeft size={18} />
+        <span>Back to Sign In</span>
+      </Link>
 
-      {/* nav brand */}
-      <div className={styles.nav}>
-        <Link to="/" className={styles.brand}>
-          <span className={styles.brandIcon}><IcoPulse /></span>
-          <span className={styles.brandName}>FitMitra</span>
-        </Link>
-      </div>
+      {/* Decorative background */}
+      <div className={styles.ambientOrb1} />
+      <div className={styles.ambientOrb2} />
 
-      {/* ── LEFT PANEL ────────────────────────────────────────── */}
-      <div className={styles.leftPanel}>
-        <div className={styles.leftGlow1} />
-        <div className={styles.leftGlow2} />
-        <div className={styles.leftGrid} />
-        <div className={styles.leftContent}>
+      <div className={styles.pageInner}>
 
-          <Link to="/" className={styles.leftBrand}>
-            <span className={styles.brandIcon}><IcoPulse /></span>
-            <span className={styles.brandName}>FitMitra</span>
-          </Link>
-
-          <span className={styles.eyebrow}>You're almost in</span>
-
-          <h2 className={styles.leftTitle}>
-            Check your<br /><span>inbox.</span>
-          </h2>
-
-          <p className={styles.leftDesc}>
-            We've sent a verification link to your email. Click it to activate
-            your account and start your fitness journey.
+        {/* ── LEFT: HERO ── */}
+        <div className={styles.heroCol}>
+          <div className={styles.heroTag}>Email Verification</div>
+          <h1 className={styles.heroTitle}>
+            Check your <span>inbox!</span>
+          </h1>
+          <p className={styles.heroDesc}>
+            We've sent a verification link to your email. Follow the steps
+            below to activate your FitMitra account and start your journey.
           </p>
 
-          <div className={styles.leftSteps}>
+          <div className={styles.steps}>
             {[
-              { n: "01", title: "Open your email",    desc: `Check the inbox for ${email}` },
-              { n: "02", title: "Click the link",     desc: "Hit the verification link we sent" },
-              { n: "03", title: "Start training",     desc: "Your FitMitra account is ready to go" },
+              { n: "01", title: "Open your email",  desc: `Check the inbox for ${email}` },
+              { n: "02", title: "Click the link",   desc: "Hit the verification link we sent you" },
+              { n: "03", title: "Start training",   desc: "Your FitMitra account is ready to go" },
             ].map((s, i, arr) => (
-              <div className={styles.leftStep} key={i}>
-                <div className={styles.leftStepCol}>
+              <div className={styles.step} key={i}>
+                <div className={styles.stepCol}>
                   <div className={styles.stepBadge}>{s.n}</div>
                   {i < arr.length - 1 && <div className={styles.stepLine} />}
                 </div>
@@ -143,56 +79,54 @@ const CheckEmail = () => {
             ))}
           </div>
 
+          <div className={styles.heroStats}>
+            <div className={styles.heroStat}>
+              <span className={styles.statVal}>12K+</span>
+              <span className={styles.statLbl}>Active Members</span>
+            </div>
+            <div className={styles.heroStat}>
+              <span className={styles.statVal}>98%</span>
+              <span className={styles.statLbl}>Success Rate</span>
+            </div>
+          </div>
         </div>
-      </div>
 
-      {/* ── RIGHT PANEL ───────────────────────────────────────── */}
-      <div className={styles.rightPanel}>
-        <div className={styles.wrapper}>
+        {/* ── RIGHT: CARD ── */}
+        <main className={styles.main}>
           <div className={styles.card}>
-            <div className={styles.cardGlow} />
 
-            {/* icon */}
-            <div className={styles.mailWrap}>
-              <div className={styles.mailRing}><IcoMail /></div>
+            <div className={styles.logoWrapper}>
+              <Mail size={32} />
             </div>
 
-            {/* header */}
-            <div className={styles.header}>
-              <div className={styles.logoRow}>
-                <span className={styles.logoPulse}><IcoPulse /></span>
-              </div>
-              <h1 className={styles.title}>Check Your Email</h1>
-              <p className={styles.subtitle}>
-                We've sent a verification email to
-              </p>
-              <p className={styles.emailVal}>{email}</p>
-            </div>
+            <h2 className={styles.title}>Check Your Email</h2>
+            <p className={styles.subtitle}>
+              We sent a verification link to <strong>{email}</strong>
+            </p>
 
-            {/* resend success */}
+            {/* Resend success */}
             {resendSuccess && (
-              <div className={styles.successBanner}>
-                <IcoCheck />
+              <div className={styles.successAlert}>
+                <CheckCircle2 size={16} />
                 <span>New email sent! Check your inbox.</span>
               </div>
             )}
 
-            {/* warning box */}
+            {/* Expiry warning */}
             <div className={styles.warningBox}>
-              <IcoAlert />
+              <Clock size={16} />
               <div>
                 <p className={styles.warningTitle}>Link expires in 24 hours</p>
                 <p className={styles.warningDesc}>
-                  Make sure to verify before it expires. Check your{" "}
-                  <strong>spam or junk folder</strong> if you don't see it.
+                  Check your <strong>spam or junk folder</strong> if you don't see it in your inbox.
                 </p>
               </div>
             </div>
 
-            {/* troubleshooting */}
+            {/* Trouble box */}
             <div className={styles.troubleBox}>
               <div className={styles.troubleHeader}>
-                <IcoInfo />
+                <Info size={14} />
                 <span className={styles.troubleTitle}>Not seeing the email?</span>
               </div>
               <ul className={styles.troubleList}>
@@ -203,49 +137,45 @@ const CheckEmail = () => {
               </ul>
             </div>
 
-            {/* actions */}
+            {/* Actions */}
             <div className={styles.actions}>
-              {/* primary: go verify */}
               <Link
                 to="/verify-email"
                 state={{ email: location.state?.email }}
-                className={styles.btnPrimary}
+                className={styles.primaryBtn}
               >
-                <IcoCheck /> Enter Verification Code
+                <ShieldCheck size={18} /> Enter Verification Code
               </Link>
 
-              {/* resend */}
               <button
                 onClick={handleResend}
                 disabled={resendLoading || resendCooldown > 0}
-                className={styles.btnSecondary}
+                className={styles.resendButton}
               >
                 {resendLoading ? (
-                  <><IcoLoader /> Sending...</>
+                  <><Loader2 size={16} className={styles.spin} /> Sending...</>
                 ) : resendCooldown > 0 ? (
-                  <><IcoRefresh /> Resend in {resendCooldown}s</>
+                  <><RefreshCw size={16} /> Resend in {resendCooldown}s</>
                 ) : (
-                  <><IcoRefresh /> Resend Email</>
+                  <><RefreshCw size={16} /> Resend Email</>
                 )}
               </button>
             </div>
 
-            {/* divider */}
+            {/* Divider */}
             <div className={styles.divider}>
-              <div className={styles.divLine}><div className={styles.divBorder} /></div>
-              <div className={styles.divLabel}><span className={styles.divText}>Wrong email?</span></div>
+              <div className={styles.dividerLine} />
+              <span className={styles.dividerText}>Wrong email?</span>
+              <div className={styles.dividerLine} />
             </div>
 
-            {/* bottom links */}
+            {/* Link row */}
             <div className={styles.linkRow}>
-              <button
-                onClick={() => navigate("/signup")}
-                className={styles.textLink}
-              >
-                <IcoArrowLeft /> Use a different email
+              <button onClick={() => navigate("/signup")} className={styles.textLink}>
+                <ArrowLeft size={14} /> Use a different email
               </button>
               <Link to="/login" className={styles.textLink}>
-                Sign in instead <IcoArrowRight />
+                Sign in instead <ArrowRight size={14} />
               </Link>
             </div>
           </div>
@@ -254,7 +184,7 @@ const CheckEmail = () => {
             Need help?{" "}
             <a href="/support" className={styles.footerLink}>Contact Support</a>
           </p>
-        </div>
+        </main>
       </div>
     </div>
   );

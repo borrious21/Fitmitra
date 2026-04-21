@@ -1,5 +1,5 @@
 // src/services/aiCoachService.js
-const BASE_URL = "https://fitmitra-fyp.vercel.app";
+const BASE_URL = "https://fitmitra-server.onrender.com";
 
 const getToken = () =>
   localStorage.getItem("accessToken") ||

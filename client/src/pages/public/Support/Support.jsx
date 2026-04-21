@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import styles from "./Support.module.css";
+import ThemeToggle from "../../../components/ThemeToggle/ThemeToggle";
 
-// ── Icons ─────────────────────────────────────────────────────────────────────
 const IcoPulse = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
@@ -69,7 +69,6 @@ const IcoUser = () => (
   </svg>
 );
 
-// ── FAQ data ──────────────────────────────────────────────────────────────────
 const FAQ_CATEGORIES = [
   {
     icon: <IcoZap />,
@@ -113,25 +112,15 @@ const FAQ_CATEGORIES = [
   },
 ];
 
-// ── Contact form categories ───────────────────────────────────────────────────
 const ISSUE_TYPES = [
-  "Account / Login",
-  "Workout Plan",
-  "Nutrition / Meals",
-  "Progress Tracking",
-  "Billing / Payments",
-  "Bug Report",
-  "Feature Request",
-  "Other",
+  "Account / Login", "Workout Plan", "Nutrition / Meals",
+  "Progress Tracking", "Billing / Payments", "Bug Report",
+  "Feature Request", "Other",
 ];
 
-// ── Component ─────────────────────────────────────────────────────────────────
 const Support = () => {
-  // FAQ state
   const [activeCategory, setActiveCategory] = useState(0);
   const [openFaq, setOpenFaq] = useState(null);
-
-  // Contact form state
   const [form, setForm] = useState({ name: "", email: "", issueType: "", message: "" });
   const [formErrors, setFormErrors] = useState({});
   const [formLoading, setFormLoading] = useState(false);
@@ -165,7 +154,6 @@ const Support = () => {
     setFormLoading(true);
     setFormError(null);
     try {
-      // Replace with your actual support ticket service
       await new Promise((r) => setTimeout(r, 1400));
       setFormSuccess(true);
     } catch {
@@ -177,27 +165,29 @@ const Support = () => {
 
   return (
     <div className={styles.page}>
-      {/* bg */}
       <div className={styles.glow1} />
       <div className={styles.glow2} />
       <div className={styles.grid} />
 
-      {/* ── NAV ───────────────────────────────────────────────── */}
+      {/* NAV */}
       <nav className={styles.nav}>
         <div className={styles.navInner}>
           <Link to="/" className={styles.brand}>
             <span className={styles.brandIcon}><IcoPulse /></span>
             <span className={styles.brandName}>FitMitra</span>
           </Link>
-          <Link to="/" className={styles.navBack}>
-            <IcoArrowLeft /> Back to Home
-          </Link>
+          <div className={styles.navRight}>
+            <ThemeToggle />
+            <Link to="/" className={styles.navBack}>
+              <IcoArrowLeft /> Back to Home
+            </Link>
+          </div>
         </div>
       </nav>
 
       <div className={styles.pageInner}>
 
-        {/* ── HERO ────────────────────────────────────────────── */}
+        {/* HERO */}
         <section className={styles.hero}>
           <span className={styles.eyebrow}>Support Centre</span>
           <h1 className={styles.heroTitle}>
@@ -207,14 +197,12 @@ const Support = () => {
             Find answers in the FAQ below, or send us a message and we'll get
             back to you within 24 hours.
           </p>
-
-          {/* quick links */}
           <div className={styles.quickLinks}>
             {[
-              { icon: <IcoUser />,  label: "Account Issues",  href: "#contact" },
-              { icon: <IcoZap />,   label: "Workouts",        href: "#faq"     },
-              { icon: <IcoLock />,  label: "Password Reset",  href: "/forgot-password" },
-              { icon: <IcoMail />,  label: "Email Us",        href: "#contact" },
+              { icon: <IcoUser />,  label: "Account Issues", href: "#contact" },
+              { icon: <IcoZap />,   label: "Workouts",       href: "#faq"     },
+              { icon: <IcoLock />,  label: "Password Reset", href: "/forgot-password" },
+              { icon: <IcoMail />,  label: "Email Us",       href: "#contact" },
             ].map((l, i) => (
               <a key={i} href={l.href} className={styles.quickLink}>
                 <span className={styles.quickLinkIcon}>{l.icon}</span>
@@ -225,14 +213,12 @@ const Support = () => {
           </div>
         </section>
 
-        {/* ── FAQ ─────────────────────────────────────────────── */}
+        {/* FAQ */}
         <section className={styles.faqSection} id="faq">
           <div className={styles.sectionHead}>
             <span className={styles.tag}>Frequently Asked</span>
             <h2 className={styles.sectionTitle}>Quick answers</h2>
           </div>
-
-          {/* category tabs */}
           <div className={styles.catTabs}>
             {FAQ_CATEGORIES.map((cat, i) => (
               <button
@@ -245,42 +231,30 @@ const Support = () => {
               </button>
             ))}
           </div>
-
-          {/* faq list */}
           <div className={styles.faqList}>
             {FAQ_CATEGORIES[activeCategory].faqs.map((faq, i) => (
-              <div
-                key={i}
-                className={`${styles.faqItem} ${openFaq === i ? styles.faqOpen : ""}`}
-              >
-                <button
-                  className={styles.faqQuestion}
-                  onClick={() => handleFaqToggle(i)}
-                >
+              <div key={i} className={`${styles.faqItem} ${openFaq === i ? styles.faqOpen : ""}`}>
+                <button className={styles.faqQuestion} onClick={() => handleFaqToggle(i)}>
                   <span>{faq.q}</span>
                   <span className={styles.faqChevron}><IcoChevron /></span>
                 </button>
                 {openFaq === i && (
-                  <div className={styles.faqAnswer}>
-                    <p>{faq.a}</p>
-                  </div>
+                  <div className={styles.faqAnswer}><p>{faq.a}</p></div>
                 )}
               </div>
             ))}
           </div>
         </section>
 
+        {/* CONTACT */}
         <section className={styles.contactSection} id="contact">
           <div className={styles.contactLayout}>
-
             <div className={styles.contactInfo}>
               <span className={styles.tag}>Still need help?</span>
               <h2 className={styles.sectionTitle}>Send us a message</h2>
               <p className={styles.contactDesc}>
-                Can't find what you need? Our support team responds within
-                24 hours on weekdays.
+                Can't find what you need? Our support team responds within 24 hours on weekdays.
               </p>
-
               <div className={styles.contactCards}>
                 <div className={styles.contactCard}>
                   <div className={styles.contactCardIcon}><IcoMail /></div>
@@ -308,7 +282,6 @@ const Support = () => {
 
             <div className={styles.formCard}>
               <div className={styles.formCardGlow} />
-
               {formSuccess ? (
                 <div className={styles.successState}>
                   <div className={styles.successRing}><IcoCheck /></div>
@@ -336,21 +309,18 @@ const Support = () => {
 
                   {formError && (
                     <div className={styles.errorAlert}>
-                      <IcoAlert />
-                      <p>{formError}</p>
+                      <IcoAlert /><p>{formError}</p>
                     </div>
                   )}
 
                   <form onSubmit={handleSubmit} className={styles.form} noValidate>
-                    {/* row: name + email */}
                     <div className={styles.formRow}>
                       <div className={styles.formGroup}>
                         <label className={styles.label}>Full Name</label>
                         <input
                           type="text" name="name"
                           value={form.name} onChange={handleFormChange}
-                          placeholder="Your name"
-                          disabled={formLoading}
+                          placeholder="Your name" disabled={formLoading}
                           className={`${styles.input} ${formErrors.name ? styles.inputError : ""}`}
                         />
                         {formErrors.name && <p className={styles.fieldError}>{formErrors.name}</p>}
@@ -360,20 +330,17 @@ const Support = () => {
                         <input
                           type="email" name="email"
                           value={form.email} onChange={handleFormChange}
-                          placeholder="you@example.com"
-                          disabled={formLoading}
+                          placeholder="you@example.com" disabled={formLoading}
                           className={`${styles.input} ${formErrors.email ? styles.inputError : ""}`}
                         />
                         {formErrors.email && <p className={styles.fieldError}>{formErrors.email}</p>}
                       </div>
                     </div>
 
-                    {/* issue type */}
                     <div className={styles.formGroup}>
                       <label className={styles.label}>Issue Type</label>
                       <select
-                        name="issueType"
-                        value={form.issueType} onChange={handleFormChange}
+                        name="issueType" value={form.issueType} onChange={handleFormChange}
                         disabled={formLoading}
                         className={`${styles.input} ${styles.select} ${formErrors.issueType ? styles.inputError : ""}`}
                       >
@@ -388,16 +355,12 @@ const Support = () => {
                     <div className={styles.formGroup}>
                       <label className={styles.label}>Message</label>
                       <textarea
-                        name="message"
-                        value={form.message} onChange={handleFormChange}
+                        name="message" value={form.message} onChange={handleFormChange}
                         placeholder="Describe your issue in detail..."
-                        rows={5}
-                        disabled={formLoading}
+                        rows={5} disabled={formLoading}
                         className={`${styles.input} ${styles.textarea} ${formErrors.message ? styles.inputError : ""}`}
                       />
-                      <div className={styles.charCount}>
-                        {form.message.length} / 1000
-                      </div>
+                      <div className={styles.charCount}>{form.message.length} / 1000</div>
                       {formErrors.message && <p className={styles.fieldError}>{formErrors.message}</p>}
                     </div>
 
@@ -412,7 +375,6 @@ const Support = () => {
             </div>
           </div>
         </section>
-
       </div>
 
       <footer className={styles.footer}>

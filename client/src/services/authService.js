@@ -1,5 +1,5 @@
 // src/services/authService.js
-import { apiFetch } from './apiClient';
+import { apiFetch, tokenStore } from './apiClient';
 
 export const signupService = async (name, email, password) => {
   return apiFetch('/auth/signup', {
@@ -20,7 +20,11 @@ export const getMeService = async () => {
 };
 
 export const logoutService = async () => {
-  return apiFetch('/auth/logout', { method: 'POST' });
+  const refreshToken = tokenStore.getRefreshToken();
+  return apiFetch('/auth/logout', {
+    method: 'POST',
+    body: JSON.stringify({ refreshToken }),
+  });
 };
 
 export const verifyEmailService = async (email, otp) => {

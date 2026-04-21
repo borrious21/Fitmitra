@@ -1,5 +1,5 @@
-// src/services/Email.service.js
-import transporter, { MAIL_FROM } from "../config/mailer.config.js";
+// Email.service.js
+import { client, MAIL_FROM } from "../config/mailer.config.js";
 
 const OTP_EXPIRY_MINUTES = 10;
 
@@ -113,7 +113,16 @@ function otpBlock(otp) {
     </p>`;
 }
 
-// ── 1. Email verification OTP ─────────────────────────────────────────────────
+async function sendMail({ to, subject, title, preheader, bodyHtml }) {
+  await client.transactionalEmails.sendTransacEmail({
+    sender: MAIL_FROM,
+    to: [{ email: to }],
+    subject,
+    htmlContent: buildEmailHtml({ title, preheader, bodyHtml }),
+  });
+}
+
+// 1. Email verification OTP
 export async function sendVerificationOtp(to, otp) {
   const bodyHtml = `
     <h2 style="margin:0 0 10px;font-size:22px;font-weight:900;letter-spacing:0.04em;
@@ -127,18 +136,20 @@ export async function sendVerificationOtp(to, otp) {
     </p>
     ${otpBlock(otp)}`;
 
-  await transporter.sendMail({
-    from: MAIL_FROM,
-    to,
-    subject: `${otp} is your FitMitra verification code`,
-    html: buildEmailHtml({
+  try {
+    await sendMail({
+      to,
+      subject: `${otp} is your FitMitra verification code`,
       title: "Verify your email – FitMitra",
       preheader: `Your verification code is ${otp}. Expires in ${OTP_EXPIRY_MINUTES} minutes.`,
       bodyHtml,
-    }),
-  });
+    });
+  } catch (err) {
+    console.error("Verification email failed:", err.message);
+  }
 }
 
+// 2. Password reset OTP
 export async function sendPasswordResetOtp(to, otp) {
   const bodyHtml = `
     <h2 style="margin:0 0 10px;font-size:22px;font-weight:900;letter-spacing:0.04em;
@@ -155,14 +166,15 @@ export async function sendPasswordResetOtp(to, otp) {
       If you did not request a password reset, no action is required.
     </p>`;
 
-  await transporter.sendMail({
-    from: MAIL_FROM,
-    to,
-    subject: `${otp} is your FitMitra password reset code`,
-    html: buildEmailHtml({
+  try {
+    await sendMail({
+      to,
+      subject: `${otp} is your FitMitra password reset code`,
       title: "Reset your password – FitMitra",
       preheader: `Your password reset code is ${otp}. Expires in ${OTP_EXPIRY_MINUTES} minutes.`,
       bodyHtml,
-    }),
-  });
+    });
+  } catch (err) {
+    console.error("Reset email failed:", err.message);
+  }
 }

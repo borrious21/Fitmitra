@@ -30,12 +30,10 @@ const ProtectedRoute = ({ children, allowOnboarding = false }) => {
   const hasOnboarded =
     user?.hasCompletedOnboarding ?? user?.has_completed_onboarding ?? false;
 
-  // Not onboarded → send to onboarding (unless already there)
   if (!hasOnboarded && !allowOnboarding) {
     return <Navigate to="/onboarding" replace />;
   }
 
-  // Already onboarded → don't let them back to /onboarding
   if (hasOnboarded && allowOnboarding) {
     return <Navigate to="/dashboard" replace />;
   }

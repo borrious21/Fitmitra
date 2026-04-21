@@ -29,21 +29,21 @@ const ACTION_COLORS = {
 const fmt     = d => { try { return new Date(d).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"2-digit"}); } catch { return "—"; } };
 const fmtFull = d => { try { return new Date(d).toLocaleString("en-IN",{dateStyle:"short",timeStyle:"short"}); } catch { return "—"; } };
 
-// ─── Action badge ─────────────────────────────────────────────────────────────
+// Action badge 
 function ActionBadge({ action }) {
   const key   = Object.keys(ACTION_COLORS).find(k => action?.includes(k)) ?? "";
   const [bg, fg] = ACTION_COLORS[key] ?? ["rgba(255,92,26,.12)", "#FF5C1A"];
   return <span className={styles.actionBadge} style={{ background: bg, color: fg }}>{action}</span>;
 }
 
-// ─── Meal type chip ───────────────────────────────────────────────────────────
+//  Meal type chip 
 function MealTypeChip({ type }) {
   const colors = { breakfast: "#f59e0b", lunch: "#22c55e", dinner: "#3b82f6", snack: "#a855f7" };
   const color  = colors[type] ?? "#64748b";
   return <span className={styles.mealTypeChip} style={{ color, background: `${color}18`, borderColor: `${color}30` }}>{type}</span>;
 }
 
-// ─── Confirm ──────────────────────────────────────────────────────────────────
+// Confirm 
 function Confirm({ onOk, onCancel }) {
   return (
     <div className={styles.overlay} onClick={onCancel}>
@@ -60,7 +60,7 @@ function Confirm({ onOk, onCancel }) {
   );
 }
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
+// Main 
 export default function AdminLogs() {
   const [tab,       setTab]       = useState("workout");
   const [logs,      setLogs]      = useState([]);
@@ -99,7 +99,6 @@ export default function AdminLogs() {
     }
   }, [tab, offset, userId, adminId, startDate, endDate]);
 
-  // Reset on tab change
   useEffect(() => { setOffset(0); setLogs([]); setUserId(""); setAdminId(""); setStartDate(""); setEndDate(""); }, [tab]);
   useEffect(() => { load(); }, [load]);
 
@@ -123,7 +122,6 @@ export default function AdminLogs() {
   const cols  = COLS[tab];
   const { canDelete } = TABS[tab];
 
-  // ── Row renderers ─────────────────────────────────────────────────────────
   const renderRow = (log) => {
     const delCell = canDelete ? (
       <td className={styles.td}>
@@ -187,7 +185,6 @@ export default function AdminLogs() {
       </tr>
     );
 
-    // Admin logs
     let details = "—";
     try {
       const p = typeof log.payload === "string" ? JSON.parse(log.payload) : (log.payload ?? {});

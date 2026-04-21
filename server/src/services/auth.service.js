@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 import crypto from "crypto";
 
 import UserModel from "../models/user.model.js";
-// import ProfileModel from "../models/profile.model.js";
+import ProfileModel from "../models/profile.model.js";
 import AuthError from "../errors/auth.error.js";
 import {
   jwtSecret,
@@ -153,6 +153,7 @@ class AuthService {
         role: user.role,
         hasCompletedOnboarding: user.has_completed_onboarding ?? false,
         isVerified: user.is_verified ?? false,
+        avatar_url: user.avatar_url ?? null,
       },
     };
   }
@@ -376,9 +377,17 @@ class AuthService {
     };
   }
 
-  static async logout(userId) {
-    if (!userId) throw new AuthError("Unauthorized", 401);
-    await UserModel.clearRefreshToken(userId);
+  static async logout(refreshToken) {
+    // Best-effort: decode the refresh token to find the user and clear the stored token.
+    // If the token is missing or invalid we still return success (logout is idempotent).
+    if (refreshToken) {
+      try {
+        const decoded = jwt.verify(refreshToken, jwtRefreshSecret);
+        await UserModel.clearRefreshToken(decoded.id);
+      } catch {
+        // Token already expired or invalid — nothing to clear, that's fine
+      }
+    }
     return true;
   }
 

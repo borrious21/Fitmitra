@@ -4,10 +4,17 @@ import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../../../../context/AuthContext";
 import { getMyProfile } from "../../../../services/profileService";
 import { apiFetch } from "../../../../services/apiClient";
+import Navbar from "../../../../components/Navbar/Navbar";
+import { ArrowLeft, Sunrise, Sun, Moon, Apple, Search, Loader2, X, Check, Utensils } from "lucide-react";
 import styles from "./LogMeal.module.css";
 
 const MEAL_TYPES = ["breakfast", "lunch", "dinner", "snack"];
-const MEAL_EMOJI = { breakfast: "🌅", lunch: "☀️", dinner: "🌙", snack: "🍎" };
+const MEAL_ICONS = { 
+  breakfast: Sunrise, 
+  lunch:     Sun, 
+  dinner:    Moon, 
+  snack:     Apple 
+};
 
 const QUICK_MEALS = {
   veg: [
@@ -148,7 +155,7 @@ export default function LogMeal() {
           log_date: new Date().toISOString().split("T")[0],
         }),
       });
-      showAlert("success", `${form.meal_name} logged! 🍽️`);
+      showAlert("success", `${form.meal_name} logged!`);
       setForm(EMPTY);
     } catch (err) {
       showAlert("error", err?.message ?? "Failed to log meal.");
@@ -175,66 +182,61 @@ export default function LogMeal() {
 
   return (
     <div className={styles.wrapper}>
-      <nav className={styles.nav}>
-        <a className={styles.navLogo} href="/dashboard">
-          <span className={styles.navLogoIcon}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
-              <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
-              <line x1="6" y1="1" x2="6" y2="4"/>
-              <line x1="10" y1="1" x2="10" y2="4"/>
-              <line x1="14" y1="1" x2="14" y2="4"/>
-            </svg>
-          </span>
-          <span className={styles.navLogoWord}>FIT<span>MITRA</span></span>
-        </a>
-        <button className={styles.backBtn} onClick={() => navigate(-1)}>← Dashboard</button>
-        <a href="/profile" className={styles.navAvatarLink} title="Edit profile">
-          <NavAvatar avatarUrl={avatarUrl} initials={initials} />
-        </a>
-      </nav>
+      <Navbar />
 
-      <main className={styles.main}>
+      <main className={styles.mainContainer}>
         {alert && (
           <div className={alert.type === "success" ? styles.alertSuccess : styles.alertError}>
-            {alert.type === "success" ? "✅" : "❌"} {alert.msg}
+            {alert.type === "success" ? <Check size={18}/> : <X size={18}/>} {alert.msg}
           </div>
         )}
 
-        <div className={styles.header}>
-          <h1 className={styles.title}>🍽️ Log a Meal</h1>
-          <p className={styles.sub}>Track what you eat to hit your nutrition goals</p>
-        </div>
+        <section className={styles.headerSec}>
+          <button className={styles.backBtn} onClick={() => navigate("/dashboard")}>
+            <ArrowLeft size={18} />
+            <span>Dashboard</span>
+          </button>
+          <h1 className={styles.pageTitle}>Log a Meal</h1>
+          <p className={styles.pageSub}>Track what you eat to hit your nutrition goals</p>
+        </section>
 
         {/* Meal type tabs */}
         <div className={styles.mealTabs}>
-          {MEAL_TYPES.map(t => (
-            <button key={t} type="button"
-              className={`${styles.mealTab} ${form.meal_type === t ? styles.mealTabActive : ""}`}
-              onClick={() => set("meal_type", t)}>
-              {MEAL_EMOJI[t]} {t.charAt(0).toUpperCase() + t.slice(1)}
-            </button>
-          ))}
+          {MEAL_TYPES.map(t => {
+            const Icon = MEAL_ICONS[t];
+            return (
+              <button key={t} type="button"
+                className={`${styles.mealTab} ${form.meal_type === t ? styles.mealTabActive : ""}`}
+                onClick={() => set("meal_type", t)}>
+                <Icon size={16} style={{marginRight: '8px', verticalAlign: 'middle'}}/>
+                <span>{t.charAt(0).toUpperCase() + t.slice(1)}</span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Search — now hits database */}
         <div className={styles.searchBox}>
-          <span className={styles.searchIcon}>{searching ? "⏳" : "🔍"}</span>
+          <span className={styles.searchIcon}>{searching ? <Loader2 className="spin" size={20}/> : <Search size={20}/>}</span>
           <input
             className={styles.searchInput}
-            placeholder={searching ? "Searching database…" : "Search meals from database or quick list…"}
-            value={search}
-            onChange={e => handleSearch(e.target.value)}
+            placeholder={searching ? "Searching database…" : "Search or type meal name…"}
+            value={form.meal_name || search}
+            onChange={e => {
+              const val = e.target.value;
+              set("meal_name", val);
+              handleSearch(val);
+            }}
           />
-          {search && (
-            <button className={styles.clearBtn} onClick={() => { handleSearch(""); setDbResults([]); }}>✕</button>
+          {(search || form.meal_name) && (
+            <button className="btn-ghost" onClick={() => { handleSearch(""); set("meal_name", ""); setDbResults([]); }}><X size={18}/></button>
           )}
         </div>
 
         {filtered.length > 0 && (
           <div className={styles.suggestions}>
             {filtered.map(m => (
-              <button key={m.name} className={styles.suggestion} onClick={() => fillFromQuick(m)} type="button">
+              <button key={m.name} className="btn-outline" onClick={() => fillFromQuick(m)} type="button">
                 <div className={styles.suggLeft}>
                   <span className={styles.suggName}>{m.name}</span>
                   {m.fromDb && <span className={styles.suggDbBadge}>Database</span>}
@@ -249,16 +251,8 @@ export default function LogMeal() {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className={styles.form}>
-          <div className={styles.formGroup}>
-            <label className={styles.label}>Meal Name <span className={styles.req}>*</span></label>
-            <input
-              className={`${styles.input} ${errors.meal_name ? styles.inputErr : ""}`}
-              value={form.meal_name}
-              onChange={e => set("meal_name", e.target.value)}
-              placeholder="e.g. Dal rice + sabzi"
-            />
-            {errors.meal_name && <span className={styles.errMsg}>{errors.meal_name}</span>}
-          </div>
+        {/* Unified input error message */}
+        {errors.meal_name && <span className={styles.errMsg} style={{ display: 'block', textAlign: 'center', marginTop: '-0.5rem', marginBottom: '1rem' }}>{errors.meal_name}</span>}
 
           <div className={styles.macroGrid}>
             <div className={styles.formGroup}>
@@ -312,8 +306,8 @@ export default function LogMeal() {
             </div>
           )}
 
-          <button type="submit" className={styles.submitBtn} disabled={saving}>
-            {saving ? "Logging…" : "✓ Log Meal"}
+          <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: '1rem' }} disabled={saving}>
+            {saving ? "Logging…" : "Log Meal"}
           </button>
         </form>
       </main>

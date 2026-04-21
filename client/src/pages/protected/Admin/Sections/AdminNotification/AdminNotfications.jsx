@@ -25,7 +25,7 @@ const TARGET_META = {
 const EMPTY_SEND = { user_id: "", title: "", message: "", notification_type: "info" };
 const EMPTY_BC   = { title: "", message: "", notification_type: "system", target: "all" };
 
-// ─── Type badge ───────────────────────────────────────────────────────────────
+// Type badge 
 function TypeBadge({ type }) {
   const { color, icon } = TYPE_META[type] ?? { color: "#94a3b8", icon: "📌" };
   return (
@@ -35,7 +35,7 @@ function TypeBadge({ type }) {
   );
 }
 
-// ─── Broadcast confirm modal ──────────────────────────────────────────────────
+//  Broadcast confirm modal 
 function BroadcastConfirm({ form, onConfirm, onCancel, sending }) {
   const { color, icon } = TYPE_META[form.notification_type] ?? TYPE_META.system;
   const tgt = TARGET_META[form.target] ?? TARGET_META.all;
@@ -67,7 +67,7 @@ function BroadcastConfirm({ form, onConfirm, onCancel, sending }) {
   );
 }
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
+// Main 
 export default function AdminNotifications() {
   const [notifs,       setNotifs]       = useState([]);
   const [total,        setTotal]        = useState(0);
@@ -91,7 +91,7 @@ export default function AdminNotifications() {
 
   const flash = (msg, type = "success") => { setAlert({ msg, type }); setTimeout(() => setAlert(null), 4000); };
 
-  // ── User search by name/email ─────────────────────────────────────────────
+  // User search by name/email 
   const searchUsers = useCallback(async (q) => {
     if (!q.trim()) { setUserResults([]); return; }
     setSearching(true);
@@ -142,7 +142,7 @@ export default function AdminNotifications() {
 
   useEffect(() => { load(); }, [load]);
 
-  // ── Send to user ──────────────────────────────────────────────────────────
+  // Send to user 
   const setSendField = (k, v) => {
     setSendForm(f => ({ ...f, [k]: v }));
     setSendErrors(e => ({ ...e, [k]: "" }));
@@ -176,7 +176,7 @@ export default function AdminNotifications() {
     }
   };
 
-  // ── Broadcast ─────────────────────────────────────────────────────────────
+  //  Broadcast 
   const setBcField = (k, v) => {
     setBcForm(f => ({ ...f, [k]: v }));
     setBcErrors(e => ({ ...e, [k]: "" }));

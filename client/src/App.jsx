@@ -4,7 +4,6 @@ import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import AdminRoute from "./routes/AdminRoute";
 
-// Pages
 import Landing            from "./pages/public/Landing/Landing";
 import Signup             from "./pages/public/Signup/Signup";
 import Login              from "./pages/public/Login/Login";
@@ -20,7 +19,7 @@ import Dashboard          from "./pages/protected/Dashboard/Dashboard";
 import Profile            from "./pages/protected/profile/Profile";
 import Plans              from "./pages/protected/Dashboard/Plans/Plans";
 import LogMeal            from "./pages/protected/Dashboard/Logmeal/Logmeal";
-import Workout            from "./pages/protected/Dashboard/workout/workout";
+import Workout            from "./pages/protected/Dashboard/workout/Workout";
 import Progress           from "./pages/protected/Dashboard/Progress/Progress";
 import MealPlanner        from "./pages/protected/Dashboard/MealPlanner/Mealplanner";
 
@@ -40,7 +39,7 @@ function App() {
       <ThemeProvider>
         <Router>
           <Routes>
-            {/* ── Public ─────────────────────────────────────────────────── */}
+            {/* Public  */}
             <Route path="/"                      element={<Landing />} />
             <Route path="/signup"                element={<Signup />} />
             <Route path="/login"                 element={<Login />} />
@@ -51,8 +50,11 @@ function App() {
             <Route path="/404"                   element={<NotFound />} />
             <Route path="/check-email"           element={<CheckEmail />} />
             <Route path="/contact-support"       element={<ContactSupport />} />
+            <Route path="/test/onboarding"      element={<Onboarding />} />
+            <Route path="/test/dashboard"       element={<Dashboard />} />
 
-            {/* ── Admin — nested inside AdminLayout (sidebar persists) ──── */}
+
+            {/*  Admin  */}
             <Route
               path="/admin"
               element={
@@ -71,7 +73,7 @@ function App() {
               {<Route path="notifications" element={<AdminNotifications />} /> }
             </Route>
 
-            {/* ── Protected user routes ───────────────────────────────────── */}
+            {/*  Protected user routes  */}
             <Route path="/onboarding" element={<ProtectedRoute allowOnboarding={true}><Onboarding /></ProtectedRoute>} />
             <Route path="/dashboard"  element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/profile"    element={<ProtectedRoute><Profile /></ProtectedRoute>} />

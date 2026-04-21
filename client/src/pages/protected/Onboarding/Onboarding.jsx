@@ -2,9 +2,20 @@ import { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../../context/AuthContext';
 import { createProfile, checkProfile } from '../../../services/profileService';
-import { Activity, Heart, ChevronRight, ChevronLeft, Check } from 'lucide-react';
+import { 
+  Activity, 
+  Heart, 
+  ChevronRight, 
+  ChevronLeft, 
+  Check, 
+  Loader2, 
+  User, 
+  Target, 
+  Activity as ActivityIcon,
+  Flame,
+  Award
+} from 'lucide-react';
 import styles from './Onboarding.module.css';
-import ThemeToggle from '../../../components/ThemeToggle/ThemeToggle';
 
 const normalizeUser = (rawUser) => {
   if (!rawUser) return rawUser;
@@ -28,9 +39,7 @@ const Onboarding = () => {
     age: '',
     gender: '',
     height: '',
-    heightUnit: 'cm',
     weight: '',
-    weightUnit: 'kg',
     activityLevel: '',
     conditions: [],
     goal: '',
@@ -70,13 +79,13 @@ const Onboarding = () => {
           return;
         }
       } catch {
-        // Network error or 404 — fall through and show form
+        // Fall through
       }
       if (!cancelled) setIsChecking(false);
     })();
 
     return () => { cancelled = true; };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -99,135 +108,67 @@ const Onboarding = () => {
       }
       const withoutNone = current.filter(v => v !== 'none');
       if (current.includes(value)) {
-        return { ...prev, [name]: withoutNone.filter(v => v !== value) };
+        const next = withoutNone.filter(v => v !== value);
+        return { ...prev, [name]: next.length === 0 ? [] : next };
       }
       return { ...prev, [name]: [...withoutNone, value] };
     });
   };
 
-  const validatePart = (part) => {
-    switch (part) {
-      case 1:
-        return formData.age && formData.gender &&
-               formData.height && formData.weight && formData.activityLevel;
-      case 2:
-        return formData.goal && formData.diet;
-      case 3:
-        return true;
-      default:
-        return false;
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (currentPart < totalParts) {
+      setCurrentPart(prev => prev + 1);
+      return;
     }
-  };
 
-  const handleNext = () => {
-    if (validatePart(currentPart)) {
-      if (currentPart < totalParts) setCurrentPart(prev => prev + 1);
-      else handleSubmit();
-    } else {
-      alert('Please fill in all required fields before continuing.');
-    }
-  };
-
-  const handlePrev = () => {
-    if (currentPart > 1) setCurrentPart(prev => prev - 1);
-  };
-
-  const convertToProfileFormat = () => {
-    let heightCm = parseFloat(formData.height);
-    if (formData.heightUnit === 'ft') heightCm = heightCm * 30.48;
-
-    let weightKg = parseFloat(formData.weight);
-    if (formData.weightUnit === 'lbs') weightKg = weightKg * 0.453592;
-
-    const activityMap = {
-      sedentary: 'sedentary',
-      light:     'lightly_active',
-      moderate:  'moderately_active',
-      very:      'very_active',
-      athlete:   'very_active',
-    };
-
-    const goalMap = {
-      fatLoss:    'weight_loss',
-      muscleGain: 'muscle_gain',
-      maintain:   'maintain_fitness',
-      endurance:  'endurance',
-    };
-
-    const dietMap = {
-      vegetarian:  'veg',
-      vegan:       'veg',
-      nonVeg:      'non_veg',
-      eggetarian:  'eggetarian',
-    };
-
-    return {
-      age:            parseInt(formData.age),
-      gender:         formData.gender.toLowerCase(),
-      height_cm:      Math.round(heightCm),
-      weight_kg:      parseFloat(weightKg.toFixed(1)),
-      activity_level: activityMap[formData.activityLevel] || 'sedentary',
-      goal:           goalMap[formData.goal] || 'maintain_fitness',
-      diet_type:      dietMap[formData.diet] || 'veg',
-      medical_conditions: {
-        diabetes:            formData.conditions.includes('diabetes'),
-        high_blood_pressure: formData.conditions.includes('highBP'),
-        pcod:                false,
-        thyroid:             false,
-        injuries:            formData.conditions.includes('injuries'),
-      },
-    };
-  };
-
-  const syncUserAsOnboarded = () => {
-    const updatedUser = { ...normalizeUser(user), hasCompletedOnboarding: true };
-    if (typeof setUser === 'function') {
-      setUser(updatedUser);
-    } else if (typeof updateUserProfile === 'function') {
-      updateUserProfile({ hasCompletedOnboarding: true });
-    }
-    try {
-      const stored = localStorage.getItem('user');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        localStorage.setItem('user', JSON.stringify({
-          ...parsed,
-          hasCompletedOnboarding:     true,
-          has_completed_onboarding:   true,
-        }));
-      }
-    } catch { /* ignore */ }
-  };
-
-  const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
-      if (!token) {
-        alert('Your session has expired. Please log in again.');
-        navigate('/login', { replace: true });
-        return;
+      // Map UI diet labels → DB CHECK constraint values ('veg','non_veg','eggetarian')
+      const dietMap = {
+        'vegetarian':     'veg',
+        'non-vegetarian': 'non_veg',
+        'vegan':          'veg',
+        'eggetarian':     'eggetarian',
+      };
+
+      const profileData = {
+        age:            parseInt(formData.age, 10),
+        gender:         formData.gender,
+        height_cm:      parseFloat(formData.height),
+        weight_kg:      parseFloat(formData.weight),
+        activity_level: formData.activityLevel,
+        goal:           formData.goal,
+        diet_type:      dietMap[formData.diet] ?? 'veg',
+        medical_conditions: {
+          high_blood_pressure: formData.conditions.includes('hypertension'),
+          diabetes:            formData.conditions.includes('diabetes'),
+          thyroid:             formData.conditions.includes('hypothyroidism'),
+          injuries:            false,
+        },
+      };
+
+      await createProfile(profileData);
+
+      if (typeof updateUserProfile === 'function') {
+        updateUserProfile({ hasCompletedOnboarding: true });
+      } else if (typeof setUser === 'function') {
+        setUser({ ...user, hasCompletedOnboarding: true });
       }
 
-      await createProfile(convertToProfileFormat());
-      syncUserAsOnboarded();
-      navigate('/dashboard', { replace: true });
-
-    } catch (error) {
-      const status = error?.status ?? error?.response?.status;
-
-      if (status === 409) {
-        syncUserAsOnboarded();
+      setTimeout(() => {
         navigate('/dashboard', { replace: true });
-        return;
-      }
+      }, 100);
 
-      if (status === 401) {
-        alert('Your session has expired. Please log in again.');
-        navigate('/login', { replace: true });
-      } else {
-        const msg = error?.message || error?.response?.data?.message || 'Unknown error';
-        alert(`Failed to complete onboarding: ${msg}. Please try again.`);
+    } catch (err) {
+      console.error('Onboarding submission error:', err);
+      // Try to surface the actual server message
+      if (err?.response) {
+        err.response.json()
+          .then(body => console.error('Server error body:', body))
+          .catch(() => {});
       }
+      alert(err.message || 'Something went wrong. Please check your data.');
     } finally {
       setIsSubmitting(false);
     }
@@ -235,82 +176,69 @@ const Onboarding = () => {
 
   if (isChecking) {
     return (
-      <div className={styles.container}>
-        <div className={styles.checkingScreen}>
-          <Activity className={styles.checkingSpinner} />
-          <p className={styles.checkingText}>Setting up your experience...</p>
-        </div>
+      <div className={styles.checkingScreen}>
+        <Loader2 className={styles.checkingSpinner} size={32} />
+        <p className={styles.checkingText}>Initializing your experience...</p>
       </div>
     );
   }
 
-  return (
-    <div className={styles.container}>
+  const steps = [
+    { title: 'Personal Info', desc: 'Basics to start' },
+    { title: 'Fitness Goals', desc: 'Your target' },
+    { title: 'Final Sync', desc: 'Health & diet' },
+  ];
 
-      {/* Left Panel */}
-      <div className={styles.leftPanel}>
-        <div className={styles.imageOverlay}></div>
-        <div className={styles.leftContent}>
-          <div className={styles.brandLogo}>
-            <Activity className={styles.brandIcon} />
-            <span className={styles.brandName}>FitMitra</span>
-          </div>
-          <h2 className={styles.leftTitle}>
-            Personalize Your{' '}
-            <span className={styles.leftTitleAccent}>Journey</span>
-          </h2>
-          <p className={styles.leftDescription}>
-            We'll create a custom fitness plan based on your unique profile, goals, and lifestyle.
+  const heroContent = [
+    { title: <>Start your<span>New Chapter.</span></>, desc: "To build the most effective plan for you, we need to know the basics. Your data remains completely private." },
+    { title: <>Define your<span>Ambition.</span></>, desc: "Knowing your primary goal helps us tailor the specific intensity and volume of your training cycles." },
+    { title: <>Finalizing your<span>Vision.</span></>, desc: "Your health conditions and diet play a critical role in how we calculate your nutrition targets." },
+  ];
+
+  return (
+    <div className={styles.page}>
+      <video autoPlay loop muted playsInline className={styles.bgVideo} src="/videos/auth_bg.mp4" />
+      <div className={styles.ambientOrb1} />
+      <div className={styles.ambientOrb2} />
+
+      <div className={styles.pageInner}>
+        {/* LEFT COLUMN: HERO & STEPS */}
+        <div className={styles.heroCol}>
+          <div className={styles.heroTag}>Setup Phase</div>
+          <h1 className={styles.heroTitle}>
+            {heroContent[currentPart - 1].title}
+          </h1>
+          <p className={styles.heroDesc}>
+            {heroContent[currentPart - 1].desc}
           </p>
 
           <div className={styles.stepsList}>
-            {[
-              { num: 1, title: 'Your Profile',      desc: 'Basic information & physical stats' },
-              { num: 2, title: 'Goals & Nutrition',  desc: 'Fitness goals & dietary preferences' },
-              { num: 3, title: 'Health & Lifestyle', desc: 'Health conditions (optional)' },
-            ].map(({ num, title, desc }) => (
-              <div key={num} className={[
-                styles.stepItem,
-                currentPart >= num ? styles.stepActive   : '',
-                currentPart >  num ? styles.stepComplete : '',
-              ].join(' ')}>
-                <div className={styles.stepNumber}>
-                  {currentPart > num ? <Check className={styles.checkIcon} /> : num}
+            {steps.map((s, i) => (
+              <div
+                key={i}
+                className={`${styles.stepItem} ${
+                  currentPart === i + 1
+                    ? styles.stepActive
+                    : currentPart > i + 1
+                      ? styles.stepComplete
+                      : ''
+                }`}
+              >
+                <div className={styles.stepBadge}>
+                  {currentPart > i + 1 ? <Check size={14} /> : i + 1}
                 </div>
-                <div className={styles.stepInfo}>
-                  <div className={styles.stepTitle}>{title}</div>
-                  <div className={styles.stepDesc}>{desc}</div>
+                <div>
+                  <div className={styles.stepLabel}>{s.title}</div>
+                  <div className={styles.radioDesc}>{s.desc}</div>
                 </div>
               </div>
             ))}
           </div>
         </div>
-      </div>
 
-      {/* Right Panel */}
-      <div className={styles.rightPanel}>
-
-        {/* ✅ ThemeToggle in the correct place */}
-        <div className={styles.themeToggleWrap}>
-          <ThemeToggle />
-        </div>
-
-        <div className={styles.wrapper}>
+        {/* RIGHT COLUMN: FORM CARD */}
+        <main className={styles.main}>
           <div className={styles.card}>
-
-            <div className={styles.header}>
-              <div className={styles.logoWrapper}>
-                <Activity className={styles.logoIcon} />
-                <Heart className={styles.logoIconSecondary} />
-              </div>
-              <h1 className={styles.title}>
-                {currentPart === 1 && "Let's Get to Know You"}
-                {currentPart === 2 && 'Your Fitness Goals'}
-                {currentPart === 3 && 'Health & Wellness'}
-              </h1>
-              <p className={styles.subtitle}>Part {currentPart} of {totalParts}</p>
-            </div>
-
             <div className={styles.progressContainer}>
               <div className={styles.progressBar}>
                 <div
@@ -318,232 +246,221 @@ const Onboarding = () => {
                   style={{ width: `${(currentPart / totalParts) * 100}%` }}
                 />
               </div>
-              <p className={styles.progressText}>
-                {Math.round((currentPart / totalParts) * 100)}% Complete
-              </p>
+              <div className={styles.progressText}>Step {currentPart} of {totalParts}</div>
             </div>
 
-            <form onSubmit={(e) => e.preventDefault()} className={styles.form}>
-
-              {/* ── Part 1: Physical Stats ──────────────────────────────── */}
+            <form onSubmit={handleSubmit} className={styles.formSection}>
               {currentPart === 1 && (
-                <div className={styles.formSection}>
-                  <div className={styles.twoCol}>
-                    <div className={styles.formGroup}>
-                      <label className={styles.label}>Age<span className={styles.required}>*</span></label>
-                      <input
-                        type="number" className={styles.input} name="age"
-                        value={formData.age} onChange={handleInputChange}
-                        min="13" max="80" placeholder="Your age (13–80)" required
-                      />
-                    </div>
-                    <div className={styles.formGroup}>
-                      <label className={styles.label}>Gender<span className={styles.required}>*</span></label>
-                      <select className={styles.input} name="gender" value={formData.gender} onChange={handleInputChange} required>
-                        <option value="">Select gender</option>
-                        <option value="male">Male</option>
-                        <option value="female">Female</option>
-                        <option value="other">Other</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className={styles.twoCol}>
-                    <div className={styles.formGroup}>
-                      <label className={styles.label}>Height<span className={styles.required}>*</span></label>
-                      <div className={styles.inputGroup}>
-                        <input
-                          type="number" className={styles.inputWithUnit} name="height"
-                          value={formData.height} onChange={handleInputChange}
-                          min="1" step="0.1" placeholder="Height" required
-                        />
-                        <select className={styles.unitSelector} name="heightUnit" value={formData.heightUnit} onChange={handleInputChange}>
-                          <option value="cm">cm</option>
-                          <option value="ft">ft</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div className={styles.formGroup}>
-                      <label className={styles.label}>Weight<span className={styles.required}>*</span></label>
-                      <div className={styles.inputGroup}>
-                        <input
-                          type="number" className={styles.inputWithUnit} name="weight"
-                          value={formData.weight} onChange={handleInputChange}
-                          min="1" step="0.1" placeholder="Weight" required
-                        />
-                        <select className={styles.unitSelector} name="weightUnit" value={formData.weightUnit} onChange={handleInputChange}>
-                          <option value="kg">kg</option>
-                          <option value="lbs">lbs</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className={styles.formGroup}>
-                    <label className={styles.label}>Activity Level<span className={styles.required}>*</span></label>
-                    <div className={styles.radioGrid}>
-                      {[
-                        { value: 'sedentary', title: 'Sedentary',   desc: 'Little or no exercise' },
-                        { value: 'light',     title: 'Light',       desc: '1–3 days/week' },
-                        { value: 'moderate',  title: 'Moderate',    desc: '3–5 days/week' },
-                        { value: 'very',      title: 'Very Active', desc: '6–7 days/week' },
-                      ].map(a => (
-                        <label
-                          key={a.value}
-                          className={`${styles.radioCard} ${formData.activityLevel === a.value ? styles.selected : ''}`}
-                        >
-                          <input
-                            type="radio" name="activityLevel" value={a.value}
-                            checked={formData.activityLevel === a.value}
-                            onChange={() => handleRadioChange('activityLevel', a.value)}
-                            className={styles.radioInput}
-                          />
-                          <div className={styles.radioIndicator} />
-                          <div className={styles.radioContent}>
-                            <div className={styles.radioTitle}>{a.title}</div>
-                            <div className={styles.radioDesc}>{a.desc}</div>
-                          </div>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+                <PartOne
+                  formData={formData}
+                  onChange={handleInputChange}
+                  onRadioChange={handleRadioChange}
+                />
               )}
-
-              {/* ── Part 2: Goals & Diet ────────────────────────────────── */}
               {currentPart === 2 && (
-                <div className={styles.formSection}>
-                  <div className={styles.formGroup}>
-                    <label className={styles.label}>Primary Fitness Goal<span className={styles.required}>*</span></label>
-                    <div className={styles.radioGrid}>
-                      {[
-                        { value: 'fatLoss',    title: 'Weight Loss',      desc: 'Reduce body fat percentage' },
-                        { value: 'muscleGain', title: 'Muscle Gain',      desc: 'Build lean muscle mass' },
-                        { value: 'maintain',   title: 'Maintain Fitness', desc: 'Stay healthy and fit' },
-                        { value: 'endurance',  title: 'Endurance',        desc: 'Improve stamina' },
-                      ].map(g => (
-                        <label
-                          key={g.value}
-                          className={`${styles.radioCard} ${formData.goal === g.value ? styles.selected : ''}`}
-                        >
-                          <input
-                            type="radio" name="goal" value={g.value}
-                            checked={formData.goal === g.value}
-                            onChange={() => handleRadioChange('goal', g.value)}
-                            className={styles.radioInput}
-                          />
-                          <div className={styles.radioIndicator} />
-                          <div className={styles.radioContent}>
-                            <div className={styles.radioTitle}>{g.title}</div>
-                            <div className={styles.radioDesc}>{g.desc}</div>
-                          </div>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className={styles.formGroup}>
-                    <label className={styles.label}>Dietary Preference<span className={styles.required}>*</span></label>
-                    <div className={styles.radioGrid}>
-                      {[
-                        { value: 'vegetarian', title: 'Vegetarian',     desc: 'No meat or fish' },
-                        { value: 'nonVeg',     title: 'Non-Vegetarian', desc: 'Includes meat & fish' },
-                        { value: 'eggetarian', title: 'Eggetarian',     desc: 'Eggs but no meat' },
-                      ].map(d => (
-                        <label
-                          key={d.value}
-                          className={`${styles.radioCard} ${formData.diet === d.value ? styles.selected : ''}`}
-                        >
-                          <input
-                            type="radio" name="diet" value={d.value}
-                            checked={formData.diet === d.value}
-                            onChange={() => handleRadioChange('diet', d.value)}
-                            className={styles.radioInput}
-                          />
-                          <div className={styles.radioIndicator} />
-                          <div className={styles.radioContent}>
-                            <div className={styles.radioTitle}>{d.title}</div>
-                            <div className={styles.radioDesc}>{d.desc}</div>
-                          </div>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+                <PartTwo
+                  formData={formData}
+                  onRadioChange={handleRadioChange}
+                />
               )}
-
-              {/* ── Part 3: Health Conditions ───────────────────────────── */}
               {currentPart === 3 && (
-                <div className={styles.formSection}>
-                  <div className={styles.formGroup}>
-                    <label className={styles.label}>Health Conditions (Optional)</label>
-                    <div className={styles.checkboxGrid}>
-                      {[
-                        { value: 'highBP',   title: 'High Blood Pressure' },
-                        { value: 'diabetes', title: 'Diabetes' },
-                        { value: 'injuries', title: 'Injuries' },
-                        { value: 'none',     title: 'None' },
-                      ].map(c => (
-                        <label
-                          key={c.value}
-                          className={`${styles.checkboxCard} ${formData.conditions.includes(c.value) ? styles.selected : ''}`}
-                        >
-                          <input
-                            type="checkbox" name="conditions" value={c.value}
-                            checked={formData.conditions.includes(c.value)}
-                            onChange={() => handleCheckboxChange('conditions', c.value)}
-                            className={styles.checkboxInput}
-                          />
-                          <div className={styles.checkboxIndicator} />
-                          <div className={styles.checkboxContent}>
-                            <div className={styles.checkboxTitle}>{c.title}</div>
-                          </div>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className={styles.infoBox}>
-                    <span className={styles.infoBoxDot} />
-                    <p className={styles.infoText}>
-                      Click "Create My Profile" to generate your personalized fitness plan!
-                    </p>
-                  </div>
-                </div>
+                <PartThree
+                  formData={formData}
+                  onRadioChange={handleRadioChange}
+                  onCheckboxChange={handleCheckboxChange}
+                />
               )}
 
-              {/* ── Navigation Buttons ──────────────────────────────────── */}
               <div className={styles.buttonGroup}>
                 {currentPart > 1 && (
                   <button
-                    type="button" className={styles.buttonSecondary}
-                    onClick={handlePrev} disabled={isSubmitting}
+                    type="button"
+                    onClick={() => setCurrentPart(prev => prev - 1)}
+                    className={styles.buttonSecondary}
+                    disabled={isSubmitting}
                   >
-                    <ChevronLeft className={styles.buttonIcon} />
-                    Previous
+                    <ChevronLeft size={18} /> Back
                   </button>
                 )}
                 <button
-                  type="button" className={styles.buttonPrimary}
-                  onClick={handleNext} disabled={isSubmitting}
-                  style={currentPart === 1 ? { marginLeft: 'auto' } : {}}
+                  type="submit"
+                  className={styles.buttonPrimary}
+                  disabled={isSubmitting}
                 >
-                  {isSubmitting ? (
-                    <><Activity className={styles.loadingSpinner} /> Creating Profile...</>
-                  ) : currentPart === totalParts ? (
-                    <><Check className={styles.buttonIcon} /> Create My Profile</>
-                  ) : (
-                    <>Continue <ChevronRight className={styles.buttonIcon} /></>
-                  )}
+                  {isSubmitting
+                    ? <Loader2 className={styles.loadingSpinner} />
+                    : currentPart === totalParts ? 'Finish Setup' : 'Next Step'
+                  }
+                  {!isSubmitting && <ChevronRight size={18} />}
                 </button>
               </div>
-
             </form>
           </div>
-        </div>
+        </main>
       </div>
     </div>
   );
 };
+
+// ── Step 1: Personal Info ────────────────────────────────────────────────────
+const PartOne = ({ formData, onChange, onRadioChange }) => (
+  <div className={styles.formSection}>
+    <div className={styles.formGroup}>
+      <label className={styles.label}>Biological Age</label>
+      <input
+        type="number"
+        name="age"
+        value={formData.age}
+        onChange={onChange}
+        placeholder="e.g. 24"
+        className={styles.input}
+        required
+      />
+    </div>
+
+    <div className={styles.formGroup}>
+      <label className={styles.label}>Biological Gender</label>
+      <div className={styles.radioGrid}>
+        {['male', 'female', 'other'].map(g => (
+          <div
+            key={g}
+            className={`${styles.radioCard} ${formData.gender === g ? styles.selected : ''}`}
+            onClick={() => onRadioChange('gender', g)}
+          >
+            <div className={styles.radioIndicator} />
+            <span className={styles.radioTitle}>
+              {g.charAt(0).toUpperCase() + g.slice(1)}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <div className={styles.formGroup}>
+      <label className={styles.label}>Physical Height (cm)</label>
+      <input
+        type="number"
+        name="height"
+        value={formData.height}
+        onChange={onChange}
+        placeholder="e.g. 175"
+        className={styles.input}
+        required
+      />
+    </div>
+
+    <div className={styles.formGroup}>
+      <label className={styles.label}>Current Weight (kg)</label>
+      <input
+        type="number"
+        name="weight"
+        value={formData.weight}
+        onChange={onChange}
+        placeholder="e.g. 70"
+        className={styles.input}
+        required
+      />
+    </div>
+  </div>
+);
+
+// ── Step 2: Fitness Goals ────────────────────────────────────────────────────
+const PartTwo = ({ formData, onRadioChange }) => (
+  <div className={styles.formSection}>
+    <div className={styles.formGroup}>
+      <label className={styles.label}>Activity Intensity</label>
+      <div className={styles.radioGrid} style={{ gridTemplateColumns: '1fr' }}>
+        {[
+          { v: 'sedentary',        t: 'Sedentary',         d: 'Office worker, little to no exercise' },
+          { v: 'lightly_active',   t: 'Lightly Active',    d: 'Light exercise 1–3 days/week' },
+          { v: 'moderately_active',t: 'Moderately Active', d: 'Moderate exercise 3–5 days/week' },
+          { v: 'very_active',      t: 'Very Active',       d: 'Hard exercise 6–7 days/week' },
+        ].map(item => (
+          <div
+            key={item.v}
+            className={`${styles.radioCard} ${formData.activityLevel === item.v ? styles.selected : ''}`}
+            onClick={() => onRadioChange('activityLevel', item.v)}
+          >
+            <div className={styles.radioIndicator} />
+            <div className={styles.radioContent}>
+              <div className={styles.radioTitle}>{item.t}</div>
+              <div className={styles.radioDesc}>{item.d}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <div className={styles.formGroup}>
+      <label className={styles.label}>Primary Fitness Goal</label>
+      <div className={styles.radioGrid} style={{ gridTemplateColumns: '1fr' }}>
+        {[
+          { v: 'weight_loss',  t: 'Weight Loss',  d: 'Fat burn and calorie deficit' },
+          { v: 'muscle_gain',  t: 'Muscle Gain',  d: 'Hypertrophy and mass building' },
+          { v: 'maintenance',  t: 'Maintenance',  d: 'Stay at current weight and tone' },
+        ].map(item => (
+          <div
+            key={item.v}
+            className={`${styles.radioCard} ${formData.goal === item.v ? styles.selected : ''}`}
+            onClick={() => onRadioChange('goal', item.v)}
+          >
+            <div className={styles.radioIndicator} />
+            <div className={styles.radioContent}>
+              <div className={styles.radioTitle}>{item.t}</div>
+              <div className={styles.radioDesc}>{item.d}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
+// ── Step 3: Health & Diet ────────────────────────────────────────────────────
+const PartThree = ({ formData, onRadioChange, onCheckboxChange }) => (
+  <div className={styles.formSection}>
+    <div className={styles.formGroup}>
+      <label className={styles.label}>Dietary Preference</label>
+      <div className={styles.checkboxGrid}>
+        {[
+          { v: 'vegetarian',     t: 'Vegetarian' },
+          { v: 'non-vegetarian', t: 'Non-Vegetarian' },
+          { v: 'vegan',          t: 'Vegan' },
+          { v: 'eggetarian',     t: 'Eggetarian' },
+        ].map(d => (
+          <div
+            key={d.v}
+            className={`${styles.checkboxCard} ${formData.diet === d.v ? styles.selected : ''}`}
+            onClick={() => onRadioChange('diet', d.v)}
+          >
+            <div className={styles.checkboxIndicator} />
+            <span className={styles.checkboxTitle}>{d.t}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <div className={styles.formGroup}>
+      <label className={styles.label}>Health Conditions (Optional)</label>
+      <div className={styles.checkboxGrid}>
+        {[
+          { v: 'diabetes',       t: 'Diabetes' },
+          { v: 'hypertension',   t: 'Hypertension' },
+          { v: 'hypothyroidism', t: 'Hypothyroid' },
+          { v: 'none',           t: 'No Conditions' },
+        ].map(c => (
+          <div
+            key={c.v}
+            className={`${styles.checkboxCard} ${formData.conditions.includes(c.v) ? styles.selected : ''}`}
+            onClick={() => onCheckboxChange('conditions', c.v)}
+          >
+            <div className={styles.checkboxIndicator} />
+            <span className={styles.checkboxTitle}>{c.t}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
 
 export default Onboarding;

@@ -1,12 +1,22 @@
-// src/pages/protected/Dashboard/MealPlanner/Mealplanner.jsx
 import { useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../../../../context/AuthContext";
 import { apiFetch } from "../../../../services/apiClient";
 import { getMyProfile } from "../../../../services/profileService";
+import Navbar from "../../../../components/Navbar/Navbar";
+import { 
+  Loader2, ArrowLeft, RefreshCw, Plus, Utensils, 
+  Sunrise, Sun, Moon, Apple, AlertCircle, Check, 
+  CheckCircle2, XCircle, Sparkles, Lightbulb, Droplets, Calendar 
+} from "lucide-react";
 import styles from "./Mealplanner.module.css";
 
-const MEAL_EMOJIS = { breakfast: "🌅", lunch: "☀️", dinner: "🌙", snack: "🍎" };
+const MEAL_ICONS = { 
+  breakfast: Sunrise, 
+  lunch:     Sun, 
+  dinner:    Moon, 
+  snack:     Apple 
+};
 const MEAL_ORDER  = ["breakfast", "lunch", "dinner", "snack"];
 
 const GOAL_LABELS = {
@@ -42,6 +52,10 @@ function CalSummary({ calories }) {
 
 function MealCard({ mealType, meal, onLog, logState }) {
   if (!meal) return null;
+
+  // ✅ Fix: assign to a capitalized variable so JSX treats it as a component
+  const MealIcon = MEAL_ICONS[mealType] ?? Utensils;
+
   const totalProtein = meal.items?.reduce((s, i) => s + (Number(i.protein_g) || 0), 0) || 0;
   const totalCarbs   = meal.items?.reduce((s, i) => s + (Number(i.carbs_g)   || 0), 0) || 0;
   const totalFats    = meal.items?.reduce((s, i) => s + (Number(i.fats_g)    || 0), 0) || 0;
@@ -55,7 +69,9 @@ function MealCard({ mealType, meal, onLog, logState }) {
     <div className={styles.mealCard}>
       <div className={styles.mealCardHeader}>
         <div className={styles.mealCardTitle}>
-          <span className={styles.mealEmoji}>{MEAL_EMOJIS[mealType] || "🍽️"}</span>
+          <span className={styles.mealEmoji}>
+            <MealIcon size={20} />
+          </span>
           <span className={styles.mealName}>{mealType}</span>
         </div>
         <span className={styles.mealCal}>{meal.calories} kcal</span>
@@ -94,11 +110,11 @@ function MealCard({ mealType, meal, onLog, logState }) {
       </div>
 
       {/* Log button states */}
-      {isLogged && <div className={styles.loggedBadge}>✓ Logged to diary</div>}
-      {isDupe   && <div className={styles.loggedBadge} style={{ color:"#facc15", borderColor:"rgba(250,204,21,.3)" }}>✓ Already logged today</div>}
+      {isLogged && <div className={styles.loggedBadge}><CheckCircle2 size={14} style={{marginRight:'4px'}}/> Logged to diary</div>}
+      {isDupe   && <div className={styles.loggedBadge} style={{ color:"#facc15", borderColor:"rgba(250,204,21,.3)" }}><CheckCircle2 size={14} style={{marginRight:'4px'}}/> Already logged today</div>}
       {isError  && (
         <button className={styles.logMealBtn} style={{ borderColor:"rgba(239,68,68,.4)", color:"#f87171" }} onClick={() => onLog(mealType, meal)}>
-          ⚠️ Failed — Retry
+          <AlertCircle size={14} style={{marginRight:'4px'}}/> Failed — Retry
         </button>
       )}
       {!isLogged && !isDupe && !isError && (
@@ -215,7 +231,7 @@ export default function MealPlanner() {
       const result = unwrap(res);
       if (result?.plan?.meals) {
         setPlanData(result);
-        showAlert("success", "🍽️ Meal plan ready!");
+        showAlert("success", "Meal plan ready!");
         const histRes  = await apiFetch("/meal-planner/history?limit=5").catch(() => null);
         const histData = histRes?.data ?? histRes;
         if (Array.isArray(histData)) setHistory(histData);
@@ -261,7 +277,7 @@ export default function MealPlanner() {
       });
 
       setLogStates(prev => ({ ...prev, [mealType]: "done" }));
-      showAlert("success", `✅ ${mealType.charAt(0).toUpperCase() + mealType.slice(1)} logged!`);
+      showAlert("success", `${mealType.charAt(0).toUpperCase() + mealType.slice(1)} logged!`);
     } catch (e) {
       const msg = (e?.message ?? "").toLowerCase();
 
@@ -288,59 +304,47 @@ export default function MealPlanner() {
 
   return (
     <div className={styles.wrapper}>
-      <nav className={styles.nav}>
-        <a className={styles.navLogo} href="/dashboard">
-          <span className={styles.navLogoIcon}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
-              <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
-              <line x1="6" y1="1" x2="6" y2="4"/>
-              <line x1="10" y1="1" x2="10" y2="4"/>
-              <line x1="14" y1="1" x2="14" y2="4"/>
-            </svg>
-          </span>
-          <span className={styles.navLogoWord}>FIT<span>MITRA</span></span>
-        </a>
-        <button className={styles.backBtn} onClick={() => navigate("/dashboard")}>← Dashboard</button>
-        <a href="/profile" className={styles.navAvatarLink}>
-          <NavAvatar avatarUrl={avatarUrl} initials={initials} />
-        </a>
-      </nav>
+      <Navbar />
 
-      <main className={styles.main}>
+      <main className={styles.mainContainer}>
         {alert && (
           <div className={alert.type === "success" ? styles.alertSuccess : styles.alertError}>
-            {alert.msg}
+            {alert.type === "success" ? <CheckCircle2 size={18}/> : <AlertCircle size={18}/>}
+            <span style={{marginLeft: '8px'}}>{alert.msg}</span>
           </div>
         )}
 
-        <div className={styles.pageHeader}>
-          <h1 className={styles.pageTitle}>🍽️ AI <span>Meal Planner</span></h1>
+        <section className={styles.headerSec}>
+          <button className={styles.backBtn} onClick={() => navigate("/dashboard")}>
+            <ArrowLeft size={18} />
+            <span>Dashboard</span>
+          </button>
+          <h1 className={styles.pageTitle}>Meal Planner</h1>
           <p className={styles.pageSub}>
-            Personalized Nepali meal plans · Groq AI · Medical safety filters
+            Personalized meal plans tailored to your goals
             {planData?.profile?.goal && ` · ${GOAL_LABELS[planData.profile.goal] ?? planData.profile.goal}`}
           </p>
-        </div>
+        </section>
 
         {profileError && (
           <div className={styles.profileMissing}>
-            <div className={styles.profileMissingTitle}>⚠️ Profile Incomplete</div>
+            <div className={styles.profileMissingTitle}><AlertCircle size={20}/> Profile Incomplete</div>
             <div className={styles.profileMissingSub}>Complete your profile to generate a meal plan.</div>
-            <button className={styles.profileBtn} onClick={() => navigate("/profile")}>Complete Profile →</button>
+            <button className={styles.profileBtn} onClick={() => navigate("/profile")}>Complete Profile <ArrowLeft size={16} style={{transform: 'rotate(180deg)'}}/></button>
           </div>
         )}
 
         {!profileError && (
           <div className={styles.generateSection}>
-            <button className={styles.generateBtn} onClick={handleGenerate} disabled={loading || fetching}>
+            <button className="btn-primary" onClick={handleGenerate} disabled={loading || fetching}>
               {loading
-                ? <><span style={{ display:"inline-block", animation:"spin 1s linear infinite" }}>⚙️</span> Generating…</>
-                : hasPlan ? "🔄 Regenerate Today's Plan" : "✨ Generate My Meal Plan"
+                ? <><Loader2 size={18} className={styles.spin} /> Generating…</>
+                : hasPlan ? <><RefreshCw size={18} /> Regenerate Plan</> : <><Sparkles size={18} /> Generate My Meal Plan</>
               }
             </button>
             {hasPlan && (
-              <button className={styles.regenerateBtn} onClick={() => navigate("/log-meal")} disabled={loading}>
-                + Log Custom
+              <button className="btn-secondary" onClick={() => navigate("/log-meal")} disabled={loading}>
+                <Plus size={18} /> Log Custom
               </button>
             )}
           </div>
@@ -354,8 +358,8 @@ export default function MealPlanner() {
 
             {planData.safety_rules?.length > 0 && (
               <div className={styles.safetyRow}>
-                <span style={{ fontSize:12, color:"#64748b", fontWeight:600 }}>⚠️ Avoiding:</span>
-                {planData.safety_rules.map(r => <span key={r} className={styles.safetyChip}>❌ {r}</span>)}
+                <span style={{ fontSize:12, color:"#64748b", fontWeight:600 }}><AlertCircle size={14} style={{verticalAlign:'middle', marginRight:'4px'}}/> Avoiding:</span>
+                {planData.safety_rules.map(r => <span key={r} className={styles.safetyChip}><XCircle size={12}/> {r}</span>)}
               </div>
             )}
 
@@ -387,14 +391,14 @@ export default function MealPlanner() {
 
             {planData.plan.tips?.length > 0 && (
               <div className={styles.tipsCard}>
-                <div className={styles.tipsTitle}>💡 Coach Tips</div>
+                <div className={styles.tipsTitle}><Lightbulb size={18} style={{marginRight:'8px'}}/> Nutrition Tips</div>
                 <div className={styles.tipsList}>
                   {planData.plan.tips.map((tip, i) => (
                     <div key={i} className={styles.tipItem}><span className={styles.tipDot} />{tip}</div>
                   ))}
                 </div>
                 {planData.plan.water_recommendation_liters && (
-                  <div className={styles.waterTip}>💧 Drink {planData.plan.water_recommendation_liters}L of water today</div>
+                  <div className={styles.waterTip}><Droplets size={16} style={{marginRight:'8px'}}/> Drink {planData.plan.water_recommendation_liters}L of water today</div>
                 )}
               </div>
             )}
@@ -403,15 +407,15 @@ export default function MealPlanner() {
 
         {!fetching && !loading && !hasPlan && !profileError && (
           <div className={styles.emptyState}>
-            <span className={styles.emptyIcon}>🍽️</span>
+            <span className={styles.emptyIcon}><Utensils size={48}/></span>
             <div className={styles.emptyTitle}>No meal plan yet</div>
-            <div className={styles.emptySub}>Click "Generate My Meal Plan" to get a personalized Nepali meal plan.</div>
+            <div className={styles.emptySub}>Click "Generate My Meal Plan" to get a personalized plan tailored to your body.</div>
           </div>
         )}
 
         {history.length > 0 && (
           <div className={styles.historySection}>
-            <div className={styles.historyTitle}>📅 Past Plans</div>
+            <div className={styles.historyTitle}><Calendar size={18} style={{marginRight:'8px'}}/> Past Plans</div>
             {history.map(row => <HistoryRow key={row.plan_date} row={row} />)}
           </div>
         )}

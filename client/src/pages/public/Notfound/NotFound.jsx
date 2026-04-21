@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import styles from "./NotFound.module.css";
+import ThemeToggle from "../../../components/ThemeToggle/ThemeToggle";
 
 const IcoPulse = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -26,20 +27,20 @@ const IcoZap = () => (
 const NotFound = () => {
   return (
     <div className={styles.page}>
-
       <div className={styles.glow1} />
       <div className={styles.glow2} />
       <div className={styles.grid} />
 
+      {/* NAV */}
       <div className={styles.nav}>
         <Link to="/" className={styles.brand}>
           <span className={styles.brandIcon}><IcoPulse /></span>
           <span className={styles.brandName}>FitMitra</span>
         </Link>
+        <ThemeToggle />
       </div>
 
       <div className={styles.inner}>
-
         <div className={styles.heroNum}>
           <span className={styles.num4a}>4</span>
           <span className={styles.numIcon}><IcoZap /></span>
@@ -56,25 +57,21 @@ const NotFound = () => {
               moved, deleted, or you may have taken a wrong turn.
             </p>
           </div>
-
           <div className={styles.actions}>
             <Link to="/dashboard" className={styles.btnPrimary}>
               <IcoHome /> Go to Dashboard
             </Link>
-            <button
-              onClick={() => window.history.back()}
-              className={styles.btnSecondary}
-            >
+            <button onClick={() => window.history.back()} className={styles.btnSecondary}>
               <IcoArrowLeft /> Go Back
             </button>
           </div>
         </div>
 
         <p className={styles.help}>
-            Think this is a mistake?{" "}
-            <Link to="/contact-support" className={styles.helpLink}>
+          Think this is a mistake?{" "}
+          <Link to="/contact-support" className={styles.helpLink}>
             Contact support
-            </Link>
+          </Link>
         </p>
       </div>
     </div>

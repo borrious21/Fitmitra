@@ -1,67 +1,27 @@
 import { useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { verifyResetOtpService, resetPasswordService } from "../../../services/authService";
+import { 
+  Loader2, 
+  CheckCircle, 
+  AlertCircle, 
+  Lock, 
+  Eye, 
+  EyeOff, 
+  ShieldCheck, 
+  ArrowLeft, 
+  ArrowRight,
+  Info
+} from "lucide-react";
 import OtpInput from "../../../components/Otp/OtpInput";
 import styles from "./ResetPassword.module.css";
 
-const IcoPulse = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-  </svg>
-);
-const IcoArrowLeft = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" />
-  </svg>
-);
-const IcoArrowRight = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
-  </svg>
-);
-const IcoCheck = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="20 6 9 17 4 12" />
-  </svg>
-);
-const IcoLock = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
-  </svg>
-);
-const IcoAlert = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
-  </svg>
-);
-const IcoEye = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" />
-  </svg>
-);
-const IcoEyeOff = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" />
-  </svg>
-);
-const IcoLoader = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={styles.spinIcon}>
-    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-  </svg>
-);
-const IcoShield = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-  </svg>
-);
-
-// ── Component ─────────────────────────────────────────────────────────────────
 const ResetPassword = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
   const [email, setEmail] = useState(location.state?.email || "");
-  const [step, setStep] = useState(1); // 1 = verify OTP, 2 = set new password
+  const [step, setStep] = useState(1);
   const [otp, setOtp] = useState("");
   const [formData, setFormData] = useState({ password: "", confirmPassword: "" });
   const [showPassword, setShowPassword] = useState(false);
@@ -106,26 +66,23 @@ const ResetPassword = () => {
     return "Strong";
   };
 
-  // ── Step 1: Verify OTP ──────────────────────────────────────────────────────
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
     setError(null);
     if (!email.trim()) { setError("Email is required"); return; }
     if (!/\S+@\S+\.\S+/.test(email)) { setError("Please enter a valid email address"); return; }
     if (otp.length !== 6) { setError("Please enter the complete 6-digit code"); return; }
-
     setIsLoading(true);
     try {
       await verifyResetOtpService(email, otp);
       setStep(2);
     } catch (err) {
-      setError(err.response?.data?.message || err.message || "Invalid or expired code. Please try again.");
+      setError(err.response?.data?.message || err.message || "Invalid or expired code.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // ── Step 2: Reset password ──────────────────────────────────────────────────
   const validatePassword = () => {
     const errors = {};
     if (!formData.password) errors.password = "Password is required";
@@ -145,16 +102,12 @@ const ResetPassword = () => {
       await resetPasswordService(email, otp, formData.password);
       setSuccess(true);
       setTimeout(() => {
-        navigate("/login", { state: { message: "Password reset successful! You can now sign in." } });
+        navigate("/login", { state: { message: "Password reset successful!" } });
       }, 3000);
     } catch (err) {
       const message = err.response?.data?.message || err.message || "Failed to reset password.";
-      const isOtpExpired =
-        message.toLowerCase().includes("expired") ||
-        message.toLowerCase().includes("invalid otp") ||
-        message.toLowerCase().includes("otp");
-      if (isOtpExpired) {
-        setOtp(""); setStep(1); setError("Your code expired. Please enter a new one.");
+      if (message.toLowerCase().includes("otp")) {
+        setOtp(""); setStep(1); setError("Code expired. Please request a new one.");
       } else {
         setError(message);
       }
@@ -163,315 +116,169 @@ const ResetPassword = () => {
     }
   };
 
-  // ── Left panel content per step ─────────────────────────────────────────────
-  const leftContent = {
-    success: {
-      eyebrow: "All done",
-      title: <>"Welcome<br /><span>back.</span>"</>,
-      desc: "Your password has been reset. You're all set to continue your fitness journey.",
-      steps: ["Secured & protected", "Ready to sign in", "Back on track"],
-    },
-    1: {
-      eyebrow: "Almost there",
-      title: <>Verify your<br /><span>identity.</span></>,
-      desc: "Enter the 6-digit code we sent to your inbox. It expires in 10 minutes.",
-      steps: ["Secure OTP Verification", "10-Minute Expiry", "Protected Reset Flow"],
-    },
-    2: {
-      eyebrow: "Final step",
-      title: <>Set your new<br /><span>password.</span></>,
-      desc: "Choose a strong password to keep your FitMitra account and fitness data safe.",
-      steps: ["At least 8 characters", "Mix of letters & numbers", "Special characters recommended"],
-    },
-  };
-
-  const lc = success ? leftContent.success : leftContent[step];
-
-  // ── Shared left panel ───────────────────────────────────────────────────────
-  const LeftPanel = () => (
-    <div className={styles.leftPanel}>
-      <div className={styles.glow1} />
-      <div className={styles.glow2} />
-      <div className={styles.glowPanel} />
-      <div className={styles.leftContent}>
-        <Link to="/" className={styles.brand}>
-          <span className={styles.brandIcon}><IcoPulse /></span>
-          <span className={styles.brandName}>FitMitra</span>
-        </Link>
-        <span className={styles.eyebrow}>{lc.eyebrow}</span>
-        <h2 className={styles.leftTitle}>{lc.title}</h2>
-        <p className={styles.leftDesc}>{lc.desc}</p>
-        <div className={styles.leftSteps}>
-          {lc.steps.map((s, i) => (
-            <div className={styles.leftStep} key={i}>
-              <div className={styles.leftStepCol}>
-                <div className={styles.stepBadge}>0{i + 1}</div>
-                {i < lc.steps.length - 1 && <div className={styles.stepLine} />}
-              </div>
-              <div className={styles.stepBody}>
-                <div className={styles.stepTitle}>{s}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-
-  // ── Success state ───────────────────────────────────────────────────────────
-  if (success) {
-    return (
-      <div className={styles.page}>
-        <LeftPanel />
-        <div className={styles.rightPanel}>
-          <div className={styles.wrapper}>
-            <div className={styles.card}>
-              <div className={styles.cardGlow} />
-              <div className={styles.successIconWrap}>
-                <div className={styles.successRing}>
-                  <IcoCheck />
-                </div>
-              </div>
-              <div className={styles.header}>
-                <div className={styles.logoRow}>
-                  <span className={styles.logoPulse}><IcoPulse /></span>
-                </div>
-                <h1 className={styles.title}>Password Reset!</h1>
-                <p className={styles.subtitle}>Your password has been updated successfully.</p>
-              </div>
-              <div className={styles.infoBox}>
-                <IcoLock />
-                <p className={styles.infoText}>Redirecting you to sign in in a few seconds...</p>
-              </div>
-              <Link to="/login" className={styles.btnPrimary}>
-                <IcoArrowLeft /> Go to Sign In
-              </Link>
-            </div>
-            <p className={styles.footer}>
-              Need help? <a href="/support" className={styles.footerLink}>Contact Support</a>
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Step 1: OTP entry ───────────────────────────────────────────────────────
-  if (step === 1) {
-    return (
-      <div className={styles.page}>
-        <LeftPanel />
-        <div className={styles.rightPanel}>
-          <div className={styles.wrapper}>
-            <div className={styles.card}>
-              <div className={styles.cardGlow} />
-
-              <Link to="/forgot-password" className={styles.backBtn}>
-                <IcoArrowLeft /> Back
-              </Link>
-
-              <div className={styles.mailWrap}>
-                <div className={styles.mailRing}><IcoShield /></div>
-              </div>
-
-              <div className={styles.header}>
-                <div className={styles.logoRow}>
-                  <span className={styles.logoPulse}><IcoPulse /></span>
-                </div>
-                <h1 className={styles.title}>Verify Reset Code</h1>
-                <p className={styles.subtitle}>
-                  {location.state?.email
-                    ? <>We sent a code to <strong className={styles.emailAccent}>{location.state.email}</strong></>
-                    : "Enter your email and the 6-digit code we sent you"}
-                </p>
-              </div>
-
-              {error && (
-                <div className={styles.errorAlert}>
-                  <IcoAlert />
-                  <p className={styles.errorText}>{error}</p>
-                </div>
-              )}
-
-              <form onSubmit={handleVerifyOtp} className={styles.form}>
-                <div className={styles.formGroup}>
-                  <label htmlFor="email" className={styles.label}>Email Address</label>
-                  <input
-                    type="email" id="email" name="email"
-                    value={email} onChange={handleChange}
-                    placeholder="you@example.com"
-                    disabled={isLoading}
-                    className={styles.input}
-                  />
-                </div>
-
-                <div className={styles.formGroup}>
-                  <label className={styles.label}>6-Digit Code</label>
-                  <OtpInput
-                    length={6} value={otp} onChange={setOtp}
-                    disabled={isLoading} error={!!error}
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isLoading || !email || otp.length !== 6}
-                  className={styles.btnPrimary}
-                >
-                  {isLoading
-                    ? <><IcoLoader /> Verifying...</>
-                    : <><IcoCheck /> Verify Code</>}
-                </button>
-              </form>
-
-              <div className={styles.divider}>
-                <div className={styles.divLine}><div className={styles.divBorder} /></div>
-                <div className={styles.divLabel}><span className={styles.divText}>Didn't receive the code?</span></div>
-              </div>
-
-              <div className={styles.linkRow}>
-                <Link to="/forgot-password" className={styles.textLink}>
-                  Request new code <IcoArrowRight />
-                </Link>
-              </div>
-            </div>
-            <p className={styles.footer}>
-              Need help? <a href="/support" className={styles.footerLink}>Contact Support</a>
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Step 2: New password ────────────────────────────────────────────────────
   return (
     <div className={styles.page}>
-      <LeftPanel />
-      <div className={styles.rightPanel}>
-        <div className={styles.wrapper}>
-          <div className={styles.card}>
-            <div className={styles.cardGlow} />
+      <Link to={step === 1 ? "/forgot-password" : "#"} onClick={step === 2 ? () => setStep(1) : undefined} className={styles.backBtn}>
+        <ArrowLeft size={18} />
+        <span>{step === 1 ? "Back to Email Entry" : "Back to Verification"}</span>
+      </Link>
 
-            <button
-              type="button"
-              onClick={() => { setStep(1); setError(null); }}
-              className={styles.backBtn}
-            >
-              <IcoArrowLeft /> Back to code entry
-            </button>
+      <video autoPlay loop muted playsInline className={styles.bgVideo} src="/videos/auth_bg.mp4" />
+      
+      {/* DECORATIVE ELEMENTS */}
+      <div className={styles.ambientOrb1} />
+      <div className={styles.ambientOrb2} />
+      <div className={styles.decorativeSparkle}>
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.8)" strokeWidth="1">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+        </svg>
+      </div>
 
-            <div className={styles.mailWrap}>
-              <div className={styles.mailRing}><IcoLock /></div>
+      <div className={styles.pageInner}>
+        {/* LEFT COLUMN: HERO TEXT */}
+        <div className={styles.heroCol}>
+          <div className={styles.heroTag}>Password Recovery</div>
+          <h1 className={styles.heroTitle}>
+            {success ? "All Logged" : (step === 1 ? "Identity" : "Secure")} <span>{success ? "In!" : (step === 1 ? "Verification" : "Update")}</span>
+          </h1>
+          <p className={styles.heroDesc}>
+            {success 
+              ? "Your password has been successfully reset. Redirecting you home." 
+              : (step === 1 ? "Enter the 6-digit code we sent to your inbox to confirm your identity." : "Create a new strong password to regain access to your FitMitra dashboard.")}
+          </p>
+          <div className={styles.heroStats}>
+            <div className={styles.heroStat}>
+              <span className={styles.statVal}>SSL</span>
+              <span className={styles.statLbl}>Encrypted</span>
             </div>
-
-            <div className={styles.header}>
-              <div className={styles.logoRow}>
-                <span className={styles.logoPulse}><IcoPulse /></span>
-              </div>
-              <h1 className={styles.title}>Set New Password</h1>
-              <p className={styles.subtitle}>Enter your new password below</p>
-            </div>
-
-            {error && (
-              <div className={styles.errorAlert}>
-                <IcoAlert />
-                <p className={styles.errorText}>{error}</p>
-              </div>
-            )}
-
-            <form onSubmit={handleResetPassword} className={styles.form}>
-              {/* New password */}
-              <div className={styles.formGroup}>
-                <label htmlFor="password" className={styles.label}>New Password</label>
-                <div className={styles.pwWrap}>
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    id="password" name="password"
-                    value={formData.password} onChange={handleChange}
-                    placeholder="Create a strong password"
-                    disabled={isLoading}
-                    className={`${styles.input} ${validationErrors.password ? styles.inputError : ""}`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className={styles.pwToggle}
-                    disabled={isLoading}
-                    aria-label="Toggle password visibility"
-                  >
-                    {showPassword ? <IcoEyeOff /> : <IcoEye />}
-                  </button>
-                </div>
-
-                {formData.password && (
-                  <div className={styles.strengthRow}>
-                    <div className={styles.strengthTrack}>
-                      <div
-                        className={`${styles.strengthBar} ${getStrengthClass()}`}
-                        style={{ width: `${(passwordStrength / 5) * 100}%` }}
-                      />
-                    </div>
-                    <span className={`${styles.strengthLabel} ${getStrengthClass()}`}>
-                      {getStrengthLabel()}
-                    </span>
-                  </div>
-                )}
-                {validationErrors.password && (
-                  <p className={styles.fieldError}>{validationErrors.password}</p>
-                )}
-              </div>
-
-              {/* Confirm password */}
-              <div className={styles.formGroup}>
-                <label htmlFor="confirmPassword" className={styles.label}>Confirm New Password</label>
-                <div className={styles.pwWrap}>
-                  <input
-                    type={showConfirmPassword ? "text" : "password"}
-                    id="confirmPassword" name="confirmPassword"
-                    value={formData.confirmPassword} onChange={handleChange}
-                    placeholder="Re-enter your password"
-                    disabled={isLoading}
-                    className={`${styles.input} ${validationErrors.confirmPassword ? styles.inputError : ""}`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className={styles.pwToggle}
-                    disabled={isLoading}
-                    aria-label="Toggle confirm password visibility"
-                  >
-                    {showConfirmPassword ? <IcoEyeOff /> : <IcoEye />}
-                  </button>
-                </div>
-                {validationErrors.confirmPassword && (
-                  <p className={styles.fieldError}>{validationErrors.confirmPassword}</p>
-                )}
-              </div>
-
-              <button type="submit" disabled={isLoading} className={styles.btnPrimary}>
-                {isLoading
-                  ? <><IcoLoader /> Resetting Password...</>
-                  : <><IcoLock /> Reset Password</>}
-              </button>
-            </form>
-
-            <div className={styles.divider}>
-              <div className={styles.divLine}><div className={styles.divBorder} /></div>
-              <div className={styles.divLabel}><span className={styles.divText}>Remember your password?</span></div>
-            </div>
-
-            <div className={styles.linkRow}>
-              <Link to="/login" className={styles.textLink}>
-                Sign in instead <IcoArrowRight />
-              </Link>
+            <div className={styles.heroStat}>
+              <span className={styles.statVal}>FAST</span>
+              <span className={styles.statLbl}>Recovery</span>
             </div>
           </div>
-
-          <p className={styles.footer}>
-            Need help? <a href="/support" className={styles.footerLink}>Contact Support</a>
-          </p>
         </div>
+
+        {/* RIGHT COLUMN: MAIN CARD */}
+        <main className={styles.main}>
+          <div className={styles.card}>
+            {success ? (
+              <div className={styles.successContent}>
+                <div className={styles.successIconWrap}>
+                  <div className={styles.successRing}>
+                    <CheckCircle size={40} />
+                  </div>
+                </div>
+                <h2 className={styles.title}>Reset Complete!</h2>
+                <p className={styles.subtitle}>Your account is secure. Redirecting to login...</p>
+              </div>
+            ) : step === 1 ? (
+              <>
+                <div className={styles.iconWrap}>
+                  <ShieldCheck size={32} />
+                </div>
+                <h2 className={styles.title}>Confirm Code</h2>
+                <p className={styles.subtitle}>
+                  Enter the 6-digit code sent to<br />
+                  <strong>{email || "your email"}</strong>
+                </p>
+
+                {error && (
+                  <div className={styles.errorAlert}>
+                    <AlertCircle size={16} />
+                    <span>{error}</span>
+                  </div>
+                )}
+
+                <form onSubmit={handleVerifyOtp} className={styles.form}>
+                  {!location.state?.email && (
+                    <div className={styles.formGroup}>
+                      <label className={styles.label}>Email Address</label>
+                      <input
+                        type="email" name="email" value={email} onChange={handleChange}
+                        placeholder="you@example.com" className={styles.input} required
+                      />
+                    </div>
+                  )}
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>Verification Code</label>
+                    <OtpInput length={6} value={otp} onChange={setOtp} disabled={isLoading} />
+                  </div>
+                  <button type="submit" disabled={isLoading || otp.length !== 6} className={styles.btnPrimary}>
+                    {isLoading ? <><Loader2 size={18} className={styles.spinIcon} /> Verifying...</> : <>Verify identity <ArrowRight size={18} /></>}
+                  </button>
+                </form>
+
+                <div className={styles.divider}>
+                  <div className={styles.divLine} />
+                  <span className={styles.divText}>Didn't get it?</span>
+                  <div className={styles.divLine} />
+                </div>
+
+                <div className={styles.linkRow}>
+                  <Link to="/forgot-password" className={styles.textLink}>Request new code</Link>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className={styles.iconWrap}>
+                  <Lock size={32} />
+                </div>
+                <h2 className={styles.title}>New Password</h2>
+                <p className={styles.subtitle}>Choose a strong password for your account.</p>
+
+                {error && (
+                  <div className={styles.errorAlert}>
+                    <AlertCircle size={16} />
+                    <span>{error}</span>
+                  </div>
+                )}
+
+                <form onSubmit={handleResetPassword} className={styles.form}>
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>New Password</label>
+                    <div className={styles.pwWrap}>
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        name="password" value={formData.password} onChange={handleChange}
+                        placeholder="••••••••" className={styles.input} required
+                      />
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} className={styles.pwToggle}>
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                    {formData.password && (
+                      <div className={styles.strengthRow}>
+                        <div className={styles.strengthTrack}>
+                          <div className={`${styles.strengthBar} ${getStrengthClass()}`} style={{ width: `${(passwordStrength / 5) * 100}%` }} />
+                        </div>
+                        <span className={styles.strengthLabel}>{getStrengthLabel()}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>Confirm Password</label>
+                    <div className={styles.pwWrap}>
+                      <input
+                        type={showConfirmPassword ? "text" : "password"}
+                        name="confirmPassword" value={formData.confirmPassword} onChange={handleChange}
+                        placeholder="••••••••" className={styles.input} required
+                      />
+                      <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className={styles.pwToggle}>
+                        {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                    {validationErrors.confirmPassword && <p className={styles.errorText}>{validationErrors.confirmPassword}</p>}
+                  </div>
+
+                  <button type="submit" disabled={isLoading} className={styles.btnPrimary}>
+                    {isLoading ? <><Loader2 size={18} className={styles.spinIcon} /> Saving...</> : <>Reset password <ArrowRight size={18} /></>}
+                  </button>
+                </form>
+              </>
+            )}
+          </div>
+        </main>
       </div>
     </div>
   );

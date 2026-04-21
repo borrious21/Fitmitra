@@ -1,125 +1,263 @@
 /* AdminAnalytics.module.css */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap');
 
-.page { padding: 28px 28px 60px; min-height: 100%; background: #0f172a; }
+/* ── Page shell ──────────────────────────────────────────────────────────── */
+.page {
+  font-family: var(--font);
+  color: #fff;
+  background: var(--bg-dark);
+  min-height: 100vh;
+  padding: 1.5rem 1.75rem 3rem;
+  -webkit-font-smoothing: antialiased;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
 
-/* ─── Header ──────────────────────────────────────────────────────────────── */
-.pageHeader { margin-bottom: 24px; }
-.pageTitle  { font-size: 24px; font-weight: 800; color: #f1f5f9; margin: 0 0 4px; letter-spacing: -.02em; }
-.pageSub    { font-size: 13px; color: #475569; margin: 0; }
+/* ── Page header ─────────────────────────────────────────────────────────── */
+.pageHeader {
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+  margin-bottom: .5rem;
+}
+.pageTitle {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -.02em;
+  margin: 0;
+}
+.pageSub { font-size: .8125rem; color: rgba(255,255,255,.35); margin: 0; }
 
-/* ─── KPI grid ────────────────────────────────────────────────────────────── */
+/* ── Error state ─────────────────────────────────────────────────────────── */
+.errorState  { text-align: center; padding: 5rem 2rem; }
+.errorIcon   { font-size: 3rem; margin-bottom: 1rem; opacity: .25; }
+.errorTitle  { font-size: 1.25rem; font-weight: 800; color: rgba(255,255,255,.4); margin-bottom: .5rem; }
+.errorMsg    { font-size: .875rem; color: rgba(255,255,255,.25); }
+
+/* ── KPI grid ────────────────────────────────────────────────────────────── */
 .kpiGrid {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 12px;
-  margin-bottom: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 1rem;
 }
 
-/* ─── Stat card ───────────────────────────────────────────────────────────── */
 .statCard {
-  background: #1e293b; border: 1px solid #334155; border-radius: 14px;
-  padding: 16px; position: relative; overflow: hidden;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg, 16px);
+  padding: 1.125rem 1.25rem;
+  position: relative;
+  overflow: hidden;
 }
-.statGlow  { position: absolute; top: 0; right: 0; width: 80px; height: 80px; pointer-events: none; }
-.statTop   { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 6px; }
-.statLabel { font-size: 10px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: #475569; }
-.statIcon  { font-size: 16px; opacity: .7; }
-.statValue { font-size: 26px; font-weight: 900; line-height: 1; letter-spacing: -.02em; }
-.statSub   { font-size: 11px; color: #334155; margin-top: 5px; }
 
-/* ─── Section box ─────────────────────────────────────────────────────────── */
+.statGlow {
+  position: absolute;
+  top: 0; right: 0;
+  width: 100px; height: 100px;
+  pointer-events: none;
+}
+
+.statTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: .5rem;
+}
+
+.statLabel {
+  font-size: .6rem;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.3);
+}
+
+.statIcon { font-size: 1.125rem; }
+
+.statValue {
+  font-size: 1.875rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -.02em;
+  margin-bottom: .25rem;
+}
+
+.statSub { font-size: .72rem; color: rgba(255,255,255,.3); }
+
+/* ── Section box ─────────────────────────────────────────────────────────── */
 .sectionBox {
-  background: #1e293b; border: 1px solid #334155; border-radius: 16px;
-  padding: 20px 24px; margin-bottom: 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg, 16px);
+  overflow: hidden;
 }
-.sectionHeader { margin-bottom: 16px; }
-.sectionTitle  { font-size: 15px; font-weight: 800; color: #f1f5f9; margin: 0 0 3px; }
-.sectionSub    { font-size: 11px; color: #475569; }
 
-/* ─── Sparkline row ───────────────────────────────────────────────────────── */
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem .875rem;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+  gap: .375rem;
+}
+
+.sectionTitle { font-size: .9375rem; font-weight: 700; color: #fff; margin: 0; }
+.sectionSub   { font-size: .75rem; color: rgba(255,255,255,.3); }
+
+/* ── Sparkline row ───────────────────────────────────────────────────────── */
 .sparkRow {
-  display: flex; align-items: center; gap: 28px; margin-bottom: 16px;
-  padding: 14px 18px; background: rgba(255,92,26,.06);
-  border-radius: 12px; border: 1px solid rgba(255,92,26,.12);
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
 }
-.sparkLabel    { font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #475569; margin-bottom: 6px; }
-.sparkStats    { display: flex; gap: 24px; }
-.sparkStat     {}
-.sparkStatLabel { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #475569; margin-bottom: 2px; }
-.sparkStatVal  { font-size: 22px; font-weight: 900; line-height: 1; }
 
-/* ─── Table ───────────────────────────────────────────────────────────────── */
-.tableWrap { overflow-x: auto; }
-.table     { width: 100%; border-collapse: collapse; }
-.thead     { border-bottom: 1px solid #334155; }
+.sparkLabel {
+  font-size: .65rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.3);
+  margin-bottom: .375rem;
+}
+
+.sparkStats { display: flex; gap: 1.5rem; }
+
+.sparkStat { text-align: center; }
+.sparkStatLabel { font-size: .65rem; color: rgba(255,255,255,.3); margin-bottom: .2rem; }
+.sparkStatVal   { font-size: 1.25rem; font-weight: 800; color: #fff; }
+
+/* ── Table ───────────────────────────────────────────────────────────────── */
+.tableWrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+.table { width: 100%; border-collapse: collapse; min-width: 560px; }
+
+.thead { background: rgba(255,255,255,.02); border-bottom: 1px solid var(--border); }
+
 .th {
-  padding: 8px 14px; text-align: left; font-size: 10px; font-weight: 700;
-  text-transform: uppercase; letter-spacing: .1em; color: #334155; white-space: nowrap;
+  padding: .75rem 1rem;
+  text-align: left;
+  font-size: .6rem;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.3);
+  white-space: nowrap;
 }
-.tr { border-bottom: 1px solid #172032; transition: background .1s; }
-.tr:last-child { border-bottom: none; }
+
+.tr { border-bottom: 1px solid var(--border); transition: background .12s; }
 .tr:hover { background: rgba(255,255,255,.02); }
-.td     { padding: 10px 14px; font-size: 13px; color: #94a3b8; white-space: nowrap; }
-.tdBold   { color: #f1f5f9; font-weight: 600; }
+.tr:last-child { border-bottom: none; }
+
+.td      { padding: .875rem 1rem; font-size: .8125rem; color: rgba(255,255,255,.6); vertical-align: middle; }
 .tdAccent { color: #FF5C1A; font-weight: 700; }
-.tdBar    { width: 140px; min-width: 100px; }
+.tdBold   { font-weight: 600; color: #fff; }
+.tdBar    { min-width: 100px; }
 
-/* ─── Bar ─────────────────────────────────────────────────────────────────── */
-.barTrack { height: 5px; background: #0f172a; border-radius: 3px; overflow: hidden; }
-.barFill  { height: 100%; border-radius: 3px; transition: width .6s ease; }
-
-/* ─── Rank ────────────────────────────────────────────────────────────────── */
-.rankNum { font-size: 15px; font-weight: 900; }
-
-/* ─── User cell ───────────────────────────────────────────────────────────── */
-.userCell { display: flex; align-items: center; gap: 8px; }
-.userAv   {
-  width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
-  background: linear-gradient(135deg,#FF5C1A,#FF8A3D);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 11px; font-weight: 800; color: #fff;
+/* ── Bar fill ────────────────────────────────────────────────────────────── */
+.barTrack {
+  flex: 1;
+  height: 6px;
+  background: rgba(255,255,255,.06);
+  border-radius: 9999px;
+  overflow: hidden;
 }
-.userName { font-size: 13px; font-weight: 600; color: #f1f5f9; }
+.barFill { height: 100%; border-radius: 9999px; transition: width .5s ease; }
 
-/* ─── BMI / pct values ────────────────────────────────────────────────────── */
-.bmiVal { font-size: 15px; font-weight: 900; }
-.pctVal { font-size: 15px; font-weight: 900; }
-.bmiOnly { font-size: 11px; color: #334155; }
+/* ── Meal grid ───────────────────────────────────────────────────────────── */
+.mealGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 1rem;
+  padding: 1.25rem;
+}
 
-/* ─── Flag tags ───────────────────────────────────────────────────────────── */
-.flagRow { display: flex; gap: 4px; flex-wrap: wrap; }
+.mealCard {
+  background: rgba(255,255,255,.03);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.125rem;
+}
+
+.mealCardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: .75rem;
+}
+
+.mealType  { font-size: .7rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.mealCount { font-size: 1.5rem; font-weight: 800; color: #fff; }
+
+.mealMacros { display: flex; gap: .75rem; margin-top: .625rem; flex-wrap: wrap; }
+.mealMacros span { font-size: .72rem; color: rgba(255,255,255,.35); }
+
+/* ── User cell (top users table) ─────────────────────────────────────────── */
+.userCell { display: flex; align-items: center; gap: .625rem; }
+
+.userAv {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #FF5C1A, #FF8A3D);
+  color: #fff;
+  font-size: .7rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.userName { font-weight: 600; font-size: .8125rem; color: #fff; }
+
+.rankNum  { font-size: .875rem; font-weight: 800; }
+
+.bmiVal  { font-weight: 700; font-size: .875rem; }
+.bmiOnly { font-size: .72rem; color: rgba(255,255,255,.35); }
+
+.flagRow { display: flex; flex-wrap: wrap; gap: .25rem; }
 .flagTag {
-  padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: 700;
-  background: rgba(239,68,68,.1); color: #f87171; white-space: nowrap;
+  padding: .15rem .5rem;
+  border-radius: 6px;
+  font-size: .65rem;
+  font-weight: 700;
+  background: rgba(239,68,68,.08);
+  border: 1px solid rgba(239,68,68,.2);
+  color: #ef4444;
   text-transform: capitalize;
 }
 
-/* ─── Meal grid ───────────────────────────────────────────────────────────── */
-.mealGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); gap: 12px; }
-.mealCard {
-  background: rgba(255,255,255,.03); border: 1px solid; border-radius: 12px;
-  padding: 14px 16px;
-}
-.mealCardTop  { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.mealType     { font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
-.mealCount    { font-size: 20px; font-weight: 900; color: #f1f5f9; }
-.mealMacros   { display: flex; justify-content: space-between; margin-top: 8px; font-size: 11px; color: #475569; }
+.pctVal { font-weight: 700; font-size: .875rem; }
 
-/* ─── Skeleton ────────────────────────────────────────────────────────────── */
 .sk {
-  border-radius: 6px; width: 100%;
-  background: linear-gradient(90deg,#1e293b 25%,#2d3f5a 50%,#1e293b 75%);
-  background-size: 200% 100%; animation: shimmer 1.4s infinite;
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,.04) 0%,
+    rgba(255,255,255,.09) 50%,
+    rgba(255,255,255,.04) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 8px;
+  display: block;
 }
-.skList { display: flex; flex-direction: column; gap: 8px; }
-@keyframes shimmer { 0%{background-position:200%} 100%{background-position:-200%} }
+.skList { display: flex; flex-direction: column; gap: .5rem; padding: 1rem 1.25rem; }
 
-/* ─── Error state ─────────────────────────────────────────────────────────── */
-.errorState { padding: 60px 20px; text-align: center; }
-.errorIcon  { font-size: 40px; opacity: .3; margin-bottom: 12px; }
-.errorTitle { font-size: 15px; font-weight: 800; color: #334155; margin-bottom: 8px; text-transform: uppercase; letter-spacing: .08em; }
-.errorMsg   { font-size: 12px; color: #475569; }
+@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
 
-/* ─── Responsive ──────────────────────────────────────────────────────────── */
-@media (max-width: 1100px) { .kpiGrid { grid-template-columns: repeat(3,1fr); } }
-@media (max-width: 640px)  { .kpiGrid { grid-template-columns: repeat(2,1fr); } .page { padding: 16px; } }
+@media (max-width: 640px) {
+  .page         { padding: 1rem 1rem 2.5rem; }
+  .kpiGrid      { grid-template-columns: repeat(2, 1fr); }
+  .mealGrid     { grid-template-columns: 1fr 1fr; }
+  .sparkRow     { flex-direction: column; align-items: flex-start; }
+}
+@media (max-width: 400px) {
+  .kpiGrid  { grid-template-columns: 1fr; }
+  .mealGrid { grid-template-columns: 1fr; }
+}

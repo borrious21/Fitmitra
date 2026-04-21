@@ -1,21 +1,14 @@
-// mailer.config.js
-import nodemailer from "nodemailer";
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const { BrevoClient } = require("@getbrevo/brevo");
 
-if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
-  throw new Error(
-    "Missing GMAIL_USER or GMAIL_APP_PASSWORD in environment variables"
-  );
+if (!process.env.BREVO_API_KEY) {
+  throw new Error("Missing BREVO_API_KEY in environment variables");
 }
 
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASSWORD,
-  },
-});
+export const client = new BrevoClient({ apiKey: process.env.BREVO_API_KEY });
 
-export const MAIL_FROM =
-  process.env.GMAIL_FROM || `FitMitra <${process.env.GMAIL_USER}>`;
-
-export default transporter;
+export const MAIL_FROM = {
+  email: process.env.MAIL_FROM_EMAIL || "fitmitra.ai.co@gmail.com",
+  name: process.env.MAIL_FROM_NAME || "FitMitra",
+};

@@ -43,7 +43,7 @@ class AuthController {
 
   static async getMe(req, res, next) {
     try {
-      const { id, name, email, role, has_completed_onboarding, is_verified } = req.user;
+      const { id, name, email, role, has_completed_onboarding, is_verified, avatar_url } = req.user;
       return response(res, 200, true, "User profile retrieved", {
         id,
         name,
@@ -51,6 +51,7 @@ class AuthController {
         role,
         hasCompletedOnboarding: has_completed_onboarding ?? false,
         isVerified: is_verified ?? false,
+        avatar_url: avatar_url ?? null,
       });
     } catch (error) {
       next(error);
@@ -172,12 +173,13 @@ class AuthController {
   }
 
   static async logout(req, res, next) {
-    try {
-      await AuthService.logout(req.user.id);
-      return response(res, 200, true, "Logged out successfully");
-    } catch (error) {
-      next(error);
-    }
+  try {
+    const { refreshToken } = req.body || {};
+    await AuthService.logout(refreshToken);
+    return response(res, 200, true, "Logged out successfully");
+  } catch (error) {
+    next(error);
+  }
   }
 }
 

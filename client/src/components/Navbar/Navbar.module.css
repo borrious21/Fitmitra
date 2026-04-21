@@ -1,0 +1,213 @@
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 0.75rem 0;
+  pointer-events: none; /* Allow interaction through the nav container for elements behind if needed, but we override for children */
+}
+
+.navBlur {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-dark);
+  border-bottom: 1px solid var(--border);
+  pointer-events: auto;
+}
+
+.navContainer {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 1440px;
+  padding: 0 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: auto;
+}
+
+/* Logo Section */
+.navLogo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-decoration: none;
+  transition: transform 0.2s;
+}
+
+.navLogo:hover {
+  transform: translateY(-1px);
+}
+
+.logoIconBg {
+  width: 32px;
+  height: 32px;
+  background: var(--lime);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logoIcon {
+  color: #0b0d17;
+}
+
+.navLogoWord {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+/* Tabs Section */
+.navTabs {
+  display: flex;
+  gap: 0.25rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 0.25rem;
+  border-radius: 12px;
+}
+
+.navTab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: transparent;
+  border: none;
+  padding: 0.6rem 1.1rem;
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.navTabActive {
+  color: #fff;
+  background: var(--bg-elevated);
+}
+
+.navTab:hover:not(.navTabActive) {
+  color: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.tabIcon {
+  transition: transform 0.3s ease;
+}
+
+.navTabActive .tabIcon {
+  color: #CCFF00;
+  transform: scale(1.1);
+}
+
+.activeIndicator {
+  position: absolute;
+  bottom: 0;
+  left: 20%;
+  right: 20%;
+  height: 2px;
+  background: var(--lime);
+  border-radius: 1px;
+}
+
+/* Right Section */
+.navRight {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.toggleWrap {
+  display: flex;
+  align-items: center;
+}
+
+.navAvatarLink {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  text-decoration: none;
+}
+
+.navAvatar {
+  width: 34px;
+  height: 34px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--lime);
+  position: relative;
+  z-index: 2;
+  overflow: hidden;
+}
+
+.avatarImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.navAvatarLink:hover .navAvatar {
+  border-color: #CCFF00;
+  transform: scale(1.05);
+}
+
+.logoutBtn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.4);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.logoutBtn:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.avatarGlow {
+  display: none;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .navContainer {
+    padding: 0 1rem;
+  }
+  
+  .navLogoWord {
+    display: none;
+  }
+  
+  .tabLabel {
+    display: none;
+  }
+  
+  .navTab {
+    padding: 0.6rem;
+  }
+}

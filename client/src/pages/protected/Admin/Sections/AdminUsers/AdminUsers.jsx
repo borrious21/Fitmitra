@@ -11,7 +11,7 @@ const GOAL_LABELS = {
   maintain_fitness: "Maintenance", endurance: "Endurance", wellness: "Wellness",
 };
 
-// ─── Avatar ───────────────────────────────────────────────────────────────────
+// Avatar 
 function Av({ url, name, size = 36 }) {
   const [err, setErr] = useState(false);
   const letter = (name ?? "?").charAt(0).toUpperCase();
@@ -24,7 +24,7 @@ function Av({ url, name, size = 36 }) {
   );
 }
 
-// ─── Status pill ──────────────────────────────────────────────────────────────
+//  Status pill 
 function StatusPill({ active }) {
   return (
     <span className={active ? styles.pillActive : styles.pillBanned}>
@@ -34,7 +34,7 @@ function StatusPill({ active }) {
   );
 }
 
-// ─── Confirm dialog ───────────────────────────────────────────────────────────
+// Confirm dialog 
 function Confirm({ action, name, onOk, onCancel }) {
   const meta = {
     ban:      { title: "Ban User",       msg: `${name} will lose access. Data is kept.`,              color: "#f59e0b" },
@@ -57,7 +57,7 @@ function Confirm({ action, name, onOk, onCancel }) {
   );
 }
 
-// ─── User detail drawer ───────────────────────────────────────────────────────
+// User detail drawer 
 function Drawer({ user, onClose, onAction, acting }) {
   if (!user) return null;
   const p  = user.profile          ?? {};
@@ -231,7 +231,7 @@ function Section({ title, children }) {
   );
 }
 
-// ─── Main page ────────────────────────────────────────────────────────────────
+//  Main page 
 export default function AdminUsers() {
   const [users,      setUsers]     = useState([]);
   const [total,      setTotal]     = useState(0);

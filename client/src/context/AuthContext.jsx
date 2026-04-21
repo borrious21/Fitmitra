@@ -27,7 +27,6 @@ const normalizeUser = (rawUser) => {
       false,
   };
 
-  // DEBUG: remove this once the issue is resolved
   console.log('[normalizeUser] raw input:', rawUser);
   console.log('[normalizeUser] hasCompletedOnboarding resolved to:', normalized.hasCompletedOnboarding);
 
@@ -111,6 +110,22 @@ export const AuthProvider = ({ children }) => {
     setUser(newUser);
   }, [setUser]);
 
+  const mockLogin = useCallback((role = 'user') => {
+    const dummyUser = {
+      id: 'mock-123',
+      name: 'Dev User',
+      email: 'dev@fitmitra.local',
+      role: role,
+      isVerified: true,
+      hasCompletedOnboarding: role === 'admin' || role === 'user',
+    };
+    const dummyToken = 'mock-jwt-token';
+    tokenStore.setToken(dummyToken);
+    setToken(dummyToken);
+    setUser(dummyUser);
+    setIsInitializing(false);
+  }, [setUser]);
+
   const logout = useCallback(async () => {
     try { await logoutService(); } catch { /* ignore */ }
     tokenStore.clearAll();
@@ -177,6 +192,7 @@ export const AuthProvider = ({ children }) => {
         clearError,
         signup,
         login,
+        mockLogin,
         logout,
         setUser,
         updateUserProfile,

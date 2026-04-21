@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { apiFetch } from "../../../../../services/apiClient";
 import styles from "./AdminMeals.module.css";
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// Constants 
 const LIMIT = 20;
 
 const DIET_META = {
@@ -34,7 +34,7 @@ const EMPTY_FORM = {
   customTag: "",
 };
 
-// ─── Small helpers ────────────────────────────────────────────────────────────
+// Small helpers 
 function DietChip({ type }) {
   const m = DIET_META[type] ?? { label: type, icon: "🍽️", cls: "dietVeg" };
   return <span className={`${styles.chip} ${styles[m.cls]}`}>{m.icon} {m.label}</span>;
@@ -54,7 +54,7 @@ function MacroPill({ label, value, color }) {
   return <span className={styles.macroPill} style={{ color, borderColor: `${color}33` }}>{label} {value}g</span>;
 }
 
-// ─── Confirm dialog ───────────────────────────────────────────────────────────
+// Confirm dialog 
 function Confirm({ meal, onOk, onCancel }) {
   return (
     <div className={styles.overlay} onClick={onCancel}>
@@ -73,7 +73,7 @@ function Confirm({ meal, onOk, onCancel }) {
   );
 }
 
-// ─── Meal Form modal ──────────────────────────────────────────────────────────
+// Meal Form modal 
 function MealForm({ meal, onClose, onSaved }) {
   const isEdit = !!meal;
   const [form,   setForm]   = useState(() => {
@@ -298,7 +298,7 @@ function MealForm({ meal, onClose, onSaved }) {
   );
 }
 
-// ─── Meal detail drawer ───────────────────────────────────────────────────────
+// Meal detail drawer 
 function MealDrawer({ meal, onClose, onEdit, onDelete }) {
   if (!meal) return null;
   const macros = meal.macros ?? {};
@@ -402,7 +402,7 @@ function MealDrawer({ meal, onClose, onEdit, onDelete }) {
   );
 }
 
-// ─── Main page ────────────────────────────────────────────────────────────────
+// Main page 
 export default function AdminMeals() {
   const [meals,      setMeals]      = useState([]);
   const [total,      setTotal]      = useState(0);
@@ -412,7 +412,7 @@ export default function AdminMeals() {
   const [tagFilter,  setTagFilter]  = useState("");
   const [offset,     setOffset]     = useState(0);
   const [drawer,     setDrawer]     = useState(null);
-  const [formMeal,   setFormMeal]   = useState(undefined); // undefined=closed, null=new, obj=edit
+  const [formMeal,   setFormMeal]   = useState(undefined); 
   const [deleting,   setDeleting]   = useState(null);
   const [alert,      setAlert]      = useState(null);
 
